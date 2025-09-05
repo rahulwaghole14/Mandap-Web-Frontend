@@ -1,0 +1,424 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Layout from '../components/Layout';
+import { Search, Eye, Edit, Trash2, Plus, Download, Building, Loader2 } from 'lucide-react';
+import Modal from '../components/Modal';
+import AddAssociationForm from '../components/AddAssociationForm';
+import EditAssociationForm from '../components/EditAssociationForm';
+import { associationApi } from '../services/associationApi';
+import toast from 'react-hot-toast';
+
+const Associations = () => {
+  const navigate = useNavigate();
+  const [search, setSearch] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [status, setStatus] = useState('');
+  const [selectedAssociation, setSelectedAssociation] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [associations, setAssociations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch associations from API on component mount
+  useEffect(() => {
+    fetchAssociations();
+  }, []);
+
+  const fetchAssociations = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await associationApi.getAssociations();
+      setAssociations(response.associations || []);
+    } catch (error) {
+      console.error('Error fetching associations:', error);
+      setError('Failed to fetch associations. Please try again.');
+      toast.error('Failed to fetch associations');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filtered = associations.filter(association =>
+    association.name.toLowerCase().includes(search.toLowerCase()) &&
+    (city === '' || association.address?.city === city) &&
+    (state === '' || association.address?.state === state) &&
+    (status === '' || association.status === status)
+  );
+
+  const cities = [...new Set(associations.map(a => a.address?.city).filter(Boolean))];
+  const states = [...new Set(associations.map(a => a.address?.state).filter(Boolean))];
+  const statuses = ['Active', 'Pending', 'Inactive'];
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Active': return 'bg-green-100 text-green-800';
+      case 'Pending': return 'bg-yellow-100 text-yellow-800';
+      case 'Inactive': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const handleView = (association) => {
+    setSelectedAssociation(association);
+    setShowViewModal(true);
+  };
+
+  const handleEdit = (association) => {
+    setSelectedAssociation(association);
+    setShowEditModal(true);
+  };
+
+  const handleDelete = (association) => {
+    setSelectedAssociation(association);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await associationApi.deleteAssociation(selectedAssociation._id);
+      toast.success(`Association ${selectedAssociation.name} deleted successfully`);
+      setShowDeleteModal(false);
+      setSelectedAssociation(null);
+      fetchAssociations(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting association:', error);
+      toast.error('Failed to delete association');
+    }
+  };
+
+  const handleAddSuccess = (newAssociation) => {
+    setShowAddModal(false);
+    fetchAssociations(); // Refresh the list
+  };
+
+  const handleEditSuccess = (updatedAssociation) => {
+    setShowEditModal(false);
+    setSelectedAssociation(null);
+    fetchAssociations(); // Refresh the list
+  };
+
+  const exportAssociations = () => {
+    toast.success('Associations list exported successfully');
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="flex items-center space-x-2">
+            <Loader2 className="h-6 w-6 animate-spin text-primary-600" />
+            <span className="text-gray-600">Loading associations...</span>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">{error}</p>
+            <button
+              onClick={fetchAssociations}
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Associations Management</h1>
+            <p className="text-gray-600 mt-2">Manage different association branches and districts</p>
+          </div>
+          <div className="flex space-x-3">
+            <button
+              onClick={exportAssociations}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+            >
+              <Download className="h-4 w-4" />
+              <span>Export</span>
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add Association</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex-1 min-w-64">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="Search by association name"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            <select 
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+            >
+              <option value="">All Cities</option>
+              {cities.map(city => (
+                <option key={city} value={city}>{city}</option>
+              ))}
+            </select>
+            
+            <select 
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              value={state}
+              onChange={(e) => setState(e.target.value)}
+            >
+              <option value="">All States</option>
+              {states.map(state => (
+                <option key={state} value={state}>{state}</option>
+              ))}
+            </select>
+            
+            <select 
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value="">All Status</option>
+              {statuses.map(status => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Results Summary */}
+        <div className="flex justify-between items-center">
+          <p className="text-gray-600">
+            Showing <span className="font-semibold">{filtered.length}</span> of <span className="font-semibold">{associations.length}</span> associations
+          </p>
+        </div>
+
+        {/* Associations Table */}
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Association</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Members</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filtered.map(association => (
+                  <tr key={association._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10">
+                          <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                            <Building className="h-5 w-5 text-primary-600" />
+                          </div>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{association.name}</div>
+                          <div className="text-sm text-gray-500">Est. {new Date(association.establishedDate).toLocaleDateString()}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm text-gray-900">{association.address?.city}</div>
+                        <div className="text-sm text-gray-500">{association.address?.district}, {association.address?.state}</div>
+                        <div className="text-sm text-gray-500">{association.address?.pincode}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(association.status)}`}>
+                        {association.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        onClick={() => navigate(`/associations/${association._id}/members`)}
+                        className="text-primary-600 hover:text-primary-900 hover:underline font-medium cursor-pointer"
+                        title="View Members"
+                      >
+                        {association.memberCount} member{association.memberCount !== 1 ? 's' : ''}
+                      </button>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleView(association)}
+                          className="text-blue-600 hover:text-blue-900 p-1"
+                          title="View Details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleEdit(association)}
+                          className="text-yellow-600 hover:text-yellow-900 p-1"
+                          title="Edit Association"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(association)}
+                          className="text-red-600 hover:text-red-900 p-1"
+                          title="Delete Association"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {filtered.length === 0 && (
+          <div className="text-center py-12">
+            <Building className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No associations found</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {search || city || state || status 
+                ? 'Try adjusting your search or filter criteria.'
+                : 'Get started by creating a new association.'
+              }
+            </p>
+            {!search && !city && !state && !status && (
+              <div className="mt-6">
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
+                >
+                  <Plus className="-ml-1 mr-2 h-5 w-5" />
+                  Add Association
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Add Association Modal */}
+      <Modal title="Add New Association" isOpen={showAddModal} onClose={() => setShowAddModal(false)}>
+        <AddAssociationForm
+          onSuccess={handleAddSuccess}
+          onCancel={() => setShowAddModal(false)}
+        />
+      </Modal>
+
+      {/* Edit Association Modal */}
+      <Modal title="Edit Association" isOpen={showEditModal} onClose={() => setShowEditModal(false)}>
+        {selectedAssociation && (
+          <EditAssociationForm
+            association={selectedAssociation}
+            onSuccess={handleEditSuccess}
+            onCancel={() => setShowEditModal(false)}
+          />
+        )}
+      </Modal>
+
+      {/* View Association Modal */}
+      <Modal title="Association Details" isOpen={showViewModal} onClose={() => setShowViewModal(false)}>
+        {selectedAssociation && (
+          <div className="space-y-4">
+            <div className="text-center">
+              <div className="h-24 w-24 mx-auto mb-4">
+                <div className="h-24 w-24 rounded-lg bg-primary-100 flex items-center justify-center">
+                  <Building className="h-12 w-12 text-primary-600" />
+                </div>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900">{selectedAssociation.name}</h3>
+              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedAssociation.status)}`}>
+                {selectedAssociation.status}
+              </span>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">City</label>
+                  <p className="text-sm text-gray-900">{selectedAssociation.address?.city}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">District</label>
+                  <p className="text-sm text-gray-900">{selectedAssociation.address?.district}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">State</label>
+                  <p className="text-sm text-gray-900">{selectedAssociation.address?.state}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Pincode</label>
+                  <p className="text-sm text-gray-900">{selectedAssociation.address?.pincode}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Member Count</label>
+                  <p className="text-sm text-gray-900">{selectedAssociation.memberCount}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Established Date</label>
+                  <p className="text-sm text-gray-900">{new Date(selectedAssociation.establishedDate).toLocaleDateString()}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal title="Confirm Delete" isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            Are you sure you want to delete <strong>"{selectedAssociation?.name}"</strong>? This action cannot be undone.
+          </p>
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => setShowDeleteModal(false)}
+              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDelete}
+              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Delete Association
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </Layout>
+  );
+};
+
+export default Associations;
