@@ -66,7 +66,7 @@ const Login = () => {
             <div className="text-sm text-blue-800">
               <p className="font-medium mb-2">Backend Connected:</p>
               <p className="text-blue-700">
-                ✅ API running on http://localhost:5000<br/>
+                ✅ API running on https://mandapam-backend-97mi.onrender.com<br/>
                 ✅ MongoDB Atlas connected<br/>
                 ✅ JWT authentication enabled
               </p>

@@ -57,4 +57,4 @@ export const LANGUAGES = [
   { code: 'hi', name: 'Hindi' },
 ];
 
-export const API_BASE_URL = 'http://localhost:5000/api';
+export const API_BASE_URL = 'https://mandapam-backend-97mi.onrender.com/api';

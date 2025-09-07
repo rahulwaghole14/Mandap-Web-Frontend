@@ -272,7 +272,7 @@ const [topAssociations, setTopAssociations] = useState([]);
                       {member.profileImage ? (
                         <img 
                           className="h-10 w-10 rounded-full object-cover" 
-                          src={`http://localhost:5000/uploads/${member.profileImage}`} 
+                          src={`https://mandapam-backend-97mi.onrender.com/uploads/${member.profileImage}`} 
                           alt={member.name}
                           onError={(e) => {
                             e.target.style.display = 'none';

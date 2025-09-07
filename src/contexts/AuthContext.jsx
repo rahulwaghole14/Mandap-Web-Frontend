@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }) => {
   // Configure axios defaults with backend URL
   useEffect(() => {
     // Set base URL for backend API
-    axios.defaults.baseURL = 'http://localhost:5000';
+    axios.defaults.baseURL = 'https://mandapam-backend-97mi.onrender.com';
     
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;

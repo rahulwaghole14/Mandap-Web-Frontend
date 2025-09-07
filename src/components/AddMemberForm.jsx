@@ -46,7 +46,7 @@ const AddMemberForm = ({ onSuccess, onCancel }) => {
         formData.append('image', image);
         
         try {
-          const uploadResponse = await fetch('http://localhost:5000/api/upload/profile-image', {
+          const uploadResponse = await fetch('https://mandapam-backend-97mi.onrender.com/api/upload/profile-image', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`
