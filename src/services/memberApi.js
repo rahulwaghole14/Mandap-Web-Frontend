@@ -45,11 +45,27 @@ export const memberApi = {
   // Create new member
   createMember: async (memberData) => {
     try {
+      console.log('Member API - Sending data:', memberData);
+      console.log('Member API - Request URL:', `${API_BASE_URL}/members`);
+      
       const instance = createAuthInstance();
       const response = await instance.post('/members', memberData);
+      console.log('Member API - Success response:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error creating member:', error);
+      console.error('Member API - Error creating member:', error);
+      console.error('Member API - Error response:', error.response?.data);
+      console.error('Member API - Error status:', error.response?.status);
+      console.error('Member API - Error headers:', error.response?.headers);
+      
+      // Log detailed validation errors
+      if (error.response?.data?.errors) {
+        console.error('Member API - Validation errors:', error.response.data.errors);
+        error.response.data.errors.forEach((err, index) => {
+          console.error(`Member API - Error ${index + 1}:`, err);
+        });
+      }
+      
       throw error;
     }
   },

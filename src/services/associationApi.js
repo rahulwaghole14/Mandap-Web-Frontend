@@ -54,10 +54,26 @@ export const associationApi = {
   // Create new association
   createAssociation: async (associationData) => {
     try {
+      console.log('Association API - Sending data:', associationData);
+      console.log('Association API - Request URL:', `${API_BASE_URL}/associations`);
+      
       const response = await api.post('/associations', associationData);
+      console.log('Association API - Success response:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error creating association:', error);
+      console.error('Association API - Error creating association:', error);
+      console.error('Association API - Error response:', error.response?.data);
+      console.error('Association API - Error status:', error.response?.status);
+      console.error('Association API - Error headers:', error.response?.headers);
+      
+      // Log detailed validation errors
+      if (error.response?.data?.errors) {
+        console.error('Association API - Validation errors:', error.response.data.errors);
+        error.response.data.errors.forEach((err, index) => {
+          console.error(`Association API - Error ${index + 1}:`, err);
+        });
+      }
+      
       throw error;
     }
   },

@@ -15,7 +15,6 @@ const Associations = () => {
   const [state, setState] = useState('');
   const [status, setStatus] = useState('');
   const [selectedAssociation, setSelectedAssociation] = useState(null);
-  const [showViewModal, setShowViewModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -45,13 +44,13 @@ const Associations = () => {
 
   const filtered = associations.filter(association =>
     association.name.toLowerCase().includes(search.toLowerCase()) &&
-    (city === '' || association.address?.city === city) &&
-    (state === '' || association.address?.state === state) &&
-    (status === '' || association.status === status)
+    (city === '' || association.city === city) &&
+    (state === '' || association.state === state) &&
+    (status === '' || (association.isActive ? 'Active' : 'Inactive') === status)
   );
 
-  const cities = [...new Set(associations.map(a => a.address?.city).filter(Boolean))];
-  const states = [...new Set(associations.map(a => a.address?.state).filter(Boolean))];
+  const cities = [...new Set(associations.map(a => a.city).filter(Boolean))];
+  const states = [...new Set(associations.map(a => a.state).filter(Boolean))];
   const statuses = ['Active', 'Pending', 'Inactive'];
 
   const getStatusColor = (status) => {
@@ -64,8 +63,7 @@ const Associations = () => {
   };
 
   const handleView = (association) => {
-    setSelectedAssociation(association);
-    setShowViewModal(true);
+    navigate(`/associations/${association.id}`);
   };
 
   const handleEdit = (association) => {
@@ -80,7 +78,7 @@ const Associations = () => {
 
   const confirmDelete = async () => {
     try {
-      await associationApi.deleteAssociation(selectedAssociation._id);
+      await associationApi.deleteAssociation(selectedAssociation.id);
       toast.success(`Association ${selectedAssociation.name} deleted successfully`);
       setShowDeleteModal(false);
       setSelectedAssociation(null);
@@ -236,7 +234,7 @@ const Associations = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filtered.map(association => (
-                  <tr key={association._id} className="hover:bg-gray-50">
+                  <tr key={association.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
@@ -246,29 +244,29 @@ const Associations = () => {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{association.name}</div>
-                          <div className="text-sm text-gray-500">Est. {new Date(association.establishedDate).toLocaleDateString()}</div>
+                          <div className="text-sm text-gray-500">Est. {association.establishedYear || 'N/A'}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
-                        <div className="text-sm text-gray-900">{association.address?.city}</div>
-                        <div className="text-sm text-gray-500">{association.address?.district}, {association.address?.state}</div>
-                        <div className="text-sm text-gray-500">{association.address?.pincode}</div>
+                        <div className="text-sm text-gray-900">{association.city || 'N/A'}</div>
+                        <div className="text-sm text-gray-500">{association.state || 'N/A'}</div>
+                        <div className="text-sm text-gray-500">{association.pincode || 'N/A'}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(association.status)}`}>
-                        {association.status}
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(association.isActive ? 'Active' : 'Inactive')}`}>
+                        {association.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
-                        onClick={() => navigate(`/associations/${association._id}/members`)}
+                        onClick={() => navigate(`/associations/${association.id}/members`)}
                         className="text-primary-600 hover:text-primary-900 hover:underline font-medium cursor-pointer"
                         title="View Members"
                       >
-                        {association.memberCount} member{association.memberCount !== 1 ? 's' : ''}
+                        {association.totalMembers || 0} member{(association.totalMembers || 0) !== 1 ? 's' : ''}
                       </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -347,53 +345,6 @@ const Associations = () => {
         )}
       </Modal>
 
-      {/* View Association Modal */}
-      <Modal title="Association Details" isOpen={showViewModal} onClose={() => setShowViewModal(false)}>
-        {selectedAssociation && (
-          <div className="space-y-4">
-            <div className="text-center">
-              <div className="h-24 w-24 mx-auto mb-4">
-                <div className="h-24 w-24 rounded-lg bg-primary-100 flex items-center justify-center">
-                  <Building className="h-12 w-12 text-primary-600" />
-                </div>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900">{selectedAssociation.name}</h3>
-              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedAssociation.status)}`}>
-                {selectedAssociation.status}
-              </span>
-            </div>
-            
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">City</label>
-                  <p className="text-sm text-gray-900">{selectedAssociation.address?.city}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">District</label>
-                  <p className="text-sm text-gray-900">{selectedAssociation.address?.district}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">State</label>
-                  <p className="text-sm text-gray-900">{selectedAssociation.address?.state}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Pincode</label>
-                  <p className="text-sm text-gray-900">{selectedAssociation.address?.pincode}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Member Count</label>
-                  <p className="text-sm text-gray-900">{selectedAssociation.memberCount}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Established Date</label>
-                  <p className="text-sm text-gray-900">{new Date(selectedAssociation.establishedDate).toLocaleDateString()}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal title="Confirm Delete" isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)}>

@@ -88,14 +88,14 @@ const Events = () => {
     setValue('title', event.title);
     setValue('description', event.description);
     setValue('type', event.type);
-    setValue('date', event.date ? new Date(event.date).toISOString().split('T')[0] : '');
+    setValue('startDate', event.startDate ? new Date(event.startDate).toISOString().split('T')[0] : '');
     setValue('startTime', event.startTime);
     setValue('endTime', event.endTime);
-    setValue('address', event.location?.address || '');
-    setValue('city', event.location?.city || '');
-    setValue('district', event.location?.district || '');
-    setValue('state', event.location?.state || '');
-    setValue('pincode', event.location?.pincode || '');
+    setValue('address', event.address || '');
+    setValue('city', event.city || '');
+    setValue('district', event.district || '');
+    setValue('state', event.state || '');
+    setValue('pincode', event.pincode || '');
     setValue('priority', event.priority || 'Medium');
     setValue('maxAttendees', event.maxAttendees || 100);
     setShowEdit(true);
@@ -121,13 +121,11 @@ const Events = () => {
         date: data.date,
         startTime: data.startTime,
         endTime: data.endTime,
-        location: {
-          address: data.address || '',
-          city: data.city,
-          district: data.district,
-          state: data.state,
-          pincode: data.pincode
-        },
+        address: data.address || '',
+        city: data.city,
+        district: data.district,
+        state: data.state,
+        pincode: data.pincode,
         organizer: data.organizer || 'Mandap Association',
         contactPerson: {
           name: data.contactPersonName || 'Admin',
@@ -169,13 +167,11 @@ const Events = () => {
         date: data.date,
         startTime: data.startTime,
         endTime: data.endTime,
-        location: {
-          address: data.address || '',
-          city: data.city,
-          district: data.district,
-          state: data.state,
-          pincode: data.pincode
-        },
+        address: data.address || '',
+        city: data.city,
+        district: data.district,
+        state: data.state,
+        pincode: data.pincode,
         organizer: data.organizer || 'Mandap Association',
         contactPerson: {
           name: data.contactPersonName || 'Admin',
@@ -243,7 +239,15 @@ const Events = () => {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'Date not specified';
+    
     const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'Invalid Date';
+    }
+    
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -338,15 +342,15 @@ const Events = () => {
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center text-sm text-gray-500">
                       <Calendar className="h-4 w-4 mr-2" />
-                      <span>{formatDate(event.date)} at {event.startTime}</span>
+                      <span>{formatDate(event.startDate)} {event.startTime ? `at ${event.startTime}` : ''}</span>
                     </div>
                     <div className="flex items-center text-sm text-gray-500">
                       <MapPin className="h-4 w-4 mr-2" />
-                      <span>{event.location?.address}, {event.location?.city}</span>
+                      <span>{event.location || event.address ? `${event.address || ''}${event.address && event.city ? ', ' : ''}${event.city || ''}` : 'Location not specified'}</span>
                     </div>
                     <div className="flex items-center text-sm text-gray-500">
                       <Users className="h-4 w-4 mr-2" />
-                      <span>{event.registrations?.length || 0} attendees</span>
+                      <span>{event.currentAttendees || 0} attendees</span>
                     </div>
                   </div>
                   
@@ -439,13 +443,13 @@ const Events = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Event Date *</label>
               <input
                 type="date"
-                {...register('date', { required: 'Event date is required' })}
+                {...register('startDate', { required: 'Event date is required' })}
                 className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
-                  errors.date ? 'border-red-500' : 'border-gray-300'
+                  errors.startDate ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
-              {errors.date && (
-                <p className="text-red-500 text-sm mt-1">{errors.date.message}</p>
+              {errors.startDate && (
+                <p className="text-red-500 text-sm mt-1">{errors.startDate.message}</p>
               )}
             </div>
 
@@ -709,13 +713,13 @@ const Events = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Event Date *</label>
               <input
                 type="date"
-                {...register('date', { required: 'Event date is required' })}
+                {...register('startDate', { required: 'Event date is required' })}
                 className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
-                  errors.date ? 'border-red-500' : 'border-gray-300'
+                  errors.startDate ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
-              {errors.date && (
-                <p className="text-red-500 text-sm mt-1">{errors.date.message}</p>
+              {errors.startDate && (
+                <p className="text-red-500 text-sm mt-1">{errors.startDate.message}</p>
               )}
             </div>
 
@@ -952,23 +956,23 @@ const Events = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Date & Time</label>
-                  <p className="text-sm text-gray-900">{formatDate(selected.date)} at {selected.startTime} - {selected.endTime}</p>
+                  <p className="text-sm text-gray-900">{formatDate(selected.startDate)} {selected.startTime ? `at ${selected.startTime}` : ''} {selected.endTime ? `- ${selected.endTime}` : ''}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Location</label>
-                  <p className="text-sm text-gray-900">{selected.location?.address}, {selected.location?.city}</p>
+                  <p className="text-sm text-gray-900">{selected.location || selected.address ? `${selected.address || ''}${selected.address && selected.city ? ', ' : ''}${selected.city || ''}` : 'Location not specified'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">District</label>
-                  <p className="text-sm text-gray-900">{selected.location?.district}, {selected.location?.state}</p>
+                  <p className="text-sm text-gray-900">{selected.district || 'Not specified'}, {selected.state || 'Not specified'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Priority</label>
-                  <p className="text-sm text-gray-900">{selected.priority}</p>
+                  <p className="text-sm text-gray-900">{selected.priority || 'Normal'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Attendees</label>
-                  <p className="text-sm text-gray-900">{selected.registrations?.length || 0} registered</p>
+                  <p className="text-sm text-gray-900">{selected.currentAttendees || 0} registered</p>
                 </div>
               </div>
               

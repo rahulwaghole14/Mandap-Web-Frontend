@@ -8,6 +8,8 @@ const AddMemberForm = ({ onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [businessImages, setBusinessImages] = useState([]);
+  const [businessImagePreviews, setBusinessImagePreviews] = useState([]);
 
   const {
     register,
@@ -34,13 +36,39 @@ const AddMemberForm = ({ onSuccess, onCancel }) => {
     setPreview(null);
   };
 
+  const handleBusinessImages = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      setBusinessImages(files);
+      
+      // Create previews
+      const previews = files.map(file => {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(file);
+        });
+      });
+      
+      Promise.all(previews).then(setBusinessImagePreviews);
+    }
+  };
+
+  const removeBusinessImage = (index) => {
+    const newImages = businessImages.filter((_, i) => i !== index);
+    const newPreviews = businessImagePreviews.filter((_, i) => i !== index);
+    setBusinessImages(newImages);
+    setBusinessImagePreviews(newPreviews);
+  };
+
   const onSubmit = async (data) => {
     try {
       setLoading(true);
       
       let profileImage = null;
+      let businessImageUrls = [];
       
-      // Upload image if provided
+      // Upload profile image if provided
       if (image) {
         const formData = new FormData();
         formData.append('image', image);
@@ -58,16 +86,47 @@ const AddMemberForm = ({ onSuccess, onCancel }) => {
             const uploadResult = await uploadResponse.json();
             profileImage = uploadResult.filename;
           } else {
-            throw new Error('Failed to upload image');
+            throw new Error('Failed to upload profile image');
           }
         } catch (uploadError) {
-          console.error('Image upload error:', uploadError);
-          toast.error('Failed to upload image. Member will be created without profile image.');
+          console.error('Profile image upload error:', uploadError);
+          toast.error('Failed to upload profile image. Member will be created without profile image.');
+        }
+      }
+      
+      // Upload business images if provided
+      if (businessImages.length > 0) {
+        try {
+          const uploadPromises = businessImages.map(async (file) => {
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            const uploadResponse = await fetch('https://mandapam-backend-97mi.onrender.com/api/upload/business-image', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              body: formData
+            });
+            
+            if (uploadResponse.ok) {
+              const uploadResult = await uploadResponse.json();
+              return uploadResult.filename;
+            } else {
+              throw new Error(`Failed to upload business image: ${file.name}`);
+            }
+          });
+          
+          businessImageUrls = await Promise.all(uploadPromises);
+        } catch (uploadError) {
+          console.error('Business images upload error:', uploadError);
+          toast.error('Failed to upload business images. Member will be created without business images.');
         }
       }
       
       // Transform form data to match backend schema
       const memberData = {
+        // Core required fields
         name: data.name.trim(),
         businessName: data.businessName.trim(),
         phone: data.phone.trim(),
@@ -76,14 +135,23 @@ const AddMemberForm = ({ onSuccess, onCancel }) => {
         city: data.city,
         pincode: data.pincode,
         associationName: data.associationName,
-        profileImage: profileImage,
-        birthDate: data.birthDate ? formatDateForAPI(data.birthDate) : null
+        // Optional fields - only include if they have values
+        ...(data.birthDate && { birthDate: formatDateForAPI(data.birthDate) }),
+        ...(data.email && { email: data.email }),
+        ...(data.address && { address: data.address }),
+        ...(data.gstNumber && { gstNumber: data.gstNumber }),
+        ...(data.description && { description: data.description }),
+        ...(data.experience && { experience: parseInt(data.experience) }),
+        ...(profileImage && { profileImage: profileImage }),
+        ...(businessImageUrls.length > 0 && { businessImages: businessImageUrls })
       };
 
       const response = await memberApi.createMember(memberData);
       onSuccess(response.member);
       reset();
       removeImage();
+      setBusinessImages([]);
+      setBusinessImagePreviews([]);
     } catch (error) {
       console.error('Error adding member:', error);
       const errorMessage = error.response?.data?.message || 'Failed to add member';
@@ -101,12 +169,15 @@ const AddMemberForm = ({ onSuccess, onCancel }) => {
   ];
 
   const businessTypes = [
-    { value: 'sound', label: 'Sound' },
-    { value: 'decorator', label: 'Decorator' },
     { value: 'catering', label: 'Catering' },
-    { value: 'generator', label: 'Generator' },
-    { value: 'madap', label: 'Madap' },
-    { value: 'light', label: 'Light' }
+    { value: 'sound', label: 'Sound' },
+    { value: 'mandap', label: 'Mandap' },
+    { value: 'light', label: 'Light' },
+    { value: 'decorator', label: 'Decorator' },
+    { value: 'photography', label: 'Photography' },
+    { value: 'videography', label: 'Videography' },
+    { value: 'transport', label: 'Transport' },
+    { value: 'other', label: 'Other' }
   ];
 
   // Mock associations - in real app, this would come from API based on selected city
@@ -303,6 +374,98 @@ const AddMemberForm = ({ onSuccess, onCancel }) => {
             <p className="text-red-500 text-sm mt-1">{errors.associationName.message}</p>
           )}
         </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+          <input
+            type="email"
+            {...register('email', {
+              pattern: {
+                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                message: 'Please enter a valid email address'
+              }
+            })}
+            className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+              errors.email ? 'border-red-500' : 'border-gray-300'
+            }`}
+            placeholder="Enter email address"
+          />
+          {errors.email && (
+            <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">GST Number</label>
+          <input
+            type="text"
+            {...register('gstNumber', {
+              pattern: {
+                value: /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
+                message: 'Please enter a valid GST number (e.g., 12ABCDE1234F1Z5)'
+              }
+            })}
+            className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+              errors.gstNumber ? 'border-red-500' : 'border-gray-300'
+            }`}
+            placeholder="Enter GST number (e.g., 12ABCDE1234F1Z5)"
+          />
+          {errors.gstNumber && (
+            <p className="text-red-500 text-sm mt-1">{errors.gstNumber.message}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Experience (Years)</label>
+          <input
+            type="number"
+            {...register('experience', {
+              min: { value: 0, message: 'Experience cannot be negative' },
+              max: { value: 100, message: 'Experience cannot exceed 100 years' }
+            })}
+            className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+              errors.experience ? 'border-red-500' : 'border-gray-300'
+            }`}
+            placeholder="Enter years of experience (0-100)"
+            min="0"
+            max="100"
+          />
+          {errors.experience && (
+            <p className="text-red-500 text-sm mt-1">{errors.experience.message}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Full Address Field */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Full Address</label>
+        <textarea
+          {...register('address')}
+          rows={3}
+          className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+            errors.address ? 'border-red-500' : 'border-gray-300'
+          }`}
+          placeholder="Enter complete address"
+        />
+        {errors.address && (
+          <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>
+        )}
+      </div>
+
+      {/* Business Description */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Business Description</label>
+        <textarea
+          {...register('description')}
+          rows={3}
+          className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+            errors.description ? 'border-red-500' : 'border-gray-300'
+          }`}
+          placeholder="Describe your business and services"
+        />
+        {errors.description && (
+          <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>
+        )}
       </div>
 
 
@@ -348,6 +511,70 @@ const AddMemberForm = ({ onSuccess, onCancel }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Business Images */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Business Images</label>
+        <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg">
+          <div className="space-y-1 text-center">
+            {businessImagePreviews.length === 0 ? (
+              <>
+                <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                  <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-4h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <div className="flex text-sm text-gray-600">
+                  <label className="relative cursor-pointer bg-white rounded-md font-medium text-primary-600 hover:text-primary-500">
+                    <span>Upload business images</span>
+                    <input
+                      type="file"
+                      className="sr-only"
+                      accept="image/*"
+                      multiple
+                      onChange={handleBusinessImages}
+                    />
+                  </label>
+                </div>
+                <p className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB each (Multiple files allowed)</p>
+              </>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {businessImagePreviews.map((preview, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={preview}
+                        alt={`Business preview ${index + 1}`}
+                        className="h-24 w-24 object-cover rounded-lg mx-auto"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeBusinessImage(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex text-sm text-gray-600">
+                  <label className="relative cursor-pointer bg-white rounded-md font-medium text-primary-600 hover:text-primary-500">
+                    <span>Add more images</span>
+                    <input
+                      type="file"
+                      className="sr-only"
+                      accept="image/*"
+                      multiple
+                      onChange={handleBusinessImages}
+                    />
+                  </label>
+                </div>
               </div>
             )}
           </div>

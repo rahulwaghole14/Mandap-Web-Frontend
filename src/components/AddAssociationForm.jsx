@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { CheckCircle } from 'lucide-react';
 import { associationApi } from '../services/associationApi';
+import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 const AddAssociationForm = ({ onSuccess, onCancel }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuth();
 
   const {
     register,
@@ -33,16 +35,25 @@ const AddAssociationForm = ({ onSuccess, onCancel }) => {
     try {
       setIsSubmitting(true);
 
+      // Check authentication status
+      const token = localStorage.getItem('token');
+      console.log('AddAssociationForm - Token exists:', !!token);
+      console.log('AddAssociationForm - Token value:', token);
+      console.log('AddAssociationForm - User:', user);
+      console.log('AddAssociationForm - User role:', user?.role);
+
       const associationData = {
         name: data.name.trim(),
-        establishedDate: data.establishedDate,
-        address: {
-          city: data.city,
-          district: data.district,
-          state: data.state,
-          pincode: data.pincode
-        }
+        establishedYear: new Date(data.establishedDate).getFullYear(),
+        city: data.city,
+        state: data.state,
+        pincode: data.pincode.toString(), // Ensure pincode is string
+        address: data.address || '' // Keep address as text field
       };
+
+      console.log('Sending association data:', associationData);
+      console.log('Established date:', data.establishedDate);
+      console.log('Established year:', new Date(data.establishedDate).getFullYear());
 
       const response = await associationApi.createAssociation(associationData);
       

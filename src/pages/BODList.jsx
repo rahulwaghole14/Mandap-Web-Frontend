@@ -67,7 +67,7 @@ const BODList = () => {
 
   const designations = [
     'President', 'Vice President', 'Secretary', 'Joint Secretary', 
-    'Treasurer', 'Joint Treasurer', 'Executive Member', 'Member'
+    'Treasurer', 'Joint Treasurer', 'Executive Member'
   ];
 
   const districts = [
@@ -112,8 +112,8 @@ const BODList = () => {
   const handleEdit = (bod) => {
     setSelected(bod);
     setValue('name', bod.name);
-    setValue('designation', bod.designation);
-    setValue('contactNumber', bod.contactNumber);
+    setValue('designation', bod.position);
+    setValue('contactNumber', bod.phone);
     setValue('email', bod.email);
     setValue('isActive', bod.isActive);
     setValue('street', bod.address?.street || '');
@@ -149,8 +149,8 @@ const BODList = () => {
       // Transform form data to match backend schema
       const bodData = {
         name: data.name.trim(),
-        designation: data.designation,
-        contactNumber: data.contactNumber.trim(),
+        position: data.designation,
+        phone: data.contactNumber.trim(),
         email: data.email.trim(),
         isActive: data.isActive || true,
         address: {
@@ -198,7 +198,7 @@ const BODList = () => {
         return;
       }
 
-      const member = members.find(m => m._id === selectedMember);
+      const member = members.find(m => m.id == selectedMember || m._id == selectedMember);
       if (!member) {
         toast.error('Selected member not found');
         return;
@@ -213,8 +213,8 @@ const BODList = () => {
 
       const bodData = {
         name: member.name,
-        designation: memberPosition,
-        contactNumber: member.phone,
+        position: memberPosition,
+        phone: member.phone,
         email: member.email || `${member.name.toLowerCase().replace(/\s+/g, '.')}@mandap.com`,
         bio: memberBio,
         isActive: memberIsActive,
@@ -251,7 +251,7 @@ const BODList = () => {
       // Transform form data to match backend schema
       const bodData = {
         name: data.name,
-        designation: data.designation,
+        position: data.designation,
         contactNumber: data.contactNumber,
         email: data.email,
         isActive: data.isActive || true,
@@ -272,12 +272,12 @@ const BODList = () => {
       };
 
       // Update BOD member via API
-      const response = await bodApi.updateBOD(selected._id, bodData);
+      const response = await bodApi.updateBOD(selected.id, bodData);
       
       // Update BOD member in the list
       setBods(prevBODs => 
         prevBODs.map(bod => 
-          bod._id === selected._id ? response.bod : bod
+          bod.id === selected.id ? response.bod : bod
         )
       );
       
@@ -295,11 +295,11 @@ const BODList = () => {
   const confirmDelete = async () => {
     try {
       // Delete BOD member via API
-      await bodApi.deleteBOD(selected._id);
+      await bodApi.deleteBOD(selected.id);
       
       // Remove BOD member from the list
       setBods(prevBODs => 
-        prevBODs.filter(bod => bod._id !== selected._id)
+        prevBODs.filter(bod => bod.id !== selected.id)
       );
       
       toast.success(`BOD member ${selected.name} deleted successfully`);
@@ -384,7 +384,7 @@ const BODList = () => {
         </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {bods.map(bod => (
-                  <tr key={bod._id} className="hover:bg-gray-50">
+                  <tr key={bod.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
@@ -404,12 +404,12 @@ const BODList = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                        {bod.designation}
+                        {bod.position}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
-                        <div className="text-sm text-gray-900">{bod.contactNumber}</div>
+                        <div className="text-sm text-gray-900">{bod.phone}</div>
                         <div className="text-sm text-gray-500">{bod.email}</div>
                       </div>
                     </td>
@@ -934,13 +934,13 @@ const BODList = () => {
                 )}
               </div>
               <h3 className="text-lg font-medium text-gray-900">{selected.name}</h3>
-              <p className="text-sm text-gray-500">{selected.designation}</p>
+              <p className="text-sm text-gray-500">{selected.position}</p>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Contact Number</label>
-                <p className="text-sm text-gray-900">{selected.contactNumber}</p>
+                <p className="text-sm text-gray-900">{selected.phone}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Email</label>
@@ -1065,7 +1065,7 @@ const BODList = () => {
               {members
                 .filter(member => !bods.some(bod => bod.name === member.name)) // Filter out existing BOD members
                 .map(member => (
-                  <option key={member._id} value={member._id}>
+                  <option key={member.id} value={member.id}>
                     {member.name} - {member.businessName} ({member.city}, {member.state})
                   </option>
                 ))}

@@ -22,8 +22,7 @@ const AssociationBODManager = ({ association, members, onBODUpdate }) => {
     'Joint Secretary',
     'Treasurer',
     'Joint Treasurer',
-    'Executive Member',
-    'Member'
+    'Executive Member'
   ];
 
   useEffect(() => {
@@ -70,7 +69,7 @@ const AssociationBODManager = ({ association, members, onBODUpdate }) => {
       setLoading(true);
       
       // Get member details
-      const selectedMember = members.find(m => m._id === formData.memberId);
+      const selectedMember = members.find(m => m.id == formData.memberId || m._id == formData.memberId);
       if (!selectedMember) {
         toast.error('Selected member not found');
         return;
@@ -78,8 +77,8 @@ const AssociationBODManager = ({ association, members, onBODUpdate }) => {
 
              const bodData = {
          name: selectedMember.name,
-         designation: formData.position, // Use position as designation
-         contactNumber: selectedMember.phone, // Backend expects contactNumber
+         position: formData.position, // Backend expects position
+         phone: selectedMember.phone, // Backend expects phone
          email: selectedMember.email || `${selectedMember.name.toLowerCase().replace(/\s+/g, '.')}@${association.name.toLowerCase().replace(/\s+/g, '')}.com`, // Generate email if not provided
          bio: formData.bio,
          isActive: formData.isActive,
@@ -120,12 +119,12 @@ const AssociationBODManager = ({ association, members, onBODUpdate }) => {
       setLoading(true);
       
              const updateData = {
-         designation: formData.position, // Backend expects designation
+         position: formData.position, // Backend expects position
          bio: formData.bio,
          isActive: formData.isActive
        };
 
-      await bodApi.updateBOD(editingBOD._id, updateData);
+      await bodApi.updateBOD(editingBOD.id, updateData);
       
       toast.success('BOD member updated successfully');
       setEditingBOD(null);
@@ -165,7 +164,7 @@ const AssociationBODManager = ({ association, members, onBODUpdate }) => {
     setEditingBOD(bod);
     setFormData({
       memberId: '',
-      position: bod.designation, // Backend uses designation, frontend uses position
+      position: bod.position, // Backend uses position
       bio: bod.bio || '',
       isActive: bod.isActive
     });
@@ -189,8 +188,7 @@ const AssociationBODManager = ({ association, members, onBODUpdate }) => {
       'Joint Secretary': 'bg-indigo-100 text-indigo-800',
       'Treasurer': 'bg-green-100 text-green-800',
       'Joint Treasurer': 'bg-emerald-100 text-emerald-800',
-      'Executive Member': 'bg-purple-100 text-purple-800',
-      'Member': 'bg-gray-100 text-gray-800'
+      'Executive Member': 'bg-purple-100 text-purple-800'
     };
     return colors[position] || 'bg-gray-100 text-gray-800';
   };
@@ -251,7 +249,7 @@ const AssociationBODManager = ({ association, members, onBODUpdate }) => {
                 >
                   <option value="">Choose a member</option>
                   {availableMembers.map(member => (
-                    <option key={member._id} value={member._id}>
+                    <option key={member.id || member._id} value={member.id || member._id}>
                       {member.name} - {member.businessName}
                     </option>
                   ))}
@@ -368,13 +366,13 @@ const AssociationBODManager = ({ association, members, onBODUpdate }) => {
                         </div>
                                                  <div className="ml-4">
                            <div className="text-sm font-medium text-gray-900">{bod.name}</div>
-                           <div className="text-sm text-gray-500">{bod.contactNumber || bod.phone || 'N/A'}</div>
+                           <div className="text-sm text-gray-500">{bod.phone || 'N/A'}</div>
                          </div>
                       </div>
                     </td>
                                          <td className="px-6 py-4 whitespace-nowrap">
-                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPositionColor(bod.designation)}`}>
-                         {bod.designation}
+                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPositionColor(bod.position)}`}>
+                         {bod.position}
                        </span>
                      </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -394,7 +392,7 @@ const AssociationBODManager = ({ association, members, onBODUpdate }) => {
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteBOD(bod._id, bod.name)}
+                          onClick={() => handleDeleteBOD(bod.id, bod.name)}
                           className="text-red-600 hover:text-red-900 p-1"
                           title="Remove from BOD"
                         >

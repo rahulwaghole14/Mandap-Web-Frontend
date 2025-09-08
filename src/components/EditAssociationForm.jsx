@@ -33,11 +33,15 @@ const EditAssociationForm = ({ association, onSuccess, onCancel }) => {
   useEffect(() => {
     if (association) {
       setValue('name', association.name);
-      setValue('city', association.address?.city || '');
-      setValue('district', association.address?.district || '');
-      setValue('state', association.address?.state || '');
-      setValue('pincode', association.address?.pincode || '');
-      setValue('establishedDate', association.establishedDate ? new Date(association.establishedDate).toISOString().split('T')[0] : '');
+      setValue('city', association.city || '');
+      setValue('district', association.district || '');
+      setValue('state', association.state || '');
+      setValue('pincode', association.pincode || '');
+      // Convert establishedYear to date for the date picker
+      if (association.establishedYear) {
+        const date = new Date(association.establishedYear, 0, 1);
+        setValue('establishedDate', date.toISOString().split('T')[0]);
+      }
     }
   }, [association, setValue]);
 
@@ -47,16 +51,14 @@ const EditAssociationForm = ({ association, onSuccess, onCancel }) => {
 
       const associationData = {
         name: data.name.trim(),
-        address: {
-          city: data.city,
-          district: data.district,
-          state: data.state,
-          pincode: data.pincode
-        },
-        establishedDate: data.establishedDate
+        city: data.city,
+        state: data.state,
+        pincode: data.pincode.toString(),
+        establishedYear: new Date(data.establishedDate).getFullYear(),
+        address: data.address || '' // Keep address as text field
       };
 
-      const response = await associationApi.updateAssociation(association._id, associationData);
+      const response = await associationApi.updateAssociation(association.id, associationData);
       
       toast.success('Association updated successfully!');
       

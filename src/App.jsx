@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import VendorList from './pages/VendorList';
@@ -10,6 +11,7 @@ import BODList from './pages/BODList';
 import Events from './pages/Events';
 import Members from './pages/Members';
 import Associations from './pages/Associations';
+import AssociationDetail from './pages/AssociationDetail';
 import AssociationMembers from './pages/AssociationMembers';
 import Settings from './pages/Settings';
 
@@ -19,15 +21,10 @@ function App() {
       <div className="App">
         <Routes>
           {/* Public Routes */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           
           {/* Protected Routes */}
-          <Route path="/" element={
-            <ProtectedRoute>
-              <Navigate to="/dashboard" replace />
-            </ProtectedRoute>
-          } />
-          
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
@@ -70,6 +67,12 @@ function App() {
             </ProtectedRoute>
           } />
           
+          <Route path="/associations/:associationId" element={
+            <ProtectedRoute>
+              <AssociationDetail />
+            </ProtectedRoute>
+          } />
+          
           <Route path="/associations/:associationId/members" element={
             <ProtectedRoute>
               <AssociationMembers />
@@ -83,7 +86,7 @@ function App() {
           } />
           
           {/* Catch all route */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </AuthProvider>
