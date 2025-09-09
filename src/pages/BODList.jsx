@@ -146,7 +146,7 @@ const BODList = () => {
         return;
       }
 
-      // Transform form data to match backend schema
+      // Transform form data to match backend schema (National BOD - no associationId)
       const bodData = {
         name: data.name.trim(),
         position: data.designation,
@@ -218,6 +218,7 @@ const BODList = () => {
         email: member.email || `${member.name.toLowerCase().replace(/\s+/g, '.')}@mandap.com`,
         bio: memberBio,
         isActive: memberIsActive,
+        // No associationId for National BODs
         address: {
           city: member.city,
           state: member.state,

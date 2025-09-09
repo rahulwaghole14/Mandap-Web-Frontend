@@ -56,11 +56,35 @@ const AssociationMembers = () => {
       
       console.log('All members from API:', allMembers);
       console.log('Current association:', association);
+      console.log('Association name to filter by:', association?.name);
       
-      // Filter members by association name
-      const associationMembers = allMembers.filter(member => 
-        member.associationName === association?.name
-      );
+      // Debug: Check what association names exist in members
+      const memberAssociationNames = allMembers.map(m => m?.associationName).filter(Boolean);
+      console.log('All member association names:', [...new Set(memberAssociationNames)]);
+      
+      // Filter members by association name and ensure they have required properties
+      const associationMembers = allMembers.filter(member => {
+        const matches = member && 
+          member.associationName === association?.name &&
+          (member._id || member.id);
+        console.log(`Member ${member?.name}: associationName="${member?.associationName}", matches=${matches}`);
+        return matches;
+      });
+
+      // If no members found with exact name match, try case-insensitive match
+      if (associationMembers.length === 0 && association?.name) {
+        console.log('No exact match found, trying case-insensitive match...');
+        const caseInsensitiveMembers = allMembers.filter(member => {
+          const matches = member && 
+            member.associationName?.toLowerCase() === association?.name?.toLowerCase() &&
+            (member._id || member.id);
+          console.log(`Case-insensitive match for ${member?.name}: associationName="${member?.associationName}", matches=${matches}`);
+          return matches;
+        });
+        console.log('Case-insensitive filtered members:', caseInsensitiveMembers);
+        setMembers(caseInsensitiveMembers);
+        return;
+      }
       
       console.log('Filtered association members:', associationMembers);
       
@@ -86,13 +110,21 @@ const AssociationMembers = () => {
   };
 
   const filteredMembers = members.filter(member =>
+    member &&
+    member.name &&
     member.name.toLowerCase().includes(search.toLowerCase()) &&
     (city === '' || member.city === city) &&
     (businessType === '' || member.businessType === businessType)
   );
 
-  const cities = [...new Set(members.map(m => m.city).filter(Boolean))];
-  const businessTypes = [...new Set(members.map(m => m.businessType).filter(Boolean))];
+  console.log('Members state:', members);
+  console.log('Filtered members:', filteredMembers);
+  console.log('Search term:', search);
+  console.log('City filter:', city);
+  console.log('Business type filter:', businessType);
+
+  const cities = [...new Set(members.filter(m => m && m.city).map(m => m.city))];
+  const businessTypes = [...new Set(members.filter(m => m && m.businessType).map(m => m.businessType))];
 
   const getBusinessTypeColor = (type) => {
     const colors = {
@@ -311,8 +343,11 @@ const AssociationMembers = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredMembers.map(member => (
-                      <tr key={member._id} className="hover:bg-gray-50">
+                    {(() => {
+                      const validMembers = filteredMembers.filter(member => member && (member._id || member.id));
+                      console.log('Valid members for table rendering:', validMembers);
+                      return validMembers.map(member => (
+                      <tr key={member._id || member.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-10 w-10">
@@ -322,7 +357,7 @@ const AssociationMembers = () => {
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900">{member.name}</div>
-                              <div className="text-sm text-gray-500">Member ID: {member._id.slice(-8)}</div>
+                              <div className="text-sm text-gray-500">Member ID: {member._id ? member._id.slice(-8) : member.id || 'N/A'}</div>
                             </div>
                           </div>
                         </td>
@@ -330,7 +365,7 @@ const AssociationMembers = () => {
                           <div>
                             <div className="text-sm font-medium text-gray-900">{member.businessName}</div>
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getBusinessTypeColor(member.businessType)}`}>
-                              {member.businessType}
+                              {member.businessType || 'N/A'}
                             </span>
                           </div>
                         </td>
@@ -353,7 +388,8 @@ const AssociationMembers = () => {
                           <div className="text-sm text-gray-900">{member.phone}</div>
                         </td>
                       </tr>
-                    ))}
+                      ));
+                    })()}
                   </tbody>
                 </table>
               </div>

@@ -264,7 +264,7 @@ const Members = () => {
                      <td className="px-6 py-4 whitespace-nowrap">
                        <div className="space-y-1">
                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getBusinessTypeColor(member.businessType)}`}>
-                           {member.businessType.charAt(0).toUpperCase() + member.businessType.slice(1)}
+                           {member.businessType ? member.businessType.charAt(0).toUpperCase() + member.businessType.slice(1) : 'N/A'}
                          </span>
                        </div>
                      </td>
@@ -317,7 +317,7 @@ const Members = () => {
               </div>
               <h3 className="text-lg font-medium text-gray-900">{selectedMember.name}</h3>
               <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getBusinessTypeColor(selectedMember.businessType)}`}>
-                {selectedMember.businessType.charAt(0).toUpperCase() + selectedMember.businessType.slice(1)}
+                {selectedMember.businessType ? selectedMember.businessType.charAt(0).toUpperCase() + selectedMember.businessType.slice(1) : 'N/A'}
               </span>
             </div>
             
@@ -336,7 +336,7 @@ const Members = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Business Type</label>
-                <p className="text-sm text-gray-900">{selectedMember.businessType.charAt(0).toUpperCase() + selectedMember.businessType.slice(1)}</p>
+                <p className="text-sm text-gray-900">{selectedMember.businessType ? selectedMember.businessType.charAt(0).toUpperCase() + selectedMember.businessType.slice(1) : 'N/A'}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">City</label>

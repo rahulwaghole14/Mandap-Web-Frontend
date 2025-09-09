@@ -82,6 +82,7 @@ const AssociationBODManager = ({ association, members, onBODUpdate }) => {
          email: selectedMember.email || `${selectedMember.name.toLowerCase().replace(/\s+/g, '.')}@${association.name.toLowerCase().replace(/\s+/g, '')}.com`, // Generate email if not provided
          bio: formData.bio,
          isActive: formData.isActive,
+         associationId: association.id, // Include association ID for Association BODs
          address: {
            city: selectedMember.city,
            state: selectedMember.state,
