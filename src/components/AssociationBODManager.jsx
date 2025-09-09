@@ -36,18 +36,16 @@ const AssociationBODManager = ({ association, members, onBODUpdate }) => {
   const fetchBODMembers = async () => {
     try {
       setLoading(true);
-      const response = await bodApi.getBODs();
+      // Fetch BOD members for this specific association
+      const response = await bodApi.getBODs({
+        type: 'association',
+        associationId: association.id
+      });
       console.log('BOD API response:', response);
       
       // Backend returns 'bods' not 'bodMembers'
-      const allBOD = response.bods || [];
-      console.log('All BOD members:', allBOD);
-      
-      // Filter BOD members by association (if associationName field exists)
-      // For now, let's show all BOD members since association filtering might not be implemented yet
-      const associationBOD = allBOD; // Remove filtering temporarily
-      
-      console.log('Filtered association BOD:', associationBOD);
+      const associationBOD = response.bods || [];
+      console.log('Association BOD members:', associationBOD);
       setBodMembers(associationBOD);
     } catch (error) {
       console.error('Error fetching BOD members:', error);
@@ -165,7 +163,7 @@ const AssociationBODManager = ({ association, members, onBODUpdate }) => {
     setEditingBOD(bod);
     setFormData({
       memberId: '',
-      position: bod.position, // Backend uses position
+      position: bod.position || bod.designation, // Backend uses position or designation
       bio: bod.bio || '',
       isActive: bod.isActive
     });
@@ -217,7 +215,7 @@ const AssociationBODManager = ({ association, members, onBODUpdate }) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <Crown className="h-6 w-6 text-yellow-600" />
-                     <h3 className="text-lg font-semibold text-gray-900">National Board of Directors</h3>
+                     <h3 className="text-lg font-semibold text-gray-900">Board of Directors</h3>
         </div>
                  <button
            onClick={() => setShowAddForm(true)}
@@ -225,7 +223,7 @@ const AssociationBODManager = ({ association, members, onBODUpdate }) => {
            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
          >
            <Plus className="h-4 w-4" />
-           <span>Add NBOD Member ({availableMembers.length} available)</span>
+           <span>Add BOD Member ({availableMembers.length} available)</span>
          </button>
       </div>
 
@@ -233,7 +231,7 @@ const AssociationBODManager = ({ association, members, onBODUpdate }) => {
       {(showAddForm || editingBOD) && (
         <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
                      <h4 className="text-lg font-medium text-gray-900 mb-4">
-             {editingBOD ? 'Edit NBOD Member' : 'Add New NBOD Member'}
+             {editingBOD ? 'Edit BOD Member' : 'Add New BOD Member'}
            </h4>
           
           <form onSubmit={editingBOD ? handleEditBOD : handleAddBOD} className="space-y-4">
@@ -320,7 +318,7 @@ const AssociationBODManager = ({ association, members, onBODUpdate }) => {
                     <span>Saving...</span>
                   </>
                 ) : (
-                                     <span>{editingBOD ? 'Update' : 'Add'} NBOD Member</span>
+                                     <span>{editingBOD ? 'Update' : 'Add'} BOD Member</span>
                 )}
               </button>
             </div>
@@ -332,17 +330,17 @@ const AssociationBODManager = ({ association, members, onBODUpdate }) => {
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
                      <h4 className="text-lg font-medium text-gray-900">
-             Current NBOD Members ({bodMembers.length})
+             Current BOD Members ({bodMembers.length})
            </h4>
         </div>
         
         {bodMembers.length === 0 ? (
           <div className="text-center py-8">
             <Crown className="mx-auto h-12 w-12 text-gray-400" />
-                         <h3 className="mt-2 text-sm font-medium text-gray-900">No NBOD members</h3>
-             <p className="mt-1 text-sm text-gray-500">
-               Start building your national board of directors by adding members.
-             </p>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No BOD members</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Start building your board of directors by adding members.
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -367,14 +365,14 @@ const AssociationBODManager = ({ association, members, onBODUpdate }) => {
                         </div>
                                                  <div className="ml-4">
                            <div className="text-sm font-medium text-gray-900">{bod.name}</div>
-                           <div className="text-sm text-gray-500">{bod.phone || 'N/A'}</div>
+                           <div className="text-sm text-gray-500">{bod.phone || bod.contactNumber || 'N/A'}</div>
                          </div>
                       </div>
                     </td>
                                          <td className="px-6 py-4 whitespace-nowrap">
-                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPositionColor(bod.position)}`}>
-                         {bod.position}
-                       </span>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPositionColor(bod.position || bod.designation)}`}>
+                        {bod.position || bod.designation || 'N/A'}
+                      </span>
                      </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${

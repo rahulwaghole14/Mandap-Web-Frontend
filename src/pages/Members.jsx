@@ -100,7 +100,13 @@ const Members = () => {
 
   const confirmDelete = async () => {
     try {
-      await memberApi.deleteMember(selectedMember._id);
+      // Use id or _id, whichever is available
+      const memberId = selectedMember.id || selectedMember._id;
+      if (!memberId) {
+        toast.error('Member ID not found');
+        return;
+      }
+      await memberApi.deleteMember(memberId);
       toast.success(`Member ${selectedMember.name} deleted successfully`);
       setShowDeleteModal(false);
       setSelectedMember(null);
@@ -227,7 +233,7 @@ const Members = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filtered.map(member => (
-                  <tr key={member._id} className="hover:bg-gray-50">
+                  <tr key={member.id || member._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
@@ -237,7 +243,7 @@ const Members = () => {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{member.name}</div>
-                          <div className="text-sm text-gray-500">ID: {member.id}</div>
+                          <div className="text-sm text-gray-500">ID: {member.id || member._id}</div>
                         </div>
                       </div>
                     </td>
@@ -324,7 +330,7 @@ const Members = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Member ID</label>
-                <p className="text-sm text-gray-900">{selectedMember._id}</p>
+                <p className="text-sm text-gray-900">{selectedMember.id || selectedMember._id}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Business Name</label>
