@@ -187,7 +187,7 @@ const AssociationMembers = () => {
                 <p className="text-gray-600 mt-1">
                   {activeTab === 'members' 
                     ? `${members.length} member${members.length !== 1 ? 's' : ''} in this association`
-                    : 'Manage National Board of Directors'
+                    : 'Manage Board of Directors'
                   }
                 </p>
               </div>
@@ -220,22 +220,20 @@ const AssociationMembers = () => {
                     <div className="flex items-center space-x-2">
                       <MapPin className="h-4 w-4" />
                       <span>
-                        {association.address?.city}, {association.address?.district}, {association.address?.state}
+                        {association.city || 'N/A'}, {association.district || 'N/A'}, {association.state || 'N/A'}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <CalendarDays className="h-4 w-4" />
                       <span>
-                        Established: {new Date(association.establishedDate).toLocaleDateString()}
+                        Established: {association.establishedYear || 'N/A'}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        association.status === 'Active' ? 'bg-green-100 text-green-800' :
-                        association.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
+                        association.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                       }`}>
-                        {association.status}
+                        {association.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </div>
                   </div>
