@@ -112,8 +112,8 @@ const BODList = () => {
   const handleEdit = (bod) => {
     setSelected(bod);
     setValue('name', bod.name);
-    setValue('designation', bod.position);
-    setValue('contactNumber', bod.phone);
+    setValue('designation', bod.position || bod.designation);
+    setValue('contactNumber', bod.phone || bod.contactNumber);
     setValue('email', bod.email);
     setValue('isActive', bod.isActive);
     setValue('street', bod.address?.street || '');
@@ -405,13 +405,13 @@ const BODList = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                        {bod.position}
+                        {bod.position || bod.designation || 'N/A'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
-                        <div className="text-sm text-gray-900">{bod.phone}</div>
-                        <div className="text-sm text-gray-500">{bod.email}</div>
+                        <div className="text-sm text-gray-900">{bod.phone || bod.contactNumber || 'N/A'}</div>
+                        <div className="text-sm text-gray-500">{bod.email || 'N/A'}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -935,7 +935,7 @@ const BODList = () => {
                 )}
               </div>
               <h3 className="text-lg font-medium text-gray-900">{selected.name}</h3>
-              <p className="text-sm text-gray-500">{selected.position}</p>
+              <p className="text-sm text-gray-500">{selected.position || selected.designation || 'N/A'}</p>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
