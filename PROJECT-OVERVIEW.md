@@ -1,15 +1,15 @@
-# 🏛️ Mandap Association Platform - Complete Project Overview
+# 🏛️ Mandapam Association Platform - Complete Project Overview
 
 ## 🎯 **Project Status: FULLY IMPLEMENTED** ✅
 
-This document provides a comprehensive overview of the **Mandap Association Platform** - a complete web application with both frontend and backend components, fully implemented and ready for production use.
+This document provides a comprehensive overview of the **Mandapam Association Platform** - a complete web application with both frontend and backend components, fully implemented and ready for production use.
 
 ---
 
 ## 🏗️ **Architecture Overview**
 
 ```
-mandap-ui-all-modals-web/
+mandapam-ui-all-modals-web/
 ├── 📱 Frontend (React + Vite)     ← ✅ COMPLETE
 ├── 🖥️ Backend (Node.js + Express) ← ✅ COMPLETE  
 └── 📚 Documentation               ← ✅ COMPLETE
@@ -276,7 +276,7 @@ mandap-ui-all-modals-web/
 
 ## 🏆 **Project Achievement**
 
-This **Mandap Association Platform** represents a **complete, production-ready solution** that demonstrates:
+This **Mandapam Association Platform** represents a **complete, production-ready solution** that demonstrates:
 
 - ✅ **Full-Stack Development** - Complete frontend and backend
 - ✅ **Modern Architecture** - Scalable and maintainable codebase
@@ -305,7 +305,7 @@ This **Mandap Association Platform** represents a **complete, production-ready s
 
 ---
 
-**🎉 Congratulations! You now have a complete, professional-grade Mandap Association Platform ready for production use! 🎉**
+**🎉 Congratulations! You now have a complete, professional-grade Mandapam Association Platform ready for production use! 🎉**
 
 ---
 

@@ -1,6 +1,6 @@
-# 🏛️ Mandap Association User Mobile App
+# 🏛️ Mandapam Association User Mobile App
 
-A React Native mobile application for users to connect with Mandap Associations, browse members, view events, and stay updated with community news.
+A React Native mobile application for users to connect with Mandapam Associations, browse members, view events, and stay updated with community news.
 
 ## 🎯 Features
 
@@ -220,6 +220,6 @@ For support and questions:
 
 ---
 
-**Built with ❤️ for the Mandap Association Community**
+**Built with ❤️ for the Mandapam Association Community**
 
 

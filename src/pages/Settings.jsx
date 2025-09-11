@@ -11,7 +11,7 @@ const Settings = () => {
 
   const [profileData, setProfileData] = useState({
     name: user?.name || 'Admin User',
-    email: user?.email || 'admin@mandap.com',
+    email: user?.email || 'admin@mandapam.com',
     phone: user?.phone || '9876543210',
     role: user?.role || 'admin',
     district: user?.district || 'Pune'

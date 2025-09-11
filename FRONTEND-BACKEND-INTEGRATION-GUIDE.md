@@ -225,7 +225,7 @@ If you encounter issues:
 
 ---
 
-**🎯 Your Mandap Association Platform is now fully integrated with a real backend!**
+**🎯 Your Mandapam Association Platform is now fully integrated with a real backend!**
 
 
 

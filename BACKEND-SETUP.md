@@ -4,7 +4,7 @@
 
 ### 1. Navigate to Backend Directory
 ```bash
-cd mandap-backend
+cd mandapam-backend
 ```
 
 ### 2. Install Dependencies
@@ -22,7 +22,7 @@ Edit `.env` with your configuration:
 ```env
 PORT=5000
 NODE_ENV=development
-MONGO_URI=mongodb://localhost:27017/mandapDB
+MONGO_URI=mongodb://localhost:27017/mandapamDB
 JWT_SECRET=your-super-secret-jwt-key-change-in-production
 JWT_EXPIRE=24h
 ```
@@ -56,7 +56,7 @@ curl -X POST http://localhost:5000/api/auth/login \
 ```
 
 ### 3. Use Postman Collection
-Import the `mandap-postman-collection.json` file into Postman for comprehensive API testing.
+Import the `mandapam-postman-collection.json` file into Postman for comprehensive API testing.
 
 ## 📊 API Endpoints
 
@@ -70,8 +70,8 @@ Import the `mandap-postman-collection.json` file into Postman for comprehensive 
 
 ## 🔐 Demo Credentials
 
-- **Admin**: admin@mandap.com / admin123
-- **Sub-Admin**: subadmin@mandap.com / subadmin123
+- **Admin**: admin@mandapam.com / admin123
+- **Sub-Admin**: subadmin@mandapam.com / subadmin123
 - **Demo**: demo@mandap.com / demo123
 
 ## 📚 Documentation

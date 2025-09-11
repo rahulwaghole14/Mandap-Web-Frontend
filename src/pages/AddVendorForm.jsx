@@ -188,7 +188,7 @@ const AddVendorForm = ({ vendor = null, isEditing = false, onSuccess = () => {},
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{isEditing ? 'Edit Vendor' : 'Add New Vendor'}</h1>
         <p className="text-gray-600 mt-2">
-          {isEditing ? 'Update vendor information' : 'Register a new vendor in the Mandap Association'}
+          {isEditing ? 'Update vendor information' : 'Register a new vendor in the Mandapam Association'}
         </p>
       </div>
 

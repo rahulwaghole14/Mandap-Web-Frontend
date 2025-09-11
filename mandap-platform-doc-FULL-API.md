@@ -1,7 +1,7 @@
-# 📘 Mandap Association Platform – Technical Specification
+# 📘 Mandapam Association Platform – Technical Specification
 
 ## 1. 📌 Project Overview
-Mandap Association is a vendor-only platform that connects wedding and event-related service providers across India. It includes:
+Mandapam Association is a vendor-only platform that connects wedding and event-related service providers across India. It includes:
 - **Web Portal** (React)
 - **Mobile Apps** (Android & iOS via React Native)
 - **Admin + Sub-Admin Panel**
@@ -13,7 +13,7 @@ Mandap Association is a vendor-only platform that connects wedding and event-rel
 ## 2. 👥 User Roles
 | Role        | Description |
 |-------------|-------------|
-| **Vendor**  | Wedding/Event service provider registering under Mandap Association |
+| **Vendor**  | Wedding/Event service provider registering under Mandapam Association |
 | **Admin**   | Super Admin managing all districts/states |
 | **Sub-Admin** | Manages vendors within assigned districts or zones |
 
@@ -156,9 +156,9 @@ Mandap Association is a vendor-only platform that connects wedding and event-rel
 ---
 
 ### 🔚 Use in Cursor AI
-- Place this file in `/docs/mandap.md`
+- Place this file in `/docs/mandapam.md`
 - Use prompts like:
-  - “Use `docs/mandap.md` to generate vendor registration backend.”
+  - "Use `docs/mandapam.md` to generate vendor registration backend."
   - “Refer to announcement module and build upload UI in React Native.”
 
 ---
@@ -182,7 +182,7 @@ Mandap Association is a vendor-only platform that connects wedding and event-rel
 
 ## 🔧 Full REST API Reference
 
-### 📦 Vendors (Mandap Association Members)
+### 📦 Vendors (Mandapam Association Members)
 | Endpoint              | Method | Description                 | Auth Required | Body Params                         |
 |-----------------------|--------|-----------------------------|----------------|-------------------------------------|
 | `/api/vendors`        | POST   | Add new vendor              | ✅ Yes         | `name`, `phone`, `city`, `image`, `membershipExpiry` |

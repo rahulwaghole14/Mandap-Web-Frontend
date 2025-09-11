@@ -175,7 +175,7 @@ const AddAssociationMemberForm = ({ association, onSuccess, onCancel }) => {
   const businessTypes = [
     { value: 'catering', label: 'Catering' },
     { value: 'sound', label: 'Sound' },
-    { value: 'mandap', label: 'Mandap' },
+    { value: 'mandapam', label: 'Mandapam' },
     { value: 'light', label: 'Light' },
     { value: 'decorator', label: 'Decorator' },
     { value: 'photography', label: 'Photography' },

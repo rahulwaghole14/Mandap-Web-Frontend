@@ -218,7 +218,7 @@ const BODList = () => {
         name: member.name,
         position: memberPosition,
         phone: member.phone,
-        email: member.email || `${member.name.toLowerCase().replace(/\s+/g, '.')}@mandap.com`,
+        email: member.email || `${member.name.toLowerCase().replace(/\s+/g, '.')}@mandapam.com`,
         bio: memberBio,
         isActive: memberIsActive,
         // No associationId for National BODs

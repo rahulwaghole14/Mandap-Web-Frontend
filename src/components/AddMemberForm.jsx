@@ -171,7 +171,7 @@ const AddMemberForm = ({ onSuccess, onCancel }) => {
   const businessTypes = [
     { value: 'catering', label: 'Catering' },
     { value: 'sound', label: 'Sound' },
-    { value: 'mandap', label: 'Mandap' },
+    { value: 'mandapam', label: 'Mandapam' },
     { value: 'light', label: 'Light' },
     { value: 'decorator', label: 'Decorator' },
     { value: 'photography', label: 'Photography' },
@@ -182,11 +182,11 @@ const AddMemberForm = ({ onSuccess, onCancel }) => {
 
   // Mock associations - in real app, this would come from API based on selected city
   const associations = [
-    'Mumbai Mandap Association',
-    'Pune Mandap Association', 
-    'Nagpur Mandap Association',
-    'Thane Mandap Association',
-    'Nashik Mandap Association'
+    'Mumbai Mandapam Association',
+    'Pune Mandapam Association', 
+    'Nagpur Mandapam Association',
+    'Thane Mandapam Association',
+    'Nashik Mandapam Association'
   ];
 
   return (

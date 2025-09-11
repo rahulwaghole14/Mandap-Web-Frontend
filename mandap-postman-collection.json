@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Mandap Association Platform API",
-    "description": "Complete API collection for testing Mandap Association Platform endpoints",
+    "name": "Mandapam Association Platform API",
+    "description": "Complete API collection for testing Mandapam Association Platform endpoints",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -72,7 +72,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@mandap.com\",\n  \"password\": \"admin123\"\n}"
+              "raw": "{\n  \"email\": \"admin@mandapam.com\",\n  \"password\": \"admin123\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/auth/login",
@@ -120,7 +120,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Updated Admin User\",\n  \"phone\": \"9876543210\",\n  \"email\": \"admin@mandap.com\"\n}"
+              "raw": "{\n  \"name\": \"Updated Admin User\",\n  \"phone\": \"9876543210\",\n  \"email\": \"admin@mandapam.com\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/auth/me",
@@ -174,7 +174,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Admin User\",\n  \"email\": \"admin@mandap.com\",\n  \"password\": \"admin123\",\n  \"phone\": \"9876543210\",\n  \"district\": \"Mumbai\",\n  \"state\": \"Maharashtra\"\n}"
+              "raw": "{\n  \"name\": \"Admin User\",\n  \"email\": \"admin@mandapam.com\",\n  \"password\": \"admin123\",\n  \"phone\": \"9876543210\",\n  \"district\": \"Mumbai\",\n  \"state\": \"Maharashtra\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/auth/init-admin",
@@ -207,7 +207,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"New User\",\n  \"email\": \"user@mandap.com\",\n  \"password\": \"password123\",\n  \"phone\": \"9876543211\",\n  \"district\": \"Pune\",\n  \"state\": \"Maharashtra\",\n  \"role\": \"member\"\n}"
+              "raw": "{\n  \"name\": \"New User\",\n  \"email\": \"user@mandapam.com\",\n  \"password\": \"password123\",\n  \"phone\": \"9876543211\",\n  \"district\": \"Pune\",\n  \"state\": \"Maharashtra\",\n  \"role\": \"member\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/auth/users",
@@ -468,7 +468,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Annual Meeting 2025\",\n  \"description\": \"Annual general meeting of all members\",\n  \"type\": \"Meeting\",\n  \"date\": \"2025-03-15T10:00:00.000Z\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"14:00\",\n  \"location\": {\n    \"address\": \"Community Hall\",\n    \"city\": \"Mumbai\",\n    \"district\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"pincode\": \"400001\"\n  },\n  \"organizer\": \"Mandap Association\",\n  \"contactPerson\": {\n    \"name\": \"Admin User\",\n    \"phone\": \"9876543210\"\n  },\n  \"priority\": \"High\",\n  \"targetAudience\": [\"All Members\"],\n  \"maxAttendees\": 100,\n  \"registrationRequired\": true,\n  \"registrationDeadline\": \"2025-03-10T23:59:59.000Z\"\n}"
+              "raw": "{\n  \"title\": \"Annual Meeting 2025\",\n  \"description\": \"Annual general meeting of all members\",\n  \"type\": \"Meeting\",\n  \"date\": \"2025-03-15T10:00:00.000Z\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"14:00\",\n  \"location\": {\n    \"address\": \"Community Hall\",\n    \"city\": \"Mumbai\",\n    \"district\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"pincode\": \"400001\"\n  },\n  \"organizer\": \"Mandapam Association\",\n  \"contactPerson\": {\n    \"name\": \"Admin User\",\n    \"phone\": \"9876543210\"\n  },\n  \"priority\": \"High\",\n  \"targetAudience\": [\"All Members\"],\n  \"maxAttendees\": 100,\n  \"registrationRequired\": true,\n  \"registrationDeadline\": \"2025-03-10T23:59:59.000Z\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/events",

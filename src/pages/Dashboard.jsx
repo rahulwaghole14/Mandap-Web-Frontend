@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { Users, Calendar, Award, TrendingUp, Building, Loader2, RefreshCw } from 'lucide-react';
 import { dashboardApi } from '../services/dashboardApi';
@@ -10,7 +11,7 @@ import { formatDateForDisplay, calculateAge } from '../utils/dateUtils';
 import toast from 'react-hot-toast';
 
 const Dashboard = () => {
-
+  const navigate = useNavigate();
   const [stats, setStats] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,42 +61,48 @@ const [topAssociations, setTopAssociations] = useState([]);
           value: statsResponse.stats.vendors.total, 
           icon: Users, 
           color: 'bg-blue-500',
-          subtitle: `${statsResponse.stats.vendors.active} Active`
+          subtitle: `${statsResponse.stats.vendors.active} Active`,
+          path: '/vendors'
         },
         { 
           title: 'Active Members', 
           value: statsResponse.stats.members.total, 
           icon: Building, 
           color: 'bg-green-500',
-          subtitle: `${statsResponse.stats.members.active} Active`
+          subtitle: `${statsResponse.stats.members.active} Active`,
+          path: '/members'
         },
         { 
           title: 'Upcoming Events', 
           value: statsResponse.stats.events.total, 
           icon: Calendar, 
           color: 'bg-purple-500',
-          subtitle: `${statsResponse.stats.events.upcoming} Upcoming`
+          subtitle: `${statsResponse.stats.events.upcoming} Upcoming`,
+          path: '/events'
         },
         { 
           title: 'BOD Members', 
           value: statsResponse.stats.bod.total, 
           icon: Award, 
           color: 'bg-yellow-500',
-          subtitle: `${statsResponse.stats.bod.active} Active`
+          subtitle: `${statsResponse.stats.bod.active} Active`,
+          path: '/bod'
         },
         { 
           title: 'Associations', 
           value: statsResponse.stats.associations.total, 
           icon: Building, 
           color: 'bg-indigo-500',
-          subtitle: `${statsResponse.stats.associations.active} Active`
+          subtitle: `${statsResponse.stats.associations.active} Active`,
+          path: '/associations'
         },
         { 
           title: 'Revenue', 
           value: '₹0', 
           icon: TrendingUp, 
           color: 'bg-emerald-500',
-          subtitle: 'Total Revenue'
+          subtitle: 'Total Revenue',
+          path: null // No navigation for revenue
         }
       ];
       setAssociations(associationsResponse.associations || []);
@@ -163,7 +170,7 @@ const [topAssociations, setTopAssociations] = useState([]);
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-              <p className="text-gray-600 mt-2">Welcome to the Mandap Association Admin Portal</p>
+              <p className="text-gray-600 mt-2">Welcome to the Mandapam Association Admin Portal</p>
             </div>
             <button
               onClick={handleRefresh}
@@ -194,7 +201,7 @@ const [topAssociations, setTopAssociations] = useState([]);
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600 mt-2">Welcome to the Mandap Association Admin Portal</p>
+            <p className="text-gray-600 mt-2">Welcome to the Mandapam Association Admin Portal</p>
           </div>
           <button
             onClick={handleRefresh}
@@ -213,7 +220,15 @@ const [topAssociations, setTopAssociations] = useState([]);
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {stats.map((stat, index) => (
-            <div key={index} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
+            <div 
+              key={index} 
+              className={`bg-white rounded-lg shadow p-6 transition-all ${
+                stat.path 
+                  ? 'hover:shadow-lg hover:scale-105 cursor-pointer' 
+                  : 'hover:shadow-lg'
+              }`}
+              onClick={() => stat.path && navigate(stat.path)}
+            >
               <div className="flex items-center">
                 <div className={`p-3 rounded-full ${stat.color} text-white`}>
                   <stat.icon className="h-6 w-6" />

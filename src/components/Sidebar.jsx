@@ -63,10 +63,10 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="w-64 bg-gray-900 text-white h-screen flex flex-col">
+    <div className="w-64 bg-gray-900 text-white h-screen flex flex-col sticky top-0">
       {/* Header */}
       <div className="p-6 border-b border-gray-700">
-        <h2 className="text-xl font-semibold text-white">Mandap Admin</h2>
+        <h2 className="text-xl font-semibold text-white">Mandapam Admin</h2>
         <p className="text-sm text-gray-400 mt-1">Association Platform</p>
       </div>
 
@@ -80,9 +80,6 @@ const Sidebar = () => {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">
                 {user.name || user.email}
-              </p>
-              <p className="text-xs text-gray-400 capitalize">
-                {user.role} {user.district && `• ${user.district}`}
               </p>
             </div>
           </div>

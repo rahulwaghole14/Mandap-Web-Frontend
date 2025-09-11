@@ -45,8 +45,8 @@ const LandingPage = () => {
   ];
 
   const stats = [
-    { number: "500+", label: "Active Members" },
-    { number: "50+", label: "Associations" },
+    { number: "5000+", label: "Active Members" },
+    { number: "100+", label: "Associations" },
     { number: "100+", label: "Events Organized" },
     { number: "99%", label: "Satisfaction Rate" }
   ];
@@ -251,7 +251,7 @@ const LandingPage = () => {
           <div className="flex flex-col md:flex-row items-center justify-center gap-8">
             {/* Play Store */}
             <a
-              href="https://play.google.com/store/apps/details?id=com.mandapam.app"
+              href="https://play.google.com/store/apps/details?id=com.mandapam.expo"
               target="_blank"
               rel="noopener noreferrer"
               className="group"

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the implementation of Maharashtra districts and cities functionality in the Mandap Association Management System. The feature provides a cascading dropdown system where users can select Maharashtra as a state, then choose from all 36 districts, and finally select cities based on the selected district.
+This document describes the implementation of Maharashtra districts and cities functionality in the Mandapam Association Management System. The feature provides a cascading dropdown system where users can select Maharashtra as a state, then choose from all 36 districts, and finally select cities based on the selected district.
 
 ## Features Implemented
 

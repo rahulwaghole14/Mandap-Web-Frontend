@@ -185,10 +185,10 @@ const AssociationDetail = () => {
                     <p className="text-sm text-gray-900 mt-1">{association.establishedYear}</p>
                   </div>
                   
-                  <div>
+                  {/* <div>
                     <label className="block text-sm font-medium text-gray-700">Registration Number</label>
                     <p className="text-sm text-gray-900 mt-1">{association.registrationNumber || 'Not provided'}</p>
-                  </div>
+                  </div> */}
                 </div>
               </div>
 
@@ -198,8 +198,8 @@ const AssociationDetail = () => {
                 
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Address</label>
-                    <p className="text-sm text-gray-900 mt-1">{association.address || 'Not provided'}</p>
+                    <label className="block text-sm font-medium text-gray-700">District</label>
+                    <p className="text-sm text-gray-900 mt-1">{association.district || 'Not provided'}</p>
                   </div>
                   
                   <div>

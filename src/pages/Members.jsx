@@ -99,7 +99,7 @@ const Members = () => {
   const filtered = members;
 
   const cities = [...new Set(members.map(m => m.city).filter(Boolean))];
-  const businessTypes = ['sound', 'decorator', 'catering', 'mandap', 'madap', 'light', 'photography', 'videography', 'transport', 'other'];
+  const businessTypes = ['sound', 'decorator', 'catering', 'mandapam', 'madap', 'light', 'photography', 'videography', 'transport', 'other'];
 
   // Pagination handlers
   const handlePageChange = (newPage) => {
@@ -141,7 +141,7 @@ const Members = () => {
       case 'sound': return 'bg-blue-100 text-blue-800';
       case 'decorator': return 'bg-purple-100 text-purple-800';
       case 'catering': return 'bg-green-100 text-green-800';
-      case 'mandap': return 'bg-red-100 text-red-800';
+      case 'mandapam': return 'bg-red-100 text-red-800';
       case 'madap': return 'bg-red-100 text-red-800';
       case 'light': return 'bg-indigo-100 text-indigo-800';
       case 'photography': return 'bg-pink-100 text-pink-800';
@@ -200,13 +200,13 @@ const Members = () => {
             <p className="text-gray-600 mt-2">Manage association members and their status</p>
           </div>
           <div className="flex space-x-3">
-            <button
+            {/* <button
               onClick={() => setShowAddModal(true)}
               className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2"
             >
               <Plus className="h-4 w-4" />
               <span>Add Member</span>
-            </button>
+            </button> */}
             <button
               onClick={exportMembers}
               className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2"

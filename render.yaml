@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: mandap-ui-frontend
+    name: mandapam-ui-frontend
     env: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist

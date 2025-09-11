@@ -5,7 +5,7 @@ This document outlines the required changes to properly handle Board of Director
 
 ## Key Changes Required
 
-### 1. BOD Model Updates (`mandap-backend/models/BOD.js`)
+### 1. BOD Model Updates (`mandapam-backend/models/BOD.js`)
 
 **CRITICAL CHANGE:** Make `associationId` optional for National BODs
 
@@ -33,7 +33,7 @@ associationId: {
 }
 ```
 
-### 2. BOD Routes Updates (`mandap-backend/routes/bodRoutes.js`)
+### 2. BOD Routes Updates (`mandapam-backend/routes/bodRoutes.js`)
 
 **CRITICAL CHANGE:** Handle `associationId` properly in POST route
 

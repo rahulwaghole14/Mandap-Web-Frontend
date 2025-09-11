@@ -182,36 +182,6 @@ const Associations = () => {
     toast.success('Associations list exported successfully');
   };
 
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="flex items-center space-x-2">
-            <Loader2 className="h-6 w-6 animate-spin text-primary-600" />
-            <span className="text-gray-600">Loading associations...</span>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-
-  if (error) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <p className="text-red-600 mb-4">{error}</p>
-            <button
-              onClick={fetchAssociations}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-            >
-              Try Again
-            </button>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
 
   return (
     <Layout>
@@ -329,7 +299,31 @@ const Associations = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filtered.map(association => (
+                {loading ? (
+                  <tr>
+                    <td colSpan="5" className="px-6 py-12 text-center">
+                      <div className="flex items-center justify-center space-x-2">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary-600" />
+                        <span className="text-gray-600">Loading associations...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan="5" className="px-6 py-12 text-center">
+                      <div className="text-center">
+                        <p className="text-red-600 mb-4">{error}</p>
+                        <button
+                          onClick={() => fetchAssociations(currentPage)}
+                          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                        >
+                          Try Again
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map(association => (
                   <tr key={association.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -391,7 +385,8 @@ const Associations = () => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  ))
+                )}
               </tbody>
             </table>
           </div>

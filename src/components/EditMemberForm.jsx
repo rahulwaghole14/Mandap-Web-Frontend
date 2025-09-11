@@ -285,11 +285,11 @@ const EditMemberForm = ({ member, onSuccess, onCancel }) => {
             }`}
           >
             <option value="">Select association</option>
-            <option value="Mumbai Mandap Association">Mumbai Mandap Association</option>
-            <option value="Pune Mandap Association">Pune Mandap Association</option>
-            <option value="Nagpur Mandap Association">Nagpur Mandap Association</option>
-            <option value="Thane Mandap Association">Thane Mandap Association</option>
-            <option value="Nashik Mandap Association">Nashik Mandap Association</option>
+            <option value="Mumbai Mandapam Association">Mumbai Mandapam Association</option>
+            <option value="Pune Mandapam Association">Pune Mandapam Association</option>
+            <option value="Nagpur Mandapam Association">Nagpur Mandapam Association</option>
+            <option value="Thane Mandapam Association">Thane Mandapam Association</option>
+            <option value="Nashik Mandapam Association">Nashik Mandapam Association</option>
           </select>
           {errors.associationName && (
             <p className="text-red-500 text-sm mt-1">{errors.associationName.message}</p>

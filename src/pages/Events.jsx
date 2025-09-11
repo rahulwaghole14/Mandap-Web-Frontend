@@ -36,10 +36,14 @@ const Events = () => {
     try {
       setLoading(true);
       setError(null);
+      console.log('Fetching events...');
       const response = await eventApi.getEvents();
+      console.log('Events API response:', response);
+      console.log('Events data:', response.events);
       setEvents(response.events || []);
     } catch (error) {
       console.error('Error fetching events:', error);
+      console.error('Error details:', error.response?.data);
       setError('Failed to fetch events. Please try again.');
       toast.error('Failed to fetch events');
     } finally {
@@ -126,7 +130,7 @@ const Events = () => {
         district: data.district,
         state: data.state,
         pincode: data.pincode,
-        organizer: data.organizer || 'Mandap Association',
+        organizer: data.organizer || 'Mandapam Association',
         contactPerson: {
           name: data.contactPersonName || 'Admin',
           phone: data.contactPersonPhone || '9876543210',
@@ -172,7 +176,7 @@ const Events = () => {
         district: data.district,
         state: data.state,
         pincode: data.pincode,
-        organizer: data.organizer || 'Mandap Association',
+        organizer: data.organizer || 'Mandapam Association',
         contactPerson: {
           name: data.contactPersonName || 'Admin',
           phone: data.contactPersonPhone || '9876543210',
@@ -317,7 +321,7 @@ const Events = () => {
         )}
 
         {/* Events Grid */}
-        {!loading && !error && (
+        {!loading && !error && events.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map(event => (
               <div key={event._id} className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow">
@@ -383,6 +387,24 @@ const Events = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && events.length === 0 && (
+          <div className="bg-white rounded-lg shadow p-8 text-center">
+            <div className="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Events Found</h3>
+            <p className="text-gray-600 mb-4">There are no events created yet. Create your first event to get started.</p>
+            <button
+              onClick={handleAdd}
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2 mx-auto"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Create First Event</span>
+            </button>
           </div>
         )}
       </div>

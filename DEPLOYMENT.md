@@ -1,4 +1,4 @@
-# Deployment Guide for Mandap UI Frontend
+# Deployment Guide for Mandapam UI Frontend
 
 ## Production Build
 

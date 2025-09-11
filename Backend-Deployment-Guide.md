@@ -33,7 +33,7 @@ vim bodRoutes.js
 # Restart the server
 npm restart
 # or
-pm2 restart mandap-backend
+pm2 restart mandapam-backend
 # or restart your deployment platform
 ```
 
@@ -48,7 +48,7 @@ node test-bod-fix.js
 If you prefer to replace the entire file:
 
 1. **Download the fixed file** from the frontend repository
-2. **Replace** `mandap-backend/routes/bodRoutes.js` with the fixed version
+2. **Replace** `mandapam-backend/routes/bodRoutes.js` with the fixed version
 3. **Restart** the server
 
 ## Verification Commands

@@ -35,7 +35,7 @@ The BOD and NBOD creation endpoints are failing with validation errors even thou
 The validation middleware is using incorrect syntax that makes fields appear required even when marked as optional.
 
 ## Files to Fix
-**File:** `mandap-backend/routes/bodRoutes.js`
+**File:** `mandapam-backend/routes/bodRoutes.js`
 
 ## Exact Changes Required
 
@@ -170,7 +170,7 @@ The current custom validation ensures:
 
 ## Deployment Steps
 
-1. **Update the file:** `mandap-backend/routes/bodRoutes.js`
+1. **Update the file:** `mandapam-backend/routes/bodRoutes.js`
 2. **Apply the exact changes** shown above
 3. **Restart the server** to apply changes
 4. **Test the endpoints** using the test cases above

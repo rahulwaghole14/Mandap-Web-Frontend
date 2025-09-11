@@ -46,6 +46,23 @@ export const memberApi = {
     }
   },
 
+  // Get members by association ID
+  getAssociationMembers: async (associationId, params = {}) => {
+    try {
+      console.log('MemberApi - Getting association members for ID:', associationId);
+      console.log('MemberApi - Sending params:', params);
+      const instance = createAuthInstance();
+      const response = await instance.get(`/associations/${associationId}/members`, { params });
+      console.log('MemberApi - Association members response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching association members:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      throw error;
+    }
+  },
+
   // Create new member
   createMember: async (memberData) => {
     try {

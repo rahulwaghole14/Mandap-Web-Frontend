@@ -55,7 +55,7 @@ const Login = () => {
             Sign in to your account
           </h2>
           <p className="text-center text-sm text-gray-600 mt-2">
-            Mandap Association Platform
+            Mandapam Association Platform
           </p>
         </div>
         

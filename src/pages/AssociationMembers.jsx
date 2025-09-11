@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { ArrowLeft, Search, User, Building, Loader2, MapPin, Phone, Mail, CalendarDays, Plus, Crown } from 'lucide-react';
+import { ArrowLeft, Search, User, Building, Loader2, MapPin, Phone, Mail, CalendarDays, Plus, Crown, Upload, FileText } from 'lucide-react';
 import { memberApi } from '../services/memberApi';
 import { associationApi } from '../services/associationApi';
 import Modal from '../components/Modal';
@@ -22,6 +22,9 @@ const AssociationMembers = () => {
   const [businessType, setBusinessType] = useState('');
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [activeTab, setActiveTab] = useState('members'); // 'members' or 'bod'
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importedData, setImportedData] = useState([]);
+  const [importLoading, setImportLoading] = useState(false);
 
   useEffect(() => {
     if (associationId) {
@@ -50,47 +53,31 @@ const AssociationMembers = () => {
       setLoading(true);
       setError(null);
       
-      // Get all members and filter by association name
-      const response = await memberApi.getMembers();
-      const allMembers = response.members || [];
-      
-      console.log('All members from API:', allMembers);
-      console.log('Current association:', association);
-      console.log('Association name to filter by:', association?.name);
-      
-      // Debug: Check what association names exist in members
-      const memberAssociationNames = allMembers.map(m => m?.associationName).filter(Boolean);
-      console.log('All member association names:', [...new Set(memberAssociationNames)]);
-      
-      // Filter members by association name and ensure they have required properties
-      const associationMembers = allMembers.filter(member => {
-        const matches = member && 
-          member.associationName === association?.name &&
-          (member._id || member.id);
-        console.log(`Member ${member?.name}: associationName="${member?.associationName}", matches=${matches}`);
-        return matches;
-      });
-
-      // If no members found with exact name match, try case-insensitive match
-      if (associationMembers.length === 0 && association?.name) {
-        console.log('No exact match found, trying case-insensitive match...');
-        const caseInsensitiveMembers = allMembers.filter(member => {
-          const matches = member && 
-            member.associationName?.toLowerCase() === association?.name?.toLowerCase() &&
-            (member._id || member.id);
-          console.log(`Case-insensitive match for ${member?.name}: associationName="${member?.associationName}", matches=${matches}`);
-          return matches;
-        });
-        console.log('Case-insensitive filtered members:', caseInsensitiveMembers);
-        setMembers(caseInsensitiveMembers);
+      if (!associationId) {
+        console.error('No association ID available');
+        setError('Association ID not found');
         return;
       }
       
-      console.log('Filtered association members:', associationMembers);
+      console.log('Fetching members for association ID:', associationId);
       
-      setMembers(associationMembers);
+      // Use the new association-specific API endpoint
+      const response = await memberApi.getAssociationMembers(associationId);
+      
+      console.log('Association members API response:', response);
+      
+      if (response.success) {
+        setMembers(response.members || []);
+      } else {
+        // Fallback for old API response format
+        setMembers(response.members || []);
+      }
+      
+      console.log('Set members to:', response.members || []);
+      
     } catch (error) {
       console.error('Error fetching association members:', error);
+      console.error('Error details:', error.response?.data);
       setError('Failed to fetch association members. Please try again.');
       toast.error('Failed to fetch association members');
     } finally {
@@ -109,7 +96,212 @@ const AssociationMembers = () => {
     fetchAssociationMembers();
   };
 
-  const filteredMembers = members.filter(member =>
+  const parseExcelFile = async (file) => {
+    // For now, we'll provide instructions to convert Excel to CSV
+    // In a real implementation, you would use a library like xlsx
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          // This is a placeholder - in reality you'd parse the Excel binary data
+          // For now, we'll show an error message
+          reject(new Error('Excel parsing not implemented yet. Please convert to CSV.'));
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
+  const handleFileUpload = async (event) => {
+    console.log('File upload triggered', event.target.files);
+    const file = event.target.files[0];
+    if (!file) {
+      console.log('No file selected');
+      return;
+    }
+
+    console.log('Selected file:', file.name, file.type, file.size);
+    setImportLoading(true);
+    
+    try {
+      const fileName = file.name.toLowerCase();
+      
+      if (fileName.endsWith('.csv')) {
+        // Handle CSV files
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const csvData = e.target.result;
+            const lines = csvData.split('\n');
+            const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+            
+            const parsedData = lines.slice(1).map(line => {
+              const values = line.split(',').map(v => v.trim());
+              const member = {};
+              
+              headers.forEach((header, index) => {
+                const value = values[index] || '';
+                switch (header) {
+                  case 'name':
+                    member.name = value;
+                    break;
+                  case 'businessname':
+                  case 'business_name':
+                    member.businessName = value;
+                    break;
+                  case 'businesstype':
+                  case 'business_type':
+                    member.businessType = value;
+                    break;
+                  case 'phone':
+                    member.phone = value;
+                    break;
+                  case 'email':
+                    member.email = value;
+                    break;
+                  case 'city':
+                    member.city = value;
+                    break;
+                  case 'state':
+                    member.state = value;
+                    break;
+                  case 'pincode':
+                    member.pincode = value;
+                    break;
+                  case 'birthdate':
+                  case 'birth_date':
+                    member.birthDate = value;
+                    break;
+                  default:
+                    member[header] = value;
+                }
+              });
+              
+              // Add association name to imported members
+              member.associationName = association?.name;
+              member.isImported = true;
+              member.id = `imported_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+              
+              return member;
+            }).filter(member => member.name); // Only include members with names
+            
+            setImportedData(parsedData);
+            toast.success(`Successfully imported ${parsedData.length} members from CSV`);
+            setShowImportModal(false);
+          } catch (error) {
+            console.error('Error parsing CSV:', error);
+            toast.error('Error parsing CSV file. Please check the format.');
+          } finally {
+            setImportLoading(false);
+          }
+        };
+        reader.readAsText(file);
+        
+       } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+         // Handle Excel files
+         const reader = new FileReader();
+         reader.onload = (e) => {
+           try {
+             const data = new Uint8Array(e.target.result);
+             const workbook = XLSX.read(data, { type: 'array' });
+             const sheetName = workbook.SheetNames[0];
+             const worksheet = workbook.Sheets[sheetName];
+             const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+             const parsedData = jsonData.map(row => {
+               const member = {};
+               
+               // Map Excel columns to member properties
+               Object.keys(row).forEach(key => {
+                 const lowerKey = key.toLowerCase().trim();
+                 const value = row[key];
+                 
+                 switch (lowerKey) {
+                   case 'name':
+                   case 'member name':
+                   case 'full name':
+                     member.name = value;
+                     break;
+                   case 'businessname':
+                   case 'business_name':
+                   case 'business name':
+                   case 'company name':
+                     member.businessName = value;
+                     break;
+                   case 'businesstype':
+                   case 'business_type':
+                   case 'business type':
+                   case 'type':
+                     member.businessType = value;
+                     break;
+                   case 'phone':
+                   case 'phone number':
+                   case 'mobile':
+                   case 'contact':
+                     member.phone = value;
+                     break;
+                   case 'email':
+                   case 'email address':
+                     member.email = value;
+                     break;
+                   case 'city':
+                     member.city = value;
+                     break;
+                   case 'state':
+                     member.state = value;
+                     break;
+                   case 'pincode':
+                   case 'pin code':
+                   case 'postal code':
+                     member.pincode = value;
+                     break;
+                   case 'birthdate':
+                   case 'birth_date':
+                   case 'birth date':
+                   case 'dob':
+                   case 'date of birth':
+                     member.birthDate = value;
+                     break;
+                   default:
+                     member[lowerKey] = value;
+                 }
+               });
+
+               // Add association name to imported members
+               member.associationName = association?.name;
+               member.isImported = true;
+               member.id = `imported_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+               return member;
+             }).filter(member => member.name); // Only include members with names
+
+             setImportedData(parsedData);
+             toast.success(`Successfully imported ${parsedData.length} members from Excel`);
+             setShowImportModal(false);
+           } catch (error) {
+             console.error('Error parsing Excel:', error);
+             toast.error('Error parsing Excel file. Please check the format.');
+           } finally {
+             setImportLoading(false);
+           }
+         };
+         reader.readAsArrayBuffer(file);
+        
+      } else {
+        toast.error('Please upload a CSV or Excel file (.csv, .xlsx, .xls)');
+        setImportLoading(false);
+      }
+      
+    } catch (error) {
+      console.error('Error processing file:', error);
+      toast.error('Error processing file. Please try again.');
+      setImportLoading(false);
+    }
+  };
+
+  const filteredMembers = [...members, ...importedData].filter(member =>
     member &&
     member.name &&
     member.name.toLowerCase().includes(search.toLowerCase()) &&
@@ -123,8 +315,8 @@ const AssociationMembers = () => {
   console.log('City filter:', city);
   console.log('Business type filter:', businessType);
 
-  const cities = [...new Set(members.filter(m => m && m.city).map(m => m.city))];
-  const businessTypes = [...new Set(members.filter(m => m && m.businessType).map(m => m.businessType))];
+  const cities = [...new Set([...members, ...importedData].filter(m => m && m.city).map(m => m.city))];
+  const businessTypes = [...new Set([...members, ...importedData].filter(m => m && m.businessType).map(m => m.businessType))];
 
   const getBusinessTypeColor = (type) => {
     const colors = {
@@ -186,20 +378,33 @@ const AssociationMembers = () => {
                 </h1>
                 <p className="text-gray-600 mt-1">
                   {activeTab === 'members' 
-                    ? `${members.length} member${members.length !== 1 ? 's' : ''} in this association`
+                    ? `${members.length + importedData.length} member${(members.length + importedData.length) !== 1 ? 's' : ''} in this association`
                     : 'Manage Board of Directors'
                   }
                 </p>
               </div>
             </div>
             {activeTab === 'members' && (
-              <button
-                onClick={() => setShowAddMemberModal(true)}
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add Member</span>
-              </button>
+              <div className="flex space-x-3">
+                {/* Import Members button - commented out */}
+                {/* <button
+                  onClick={() => {
+                    console.log('Import Members button clicked');
+                    setShowImportModal(true);
+                  }}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span>Import Members</span>
+                </button> */}
+                <button
+                  onClick={() => setShowAddMemberModal(true)}
+                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Add Member</span>
+                </button>
+              </div>
             )}
           </div>
 
@@ -257,7 +462,7 @@ const AssociationMembers = () => {
               >
                 <div className="flex items-center space-x-2">
                   <User className="h-4 w-4" />
-                  <span>Members ({members.length})</span>
+                  <span>Members ({members.length + importedData.length})</span>
                 </div>
               </button>
                                    <button
@@ -323,7 +528,12 @@ const AssociationMembers = () => {
             {/* Results Summary */}
             <div className="flex justify-between items-center">
               <p className="text-gray-600">
-                Showing <span className="font-semibold">{filteredMembers.length}</span> of <span className="font-semibold">{members.length}</span> members
+                Showing <span className="font-semibold">{filteredMembers.length}</span> of <span className="font-semibold">{members.length + importedData.length}</span> members
+                {importedData.length > 0 && (
+                  <span className="ml-2 text-green-600 text-sm">
+                    ({importedData.length} imported)
+                  </span>
+                )}
               </p>
             </div>
 
@@ -345,7 +555,7 @@ const AssociationMembers = () => {
                       const validMembers = filteredMembers.filter(member => member && (member._id || member.id));
                       console.log('Valid members for table rendering:', validMembers);
                       return validMembers.map(member => (
-                      <tr key={member._id || member.id} className="hover:bg-gray-50">
+                      <tr key={member._id || member.id} className={`hover:bg-gray-50 ${member.isImported ? 'bg-green-50' : ''}`}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-10 w-10">
@@ -354,7 +564,15 @@ const AssociationMembers = () => {
                               </div>
                             </div>
                             <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">{member.name}</div>
+                              <div className="flex items-center space-x-2">
+                                <div className="text-sm font-medium text-gray-900">{member.name}</div>
+                                {member.isImported && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <FileText className="h-3 w-3 mr-1" />
+                                    Imported
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-sm text-gray-500">Member ID: {member._id ? member._id.slice(-8) : member.id || 'N/A'}</div>
                             </div>
                           </div>
@@ -425,6 +643,87 @@ const AssociationMembers = () => {
           />
         )}
       </div>
+
+      {/* Import Members Modal */}
+      <Modal 
+        title="Import Members from File" 
+        isOpen={showImportModal} 
+        onClose={() => setShowImportModal(false)}
+        size="md"
+      >
+        <div className="space-y-6">
+          <div className="text-center">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+              <Upload className="h-6 w-6 text-green-600" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Import Members from File</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Upload a CSV or Excel file with member data. The file should include columns for: name, businessname, businesstype, phone, email, city, state, pincode, birthdate
+            </p>
+          </div>
+
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+            <div className="text-center">
+              <input
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={handleFileUpload}
+                disabled={importLoading}
+                className="hidden"
+                id="csv-upload"
+              />
+              <label
+                htmlFor="csv-upload"
+                className={`cursor-pointer inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
+                  importLoading 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-green-600 hover:bg-green-700'
+                }`}
+              >
+                {importLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Choose File
+                  </>
+                )}
+              </label>
+              <p className="mt-2 text-xs text-gray-500">
+                CSV or Excel files (.csv, .xlsx, .xls), maximum 10MB
+              </p>
+            </div>
+          </div>
+
+           <div className="bg-blue-50 p-4 rounded-lg">
+             <h4 className="text-sm font-medium text-blue-900 mb-2">Supported File Formats:</h4>
+             <div className="text-xs text-blue-800 space-y-2">
+               <div><strong>CSV Files:</strong> Direct upload supported</div>
+               <div><strong>Excel Files:</strong> Direct upload supported (.xlsx, .xls)</div>
+               <div className="mt-2 p-2 bg-blue-100 rounded">
+                 <strong>Expected Column Headers:</strong><br/>
+                 name, businessname, businesstype, phone, email, city, state, pincode, birthdate<br/>
+                 <br/>
+                 <strong>Example Data:</strong><br/>
+                 John Doe,Doe Catering,catering,9876543210,john@doe.com,Mumbai,Maharashtra,400001,1990-01-15<br/>
+                 Jane Smith,Smith Decorations,decorator,9876543211,jane@smith.com,Pune,Maharashtra,411001,1985-05-20
+               </div>
+             </div>
+           </div>
+
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => setShowImportModal(false)}
+              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Add Member Modal */}
       <Modal 
