@@ -1,0 +1,3 @@
+# SPA routing support for Render
+# Redirect all routes to index.html to handle client-side routing
+/*    /index.html   200
