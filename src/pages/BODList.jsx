@@ -44,7 +44,10 @@ const BODList = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await bodApi.getBODs();
+      // Fetch only National BODs (NBODs) - those without associationId
+      const response = await bodApi.getBODs({
+        type: 'national'
+      });
       setBods(response.bods || []);
     } catch (error) {
       console.error('Error fetching BOD members:', error);

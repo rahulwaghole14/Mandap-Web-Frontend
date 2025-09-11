@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { Users, Calendar, Award, TrendingUp, Building, Loader2, RefreshCw } from 'lucide-react';
 import { dashboardApi } from '../services/dashboardApi';
-import AssociationMap from '../components/AssociationMap';
+// import AssociationMap from '../components/AssociationMap'; // Hidden for now
 import PerformanceChart from '../components/PerformanceChart';
 import TopAssociations from '../components/TopAssociations';
 import { formatDateForDisplay, calculateAge } from '../utils/dateUtils';
@@ -45,8 +45,13 @@ const [topAssociations, setTopAssociations] = useState([]);
         dashboardApi.getRecentMembers(8),
         dashboardApi.getAssociationsForMap(),
         dashboardApi.getMonthlyMemberGrowth(),
-        dashboardApi.getTopAssociations(10)
+        dashboardApi.getTopAssociations(5)
       ]);
+      
+      // Debug logging for API responses
+      console.log('All API responses received');
+      console.log('monthlyDataResponse:', monthlyDataResponse);
+      console.log('topAssociationsResponse:', topAssociationsResponse);
 
       // Transform stats data
       const transformedStats = [
@@ -97,7 +102,12 @@ const [topAssociations, setTopAssociations] = useState([]);
       setMonthlyMemberData(monthlyDataResponse.monthlyData || []);
       setTopAssociations(topAssociationsResponse.associations || []);
       
-      // Debug logging
+      // Debug logging for monthly data
+      console.log('Monthly Data Response:', monthlyDataResponse);
+      console.log('Monthly Data:', monthlyDataResponse.monthlyData);
+      console.log('Setting monthlyMemberData to:', monthlyDataResponse.monthlyData || []);
+      
+      // Debug logging for top associations data
       console.log('Top Associations Response:', topAssociationsResponse);
       console.log('Top Associations Response type:', typeof topAssociationsResponse);
       console.log('Top Associations Response keys:', Object.keys(topAssociationsResponse));
@@ -219,13 +229,13 @@ const [topAssociations, setTopAssociations] = useState([]);
             </div>
           ))}
         </div>
-{/* Association Map */}
-<AssociationMap associations={associations} />
+{/* Association Map - Hidden for now */}
+{/* <AssociationMap associations={associations} /> */}
 
 {/* Performance Chart and Top Associations in single row */}
 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-  <PerformanceChart monthlyMemberData={monthlyMemberData} />
-  <TopAssociations topAssociations={topAssociations} />
+  <PerformanceChart monthlyData={monthlyMemberData} />
+  <TopAssociations associations={topAssociations} />
 </div>
         {/* Recent Members */}
 <div className="bg-white rounded-lg shadow">

@@ -5,6 +5,17 @@ const TopAssociations = ({ associations = [] }) => {
   // Debug logging
   console.log('TopAssociations component received associations:', associations);
   console.log('Associations length:', associations.length);
+  console.log('First association data:', associations[0]);
+  if (associations.length > 0) {
+    console.log('Association name details:', {
+      name: associations[0].name,
+      nameType: typeof associations[0].name,
+      nameIsNull: associations[0].name === null,
+      nameIsUndefined: associations[0].name === undefined,
+      nameIsEmpty: associations[0].name === '',
+      fullAssociation: associations[0]
+    });
+  }
   
   const getGrowthIcon = (growth) => {
     if (growth > 0) {

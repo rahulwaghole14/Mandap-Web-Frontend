@@ -20,6 +20,11 @@ ChartJS.register(
 );
 
 const PerformanceChart = ({ monthlyData = [] }) => {
+  // Debug logging
+  console.log('PerformanceChart received monthlyData:', monthlyData);
+  console.log('PerformanceChart monthlyData type:', typeof monthlyData);
+  console.log('PerformanceChart monthlyData length:', monthlyData?.length);
+  
   // Prepare data for the chart
   const months = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -107,9 +112,43 @@ const PerformanceChart = ({ monthlyData = [] }) => {
   const currentMonth = new Date().getMonth();
   const currentMonthMembers = chartData[currentMonth];
   const previousMonthMembers = chartData[currentMonth - 1] || 0;
-  const growthPercentage = previousMonthMembers > 0 
-    ? ((currentMonthMembers - previousMonthMembers) / previousMonthMembers * 100).toFixed(1)
-    : 0;
+  
+  // Improved growth calculation - compare current month to average of previous months
+  let growthPercentage = 0;
+  
+  if (currentMonth > 0) {
+    // Calculate average of all previous months in the year
+    const previousMonthsData = chartData.slice(0, currentMonth);
+    const previousMonthsTotal = previousMonthsData.reduce((sum, count) => sum + count, 0);
+    const previousMonthsAverage = previousMonthsTotal / previousMonthsData.length;
+    
+    if (previousMonthsAverage > 0) {
+      growthPercentage = ((currentMonthMembers - previousMonthsAverage) / previousMonthsAverage * 100).toFixed(1);
+    } else if (currentMonthMembers > 0 && previousMonthsAverage === 0) {
+      // If previous months average was 0 but current month has members, show 100% growth
+      growthPercentage = 100;
+    }
+  } else {
+    // For January (month 0), compare to previous month (December of last year)
+    // Since we don't have last year's data, we'll show 0% for now
+    growthPercentage = 0;
+  }
+    
+  // Debug logging for calculated values
+  console.log('PerformanceChart chartData:', chartData);
+  console.log('PerformanceChart totalMembers:', totalMembers);
+  console.log('PerformanceChart currentMonth:', currentMonth);
+  console.log('PerformanceChart currentMonthMembers:', currentMonthMembers);
+  console.log('PerformanceChart previousMonthMembers:', previousMonthMembers);
+  console.log('PerformanceChart growthPercentage:', growthPercentage);
+  console.log('PerformanceChart growth calculation:', {
+    currentMonthMembers,
+    previousMonthMembers,
+    currentMonth,
+    previousMonthsData: currentMonth > 0 ? chartData.slice(0, currentMonth) : [],
+    previousMonthsAverage: currentMonth > 0 ? (chartData.slice(0, currentMonth).reduce((sum, count) => sum + count, 0) / chartData.slice(0, currentMonth).length) : 0,
+    growthPercentage
+  });
 
   return (
     <div className="bg-white rounded-lg shadow p-6">

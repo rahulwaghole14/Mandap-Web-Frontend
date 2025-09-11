@@ -155,11 +155,15 @@ export const dashboardApi = {
   // Get top associations with growth comparison
   getTopAssociations: async (limit = 10) => {
     try {
+      console.log('DashboardApi - Fetching top associations with limit:', limit);
       const authInstance = createAuthInstance();
       const response = await authInstance.get(`/dashboard/top-associations?limit=${limit}`);
+      console.log('DashboardApi - Top associations response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error fetching top associations:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
       throw error;
     }
   }

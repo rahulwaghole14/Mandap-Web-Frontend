@@ -21,11 +21,15 @@ export const memberApi = {
   // Get all members with filtering and pagination
   getMembers: async (params = {}) => {
     try {
+      console.log('MemberApi - Sending params:', params);
       const instance = createAuthInstance();
       const response = await instance.get('/members', { params });
+      console.log('MemberApi - Response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error fetching members:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
       throw error;
     }
   },

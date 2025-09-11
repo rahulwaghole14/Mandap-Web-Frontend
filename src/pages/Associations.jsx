@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { Search, Eye, Edit, Trash2, Plus, Download, Building, Loader2 } from 'lucide-react';
+import { Search, Eye, Edit, Trash2, Plus, Download, Building, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import Modal from '../components/Modal';
 import AddAssociationForm from '../components/AddAssociationForm';
 import EditAssociationForm from '../components/EditAssociationForm';
@@ -21,18 +21,59 @@ const Associations = () => {
   const [associations, setAssociations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalAssociations, setTotalAssociations] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   // Fetch associations from API on component mount
   useEffect(() => {
-    fetchAssociations();
+    fetchAssociations(1);
   }, []);
 
-  const fetchAssociations = async () => {
+  const fetchAssociations = async (pageNum = 1) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await associationApi.getAssociations();
-      setAssociations(response.associations || []);
+      
+      // Build params object, only including non-empty values
+      const params = {
+        page: pageNum,
+        limit: pageSize
+      };
+      
+      if (search && search.trim()) {
+        params.search = search.trim();
+      }
+      
+      if (city && city.trim()) {
+        params.city = city.trim();
+      }
+      
+      if (state && state.trim()) {
+        params.state = state.trim();
+      }
+      
+      if (status && status.trim()) {
+        params.status = status.trim();
+      }
+      
+      const response = await associationApi.getAssociations(params);
+      
+      // Handle pagination response
+      if (response.success) {
+        setAssociations(response.associations || []);
+        setTotalAssociations(response.pagination?.total || 0);
+        setTotalPages(response.pagination?.totalPages || 1);
+        setCurrentPage(response.pagination?.currentPage || 1);
+      } else {
+        // Fallback for old API response format
+        setAssociations(response.associations || []);
+        setTotalAssociations(response.associations?.length || 0);
+        setTotalPages(1);
+      }
     } catch (error) {
       console.error('Error fetching associations:', error);
       setError('Failed to fetch associations. Please try again.');
@@ -42,16 +83,53 @@ const Associations = () => {
     }
   };
 
-  const filtered = associations.filter(association =>
-    association.name.toLowerCase().includes(search.toLowerCase()) &&
-    (city === '' || association.city === city) &&
-    (state === '' || association.state === state) &&
-    (status === '' || (association.isActive ? 'Active' : 'Inactive') === status)
-  );
+  // No need for client-side filtering since backend handles it
+  const filtered = associations;
 
   const cities = [...new Set(associations.map(a => a.city).filter(Boolean))];
   const states = [...new Set(associations.map(a => a.state).filter(Boolean))];
   const statuses = ['Active', 'Pending', 'Inactive'];
+
+  // Pagination handlers
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      fetchAssociations(newPage);
+    }
+  };
+
+  const handlePageSizeChange = (newPageSize) => {
+    setPageSize(newPageSize);
+    setCurrentPage(1);
+    fetchAssociations(1);
+  };
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      const startPage = Math.max(1, currentPage - 2);
+      const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+      
+      for (let i = startPage; i <= endPage; i++) {
+        pages.push(i);
+      }
+    }
+    
+    return pages;
+  };
+
+  // Refresh associations when filters change
+  useEffect(() => {
+    setCurrentPage(1); // Reset to first page when filters change
+    fetchAssociations(1);
+  }, [search, city, state, status]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -82,7 +160,7 @@ const Associations = () => {
       toast.success(`Association ${selectedAssociation.name} deleted successfully`);
       setShowDeleteModal(false);
       setSelectedAssociation(null);
-      fetchAssociations(); // Refresh the list
+      fetchAssociations(currentPage); // Refresh the list
     } catch (error) {
       console.error('Error deleting association:', error);
       toast.error('Failed to delete association');
@@ -214,9 +292,27 @@ const Associations = () => {
 
         {/* Results Summary */}
         <div className="flex justify-between items-center">
-          <p className="text-gray-600">
-            Showing <span className="font-semibold">{filtered.length}</span> of <span className="font-semibold">{associations.length}</span> associations
-          </p>
+          <div className="flex items-center space-x-4">
+            <p className="text-gray-600">
+              Showing <span className="font-semibold">{((currentPage - 1) * pageSize) + 1}</span> to <span className="font-semibold">{Math.min(currentPage * pageSize, totalAssociations)}</span> of <span className="font-semibold">{totalAssociations}</span> associations
+            </p>
+            <select
+              value={pageSize}
+              onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+              className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value={10}>10 per page</option>
+              <option value={25}>25 per page</option>
+              <option value={50}>50 per page</option>
+              <option value={100}>100 per page</option>
+            </select>
+          </div>
+          <button
+            onClick={() => fetchAssociations(currentPage)}
+            className="px-3 py-1 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Refresh
+          </button>
         </div>
 
         {/* Associations Table */}
@@ -299,6 +395,68 @@ const Associations = () => {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+              <div className="flex-1 flex justify-between sm:hidden">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Page <span className="font-medium">{currentPage}</span> of <span className="font-medium">{totalPages}</span>
+                  </p>
+                </div>
+                <div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    
+                    {getPageNumbers().map((pageNum) => (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                          pageNum === currentPage
+                            ? 'z-10 bg-primary-50 border-primary-500 text-primary-600'
+                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    ))}
+                    
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {filtered.length === 0 && (
