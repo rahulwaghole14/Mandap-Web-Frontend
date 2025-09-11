@@ -63,7 +63,7 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="w-64 bg-gray-900 text-white h-screen flex flex-col sticky top-0">
+    <div className="w-64 bg-gray-900 text-white h-screen flex flex-col sticky top-0 flex-shrink-0" style={{ width: '256px', minWidth: '256px', maxWidth: '256px' }}>
       {/* Header */}
       <div className="p-6 border-b border-gray-700">
         <h2 className="text-xl font-semibold text-white">Mandapam Admin</h2>

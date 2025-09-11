@@ -117,12 +117,14 @@ const Events = () => {
 
   const onSubmitAdd = async (data) => {
     try {
+      console.log('Form data received:', data);
+      
       // Transform form data to match backend schema
       const eventData = {
         title: data.title,
         description: data.description,
         type: data.type,
-        date: data.date,
+        startDate: data.startDate, // Fixed: was using 'date' instead of 'startDate'
         startTime: data.startTime,
         endTime: data.endTime,
         address: data.address || '',
@@ -134,7 +136,7 @@ const Events = () => {
         contactPerson: {
           name: data.contactPersonName || 'Admin',
           phone: data.contactPersonPhone || '9876543210',
-          email: data.contactPersonEmail || 'admin@mandap.com'
+          email: data.contactPersonEmail || 'admin@mandapam.com' // Fixed email domain
         },
         priority: data.priority || 'Medium',
         targetAudience: data.targetAudience || [],
@@ -142,6 +144,8 @@ const Events = () => {
         registrationRequired: data.registrationRequired || false,
         imageURL: image?.name || null
       };
+
+      console.log('Event data being sent:', eventData);
 
       // Create event via API
       const response = await eventApi.createEvent(eventData);
@@ -156,6 +160,8 @@ const Events = () => {
       toast.success('Event created successfully!');
     } catch (error) {
       console.error('Error creating event:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
       const errorMessage = error.response?.data?.message || 'Failed to create event';
       toast.error(errorMessage);
     }
@@ -168,7 +174,7 @@ const Events = () => {
         title: data.title,
         description: data.description,
         type: data.type,
-        date: data.date,
+        startDate: data.startDate, // Fixed: was using 'date' instead of 'startDate'
         startTime: data.startTime,
         endTime: data.endTime,
         address: data.address || '',
@@ -180,7 +186,7 @@ const Events = () => {
         contactPerson: {
           name: data.contactPersonName || 'Admin',
           phone: data.contactPersonPhone || '9876543210',
-          email: data.contactPersonEmail || 'admin@mandap.com'
+          email: data.contactPersonEmail || 'admin@mandapam.com'
         },
         priority: data.priority || 'Medium',
         targetAudience: data.targetAudience || [],

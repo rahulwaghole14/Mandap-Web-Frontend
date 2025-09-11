@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import Layout from '../components/Layout';
 import Modal from '../components/Modal';
-import { Plus, Edit, Trash2, Eye, Upload, X, CheckCircle, Loader2, User, Crown } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Upload, X, CheckCircle, Loader2, User, Crown, ChevronDown } from 'lucide-react';
 import { bodApi } from '../services/bodApi';
 import { memberApi } from '../services/memberApi';
 import toast from 'react-hot-toast';
@@ -25,6 +25,10 @@ const BODList = () => {
   const [memberPosition, setMemberPosition] = useState('');
   const [memberBio, setMemberBio] = useState('');
   const [memberIsActive, setMemberIsActive] = useState(true);
+  const [memberSearch, setMemberSearch] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [addingMember, setAddingMember] = useState(false);
+  const dropdownRef = useRef(null);
 
   const {
     register,
@@ -38,6 +42,20 @@ const BODList = () => {
   useEffect(() => {
     fetchBODs();
     fetchMembers();
+  }, []);
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   const fetchBODs = async () => {
@@ -60,13 +78,44 @@ const BODList = () => {
 
   const fetchMembers = async () => {
     try {
-      const response = await memberApi.getMembers();
-      setMembers(response.members || []);
+      // Fetch all members by using pagination to get all pages
+      let allMembers = [];
+      let page = 1;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const response = await memberApi.getMembers({ 
+          page: page,
+          limit: 50 // Use a reasonable limit per page
+        });
+        
+        const members = response.members || [];
+        allMembers = [...allMembers, ...members];
+        
+        console.log(`Page ${page}: Fetched ${members.length} members`);
+        
+        // If we get fewer members than the limit, we've reached the end
+        if (members.length < 50) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+        
+        // Safety check to prevent infinite loops
+        if (page > 50) {
+          console.warn('Reached maximum page limit (50)');
+          hasMore = false;
+        }
+      }
+      
+      setMembers(allMembers);
+      console.log('Total members fetched:', allMembers.length);
     } catch (error) {
       console.error('Error fetching members:', error);
       toast.error('Failed to fetch members');
     }
   };
+
 
   const designations = [
     'President', 'Vice President', 'Secretary', 'Joint Secretary', 
@@ -110,6 +159,58 @@ const BODList = () => {
     setMemberPosition('');
     setMemberBio('');
     setMemberIsActive(true);
+    setMemberSearch('');
+    setShowDropdown(false);
+  };
+
+  // Filter members based on search term
+  const filteredMembers = members.filter(member => 
+    !bods.some(bod => bod.name === member.name) && // Filter out existing BOD members
+    (member.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
+     member.businessName?.toLowerCase().includes(memberSearch.toLowerCase()) ||
+     member.city?.toLowerCase().includes(memberSearch.toLowerCase()))
+  );
+
+  // Debug logging
+  console.log('Total members:', members.length);
+  console.log('Filtered members:', filteredMembers.length);
+  console.log('BOD members count:', bods.length);
+
+  // Helper function to format dates safely
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      console.log('Formatting date:', dateString);
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        console.log('Invalid date:', dateString);
+        return 'N/A';
+      }
+      const formatted = date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+      console.log('Formatted date:', formatted);
+      return formatted;
+    } catch (error) {
+      console.error('Error formatting date:', error, 'Input:', dateString);
+      return 'N/A';
+    }
+  };
+
+  // Get selected member display text
+  const getSelectedMemberText = () => {
+    if (!selectedMember) return '';
+    const member = members.find(m => m.id == selectedMember || m._id == selectedMember);
+    return member ? `${member.name} - ${member.businessName} (${member.city}, ${member.state})` : '';
+  };
+
+  // Handle member selection
+  const handleMemberSelect = (member) => {
+    setSelectedMember(member.id || member._id);
+    setMemberSearch(`${member.name} - ${member.businessName} (${member.city}, ${member.state})`);
+    setShowDropdown(false);
   };
 
   const handleEdit = (bod) => {
@@ -214,6 +315,9 @@ const BODList = () => {
         return;
       }
 
+      // Start loading
+      setAddingMember(true);
+
       const bodData = {
         name: member.name,
         position: memberPosition,
@@ -242,11 +346,16 @@ const BODList = () => {
       setMemberPosition('');
       setMemberBio('');
       setMemberIsActive(true);
+      setMemberSearch('');
+      setShowDropdown(false);
       toast.success(`${member.name} added as ${memberPosition} successfully!`);
     } catch (error) {
       console.error('Error adding BOD member from existing member:', error);
       const errorMessage = error.response?.data?.message || 'Failed to add BOD member';
       toast.error(errorMessage);
+    } finally {
+      // Stop loading
+      setAddingMember(false);
     }
   };
 
@@ -402,7 +511,7 @@ const BODList = () => {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{bod.name}</div>
-                          <div className="text-sm text-gray-500">Added: {new Date(bod.createdAt).toLocaleDateString()}</div>
+                          <div className="text-sm text-gray-500">Added: {formatDate(bod.createdAt)}</div>
                         </div>
                       </div>
                     </td>
@@ -964,7 +1073,7 @@ const BODList = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Date Added</label>
-                <p className="text-sm text-gray-900">{new Date(selected.createdAt).toLocaleDateString()}</p>
+                <p className="text-sm text-gray-900">{formatDate(selected.createdAt)}</p>
               </div>
             </div>
 
@@ -1059,21 +1168,49 @@ const BODList = () => {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Select Member *</label>
-            <select
-              value={selectedMember}
-              onChange={(e) => setSelectedMember(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              required
-            >
-              <option value="">Choose a member</option>
-              {members
-                .filter(member => !bods.some(bod => bod.name === member.name)) // Filter out existing BOD members
-                .map(member => (
-                  <option key={member.id} value={member.id}>
-                    {member.name} - {member.businessName} ({member.city}, {member.state})
-                  </option>
-                ))}
-            </select>
+            <div className="relative" ref={dropdownRef}>
+              <div 
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 cursor-pointer flex items-center justify-between"
+                onClick={() => setShowDropdown(!showDropdown)}
+              >
+                <span className={memberSearch || getSelectedMemberText() ? 'text-gray-900' : 'text-gray-500'}>
+                  {memberSearch || getSelectedMemberText() || 'Choose a member'}
+                </span>
+                <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+              </div>
+              
+              {showDropdown && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-hidden">
+                  <div className="p-2 border-b border-gray-200">
+                    <input
+                      type="text"
+                      value={memberSearch}
+                      onChange={(e) => setMemberSearch(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="Search members..."
+                      autoFocus
+                    />
+                  </div>
+                  <div className="max-h-48 overflow-y-auto">
+                    {filteredMembers.length > 0 ? (
+                      filteredMembers.map(member => (
+                        <div
+                          key={member.id || member._id}
+                          onClick={() => handleMemberSelect(member)}
+                          className="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm"
+                        >
+                          {member.name} - {member.businessName} ({member.city}, {member.state})
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                        {memberSearch ? 'No members found' : 'Start typing to search'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div>
@@ -1126,11 +1263,20 @@ const BODList = () => {
             <button
               type="button"
               onClick={onSubmitFromMembers}
-              disabled={!selectedMember || !memberPosition}
+              disabled={!selectedMember || !memberPosition || addingMember}
               className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
-              <Crown className="h-4 w-4" />
-              <span>Add as NBOD Member</span>
+              {addingMember ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Adding Member...</span>
+                </>
+              ) : (
+                <>
+                  <Crown className="h-4 w-4" />
+                  <span>Add as NBOD Member</span>
+                </>
+              )}
             </button>
           </div>
         </div>

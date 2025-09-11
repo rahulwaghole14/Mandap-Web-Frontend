@@ -10,6 +10,7 @@ const createAuthInstance = () => {
   const token = getAuthToken();
   return axios.create({
     baseURL: API_BASE_URL,
+    timeout: 10000, // 10 second timeout
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
