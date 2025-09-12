@@ -7,6 +7,7 @@ import AddAssociationForm from '../components/AddAssociationForm';
 import EditAssociationForm from '../components/EditAssociationForm';
 import { associationApi } from '../services/associationApi';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 
 const Associations = () => {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ const Associations = () => {
   const [associations, setAssociations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [exportLoading, setExportLoading] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -52,32 +54,73 @@ const Associations = () => {
         params.city = city.trim();
       }
       
-      if (state && state.trim()) {
-        params.state = state.trim();
-      }
+      // Temporarily disable state filtering due to backend 500 error
+      // if (state && state.trim()) {
+      //   params.state = state.trim();
+      // }
       
       if (status && status.trim()) {
         params.status = status.trim();
       }
       
+      console.log('Fetching associations with params:', params);
+      console.log('Current filter values:', { search, city, state, status });
+      console.log('Note: State filtering temporarily disabled due to backend 500 error');
+      
       const response = await associationApi.getAssociations(params);
+      console.log('API response:', response);
       
       // Handle pagination response
+      let allAssociations = [];
       if (response.success) {
-        setAssociations(response.associations || []);
+        allAssociations = response.associations || [];
         setTotalAssociations(response.pagination?.total || 0);
         setTotalPages(response.pagination?.totalPages || 1);
         setCurrentPage(response.pagination?.currentPage || 1);
       } else {
         // Fallback for old API response format
-        setAssociations(response.associations || []);
+        allAssociations = response.associations || [];
         setTotalAssociations(response.associations?.length || 0);
         setTotalPages(1);
       }
+      
+      // Apply client-side state filtering as a workaround for backend 500 error
+      if (state && state.trim()) {
+        const filteredByState = allAssociations.filter(association => 
+          association.state && association.state.toLowerCase() === state.toLowerCase()
+        );
+        console.log(`Client-side filtering: Found ${filteredByState.length} associations for state "${state}"`);
+        setAssociations(filteredByState);
+        setTotalAssociations(filteredByState.length);
+        setTotalPages(Math.ceil(filteredByState.length / pageSize));
+        
+        // Show info toast about client-side filtering
+        toast.success(`Showing ${filteredByState.length} associations for ${state}`);
+      } else {
+        setAssociations(allAssociations);
+      }
     } catch (error) {
       console.error('Error fetching associations:', error);
-      setError('Failed to fetch associations. Please try again.');
-      toast.error('Failed to fetch associations');
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: error.config
+      });
+      
+      // More specific error message based on the error
+      let errorMessage = 'Failed to fetch associations. Please try again.';
+      if (error.response?.status === 400) {
+        errorMessage = 'Invalid filter parameters. Please check your selection.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Authentication required. Please login again.';
+      } else if (error.response?.status === 500) {
+        errorMessage = 'Server error. Please try again later.';
+      }
+      
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -127,8 +170,15 @@ const Associations = () => {
 
   // Refresh associations when filters change
   useEffect(() => {
+    console.log('Filter changed, triggering fetchAssociations:', { search, city, state, status });
     setCurrentPage(1); // Reset to first page when filters change
-    fetchAssociations(1);
+    
+    // Add a small delay to prevent rapid API calls
+    const timeoutId = setTimeout(() => {
+      fetchAssociations(1);
+    }, 300);
+    
+    return () => clearTimeout(timeoutId);
   }, [search, city, state, status]);
 
   const getStatusColor = (status) => {
@@ -178,8 +228,166 @@ const Associations = () => {
     fetchAssociations(); // Refresh the list
   };
 
-  const exportAssociations = () => {
-    toast.success('Associations list exported successfully');
+  const exportAssociations = async () => {
+    try {
+      setExportLoading(true);
+      
+      console.log('Starting export process for ALL associations...');
+      console.log('Current filters:', { search, city, state, status });
+      
+      // Fetch ALL associations from API (not just the current page)
+      console.log('Fetching all associations from API...');
+      const response = await associationApi.getAssociations({ 
+        page: 1, 
+        limit: 1000 // Get a large number to ensure we get all data
+      });
+      
+      let allAssociations = [];
+      if (response.success) {
+        allAssociations = response.associations || [];
+      } else {
+        allAssociations = response.associations || [];
+      }
+      
+      console.log(`Fetched ${allAssociations.length} total associations from API`);
+      
+      // Debug: Show all unique cities in the data
+      const allCities = [...new Set(allAssociations.map(a => a.city).filter(Boolean))];
+      console.log(`All cities in data:`, allCities);
+      console.log(`Current city filter:`, city);
+      
+      // Apply client-side filtering based on current filters
+      let associationsToExport = allAssociations;
+      
+      if (search && search.trim()) {
+        associationsToExport = associationsToExport.filter(association =>
+          association.name.toLowerCase().includes(search.toLowerCase())
+        );
+      }
+      
+      if (city && city.trim()) {
+        console.log(`Filtering by city: "${city}"`);
+        console.log(`Before city filter: ${associationsToExport.length} associations`);
+        
+        associationsToExport = associationsToExport.filter(association => {
+          const associationCity = association.city || '';
+          const matches = associationCity.toLowerCase() === city.toLowerCase();
+          if (!matches) {
+            console.log(`City mismatch: "${associationCity}" !== "${city}"`);
+          }
+          return matches;
+        });
+        
+        console.log(`After city filter: ${associationsToExport.length} associations`);
+        console.log(`Cities found:`, associationsToExport.map(a => a.city));
+      }
+      
+      if (state && state.trim()) {
+        associationsToExport = associationsToExport.filter(association =>
+          association.state && association.state.toLowerCase() === state.toLowerCase()
+        );
+      }
+      
+      if (status && status.trim()) {
+        associationsToExport = associationsToExport.filter(association => {
+          const associationStatus = association.isActive ? 'Active' : 'Inactive';
+          return associationStatus.toLowerCase() === status.toLowerCase();
+        });
+      }
+      
+      console.log(`Exporting ${associationsToExport.length} associations (${allAssociations.length} total, ${associationsToExport.length} after filtering)`);
+      
+      // Debug: Log the first association to see the data structure
+      if (associationsToExport.length > 0) {
+        console.log('Sample association data structure:', associationsToExport[0]);
+        console.log('Available fields:', Object.keys(associationsToExport[0]));
+      }
+      
+      if (associationsToExport.length === 0) {
+        toast.error('No associations found to export with current filters');
+        return;
+      }
+      
+      // Prepare data for Excel export
+      const exportData = associationsToExport.map((association, index) => ({
+        'S.No': index + 1,
+        'Association Name': association.name || 'N/A',
+        'City': association.city || 'N/A',
+        'District': association.district || 'N/A',
+        'State': association.state || 'N/A',
+        'Pincode': association.pincode || 'N/A',
+        'Established Year': association.establishedYear || 'N/A',
+        'Status': association.isActive ? 'Active' : 'Inactive',
+        'Total Members': association.totalMembers || 0
+      }));
+      
+      // Create workbook and worksheet
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      
+      // Set column widths
+      const columnWidths = [
+        { wch: 8 },   // S.No
+        { wch: 25 },  // Association Name
+        { wch: 15 },  // City
+        { wch: 15 },  // District
+        { wch: 12 },  // State
+        { wch: 10 },  // Pincode
+        { wch: 15 },  // Established Year
+        { wch: 10 },  // Status
+        { wch: 12 }   // Total Members
+      ];
+      worksheet['!cols'] = columnWidths;
+      
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Filtered Associations');
+      
+      // Generate filename with current date and filter info
+      const currentDate = new Date().toISOString().split('T')[0];
+      let filename = `Associations_Export_${currentDate}`;
+      
+      // Add filter info to filename if any filters are active
+      const activeFilters = [];
+      if (search) activeFilters.push(`Search-${search.substring(0, 10)}`);
+      if (city) activeFilters.push(`City-${city}`);
+      if (state) activeFilters.push(`State-${state}`);
+      if (status) activeFilters.push(`Status-${status}`);
+      
+      if (activeFilters.length > 0) {
+        filename += `_Filtered-${activeFilters.join('-')}`;
+      }
+      
+      filename += '.xlsx';
+      
+      // Save the file
+      XLSX.writeFile(workbook, filename);
+      
+      // Show success message with filter details
+      let successMessage = `Successfully exported ${associationsToExport.length} associations`;
+      if (allAssociations.length !== associationsToExport.length) {
+        successMessage += ` (filtered from ${allAssociations.length} total associations)`;
+      } else {
+        successMessage += ` (all ${allAssociations.length} associations)`;
+      }
+      if (search || city || state || status) {
+        const activeFilters = [];
+        if (search) activeFilters.push(`Search: ${search}`);
+        if (city) activeFilters.push(`City: ${city}`);
+        if (state) activeFilters.push(`State: ${state}`);
+        if (status) activeFilters.push(`Status: ${status}`);
+        successMessage += ` with filters: ${activeFilters.join(', ')}`;
+      }
+      successMessage += ` to ${filename}`;
+      
+      toast.success(successMessage);
+      console.log(`Export completed: ${filename}`);
+      
+    } catch (error) {
+      console.error('Error exporting associations:', error);
+      toast.error('Failed to export associations. Please try again.');
+    } finally {
+      setExportLoading(false);
+    }
   };
 
 
@@ -194,10 +402,20 @@ const Associations = () => {
           <div className="flex space-x-3">
             <button
               onClick={exportAssociations}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+              disabled={exportLoading}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Download className="h-4 w-4" />
-              <span>Export</span>
+              {exportLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Exporting...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  <span>Export</span>
+                </>
+              )}
             </button>
             <button
               onClick={() => setShowAddModal(true)}

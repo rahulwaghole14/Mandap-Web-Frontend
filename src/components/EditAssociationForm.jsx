@@ -72,20 +72,62 @@ const EditAssociationForm = ({ association, onSuccess, onCancel }) => {
   // Watch for district changes
   const watchedDistrict = watch('district');
 
+  // Sync selectedDistrict state with form district value
+  useEffect(() => {
+    const currentDistrict = watch('district');
+    console.log('District sync - currentDistrict:', currentDistrict, 'selectedDistrict:', selectedDistrict);
+    if (currentDistrict !== selectedDistrict) {
+      setSelectedDistrict(currentDistrict || '');
+      console.log('Updated selectedDistrict to:', currentDistrict || '');
+    }
+  }, [watchedDistrict, selectedDistrict, watch]);
+
+  // Additional effect to ensure selectedDistrict is set when association changes
+  useEffect(() => {
+    if (association && association.district) {
+      console.log('Setting selectedDistrict from association.district:', association.district);
+      setSelectedDistrict(association.district);
+    }
+  }, [association]);
+
   // Populate form with existing association data
   useEffect(() => {
     if (association) {
-      setValue('name', association.name);
-      setValue('city', association.city || '');
-      setValue('district', association.district || '');
-      setValue('state', association.state || '');
-      setValue('pincode', association.pincode || '');
-      setSelectedDistrict(association.district || '');
-      // Convert establishedYear to date for the date picker
-      if (association.establishedYear) {
-        const date = new Date(association.establishedYear, 0, 1);
-        setValue('establishedDate', date.toISOString().split('T')[0]);
-      }
+      console.log('Setting form values for association:', association);
+      
+      // Use setTimeout to ensure the form is fully rendered before setting values
+      setTimeout(() => {
+        console.log('Setting form values with setTimeout...');
+        setValue('name', association.name);
+        setValue('state', association.state || '');
+        setValue('district', association.district || '');
+        setValue('city', association.city || '');
+        setValue('pincode', association.pincode || '');
+        setSelectedDistrict(association.district || '');
+        
+        console.log('After setValue calls - selectedDistrict set to:', association.district || '');
+        
+        // Convert establishedYear to date for the date picker
+        if (association.establishedYear) {
+          const date = new Date(association.establishedYear, 0, 1);
+          setValue('establishedDate', date.toISOString().split('T')[0]);
+        }
+        
+        console.log('Form values set:', {
+          name: association.name,
+          state: association.state,
+          district: association.district,
+          city: association.city,
+          pincode: association.pincode
+        });
+        
+        // Additional check after a short delay
+        setTimeout(() => {
+          console.log('Final check - selectedDistrict:', selectedDistrict);
+          console.log('Final check - watch district:', watch('district'));
+          console.log('Final check - watch state:', watch('state'));
+        }, 200);
+      }, 100);
     }
   }, [association, setValue]);
 
@@ -134,6 +176,8 @@ const EditAssociationForm = ({ association, onSuccess, onCancel }) => {
             <input
               type="text"
               {...register('name', { required: 'Association name is required' })}
+              value={watch('name') || ''}
+              onChange={(e) => setValue('name', e.target.value)}
               className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.name ? 'border-red-500' : 'border-gray-300'
               }`}
@@ -149,6 +193,8 @@ const EditAssociationForm = ({ association, onSuccess, onCancel }) => {
             <input
               type="date"
               {...register('establishedDate', { required: 'Established date is required' })}
+              value={watch('establishedDate') || ''}
+              onChange={(e) => setValue('establishedDate', e.target.value)}
               className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.establishedDate ? 'border-red-500' : 'border-gray-300'
               }`}
@@ -177,6 +223,13 @@ const EditAssociationForm = ({ association, onSuccess, onCancel }) => {
                   setSelectedDistrict('');
                 }
               })}
+              value={watch('state') || ''}
+              onChange={(e) => {
+                setValue('state', e.target.value);
+                setValue('district', '');
+                setValue('city', '');
+                setSelectedDistrict('');
+              }}
               className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.state ? 'border-red-500' : 'border-gray-300'
               }`}
@@ -202,6 +255,12 @@ const EditAssociationForm = ({ association, onSuccess, onCancel }) => {
                   setSelectedDistrict(e.target.value);
                 }
               })}
+              value={watch('district') || ''}
+              onChange={(e) => {
+                setValue('district', e.target.value);
+                setValue('city', '');
+                setSelectedDistrict(e.target.value);
+              }}
               className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.district ? 'border-red-500' : 'border-gray-300'
               }`}
@@ -224,20 +283,29 @@ const EditAssociationForm = ({ association, onSuccess, onCancel }) => {
             <label className="block text-sm font-medium text-gray-700 mb-2">City *</label>
             <select
               {...register('city', { required: 'City is required' })}
+              value={watch('city') || ''}
+              onChange={(e) => {
+                setValue('city', e.target.value);
+              }}
               className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.city ? 'border-red-500' : 'border-gray-300'
               }`}
               disabled={!watch('district') || watch('state') !== 'Maharashtra'}
             >
               <option value="">Select city</option>
-              {watch('state') === 'Maharashtra' && watchedDistrict && getCitiesForDistrict(watchedDistrict).map(city => (
-                <option key={city} value={city}>{city}</option>
-              ))}
+              {(() => {
+                const state = watch('state');
+                const cities = selectedDistrict ? getCitiesForDistrict(selectedDistrict) : [];
+                console.log('City dropdown render - state:', state, 'selectedDistrict:', selectedDistrict, 'cities:', cities);
+                return watch('state') === 'Maharashtra' && selectedDistrict && cities.map(city => (
+                  <option key={city} value={city}>{city}</option>
+                ));
+              })()}
             </select>
             {errors.city && (
               <p className="text-red-500 text-sm mt-1">{errors.city.message}</p>
             )}
-            {watch('state') === 'Maharashtra' && !watchedDistrict && (
+            {watch('state') === 'Maharashtra' && !selectedDistrict && (
               <p className="text-gray-500 text-sm mt-1">Please select a district first</p>
             )}
             {watch('state') && watch('state') !== 'Maharashtra' && (
@@ -256,6 +324,8 @@ const EditAssociationForm = ({ association, onSuccess, onCancel }) => {
                   message: 'Please enter a valid 6-digit pincode'
                 }
               })}
+              value={watch('pincode') || ''}
+              onChange={(e) => setValue('pincode', e.target.value)}
               className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.pincode ? 'border-red-500' : 'border-gray-300'
               }`}
