@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { memberApi } from '../services/memberApi';
 import toast from 'react-hot-toast';
@@ -10,19 +10,40 @@ const AddAssociationMemberForm = ({ association, onSuccess, onCancel }) => {
   const [preview, setPreview] = useState(null);
   const [businessImages, setBusinessImages] = useState([]);
   const [businessImagePreviews, setBusinessImagePreviews] = useState([]);
+  const [selectedDistrict, setSelectedDistrict] = useState('');
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
-    watch
+    watch,
+    setValue
   } = useForm({
     defaultValues: {
       state: 'Maharashtra',
       associationName: association?.name || ''
     }
   });
+
+  // Update form values when association prop changes
+  useEffect(() => {
+    if (association) {
+      console.log('Association prop changed:', association);
+      
+      // Use setTimeout to ensure the form is fully rendered before setting values
+      setTimeout(() => {
+        if (association.state) {
+          setValue('state', association.state);
+          console.log('State set to:', association.state);
+        }
+        if (association.name) {
+          setValue('associationName', association.name);
+          console.log('Association name set to:', association.name);
+        }
+      }, 100);
+    }
+  }, [association, setValue]);
 
   const handleImage = (e) => {
     const file = e.target.files[0];
@@ -165,12 +186,56 @@ const AddAssociationMemberForm = ({ association, onSuccess, onCancel }) => {
     }
   };
 
-  const cities = [
-    'Mumbai', 'Pune', 'Nagpur', 'Thane', 'Nashik', 'Aurangabad', 'Solapur', 'Kolhapur',
-    'Amravati', 'Nanded', 'Sangli', 'Jalgaon', 'Akola', 'Latur', 'Dhule', 'Ahmednagar',
-    'Chandrapur', 'Parbhani', 'Beed', 'Gondia', 'Wardha', 'Yavatmal', 'Buldhana', 'Hingoli',
-    'Washim', 'Gadchiroli', 'Bhandara', 'Osmanabad', 'Satara', 'Ratnagiri', 'Sindhudurg'
-  ];
+  // Maharashtra districts and their cities
+  const maharashtraData = {
+    'Ahmednagar': ['Ahmednagar', 'Shrirampur', 'Kopargaon', 'Sangamner', 'Rahuri', 'Pathardi', 'Parner', 'Nevasa', 'Shevgaon', 'Karjat'],
+    'Akola': ['Akola', 'Akot', 'Balapur', 'Murtijapur', 'Patur', 'Telhara', 'Barshitakli', 'Patur'],
+    'Amravati': ['Amravati', 'Achalpur', 'Daryapur', 'Anjangaon', 'Chandur Railway', 'Dhamangaon Railway', 'Morshi', 'Warud', 'Teosa', 'Chandur Bazar'],
+    'Aurangabad': ['Aurangabad', 'Gangapur', 'Paithan', 'Sillod', 'Vaijapur', 'Kannad', 'Soegaon', 'Khuldabad', 'Phulambri'],
+    'Beed': ['Beed', 'Georai', 'Majalgaon', 'Parli', 'Ashti', 'Patoda', 'Shirur (Kasar)', 'Wadwani', 'Kaij', 'Dharur'],
+    'Bhandara': ['Bhandara', 'Tumsar', 'Sakoli', 'Lakhani', 'Lakhandur', 'Mohadi', 'Pauni', 'Lakhni'],
+    'Buldhana': ['Buldhana', 'Chikhli', 'Deulgaon Raja', 'Jalgaon (Jamod)', 'Khamgaon', 'Lonar', 'Mehkar', 'Motala', 'Nandura', 'Sangrampur', 'Shegaon'],
+    'Chandrapur': ['Chandrapur', 'Ballarpur', 'Bhadravati', 'Bramhapuri', 'Chimur', 'Gondpipri', 'Jiwati', 'Korpana', 'Mul', 'Nagbhid', 'Pombhurna', 'Rajura', 'Sawali', 'Sindewahi', 'Warora'],
+    'Dhule': ['Dhule', 'Shirpur', 'Sakri', 'Shindkheda'],
+    'Gadchiroli': ['Gadchiroli', 'Aheri', 'Armori', 'Bhamragad', 'Chamorshi', 'Desaiganj', 'Dhanora', 'Etapalli', 'Kurkheda', 'Korchi', 'Mulchera', 'Sironcha', 'Wadsa'],
+    'Gondia': ['Gondia', 'Arjuni Morgaon', 'Deori', 'Goregaon', 'Salekasa', 'Tirora'],
+    'Hingoli': ['Hingoli', 'Aundha (Nagnath)', 'Kalamnuri', 'Sengaon'],
+    'Jalgaon': ['Jalgaon', 'Amalner', 'Bhusawal', 'Chalisgaon', 'Chopda', 'Erandol', 'Jamner', 'Muktainagar', 'Pachora', 'Parola', 'Raver', 'Yawal'],
+    'Jalna': ['Jalna', 'Ambad', 'Bhokardan', 'Ghansawangi', 'Jafferabad', 'Mantha', 'Partur'],
+    'Kolhapur': ['Kolhapur', 'Ajra', 'Bavda', 'Bhudargad', 'Chandgad', 'Gadhinglaj', 'Gaganbawada', 'Hatkanangle', 'Kagal', 'Karveer', 'Panhala', 'Radhanagari', 'Shahuwadi', 'Shirol'],
+    'Latur': ['Latur', 'Ahmadpur', 'Ausa', 'Chakur', 'Deoni', 'Jalkot', 'Nilanga', 'Renapur', 'Shirur Anantpal', 'Udgir'],
+    'Mumbai City': ['Mumbai'],
+    'Mumbai Suburban': ['Mumbai', 'Thane', 'Kalyan', 'Ulhasnagar', 'Ambernath', 'Badlapur', 'Mira-Bhayandar', 'Vasai-Virar', 'Bhiwandi-Nizampur', 'Kalyan-Dombivali'],
+    'Nagpur': ['Nagpur', 'Hingna', 'Kamptee', 'Katol', 'Kuhi', 'Mauda', 'Narkhed', 'Parseoni', 'Ramtek', 'Savner', 'Umred'],
+    'Nanded': ['Nanded', 'Ardhapur', 'Bhokar', 'Biloli', 'Deglur', 'Dharmabad', 'Hadgaon', 'Kandhar', 'Kinwat', 'Loha', 'Mahur', 'Mudkhed', 'Mukhed', 'Naigaon (Khairgaon)', 'Niwasa', 'Parbhani', 'Purna'],
+    'Nandurbar': ['Nandurbar', 'Akkalkuwa', 'Nawapur', 'Shahade', 'Taloda'],
+    'Nashik': ['Nashik', 'Baglan', 'Chandwad', 'Deola', 'Dindori', 'Igatpuri', 'Kalwan', 'Malegaon', 'Nandgaon', 'Niphad', 'Peth', 'Sinnar', 'Surgana', 'Trimbakeshwar', 'Yevla'],
+    'Osmanabad': ['Osmanabad', 'Bhum', 'Kalamb', 'Lohara', 'Paranda', 'Tuljapur', 'Washi'],
+    'Palghar': ['Palghar', 'Dahanu', 'Jawhar', 'Mokhada', 'Talasari', 'Vikramgad', 'Vasai'],
+    'Parbhani': ['Parbhani', 'Gangakhed', 'Jintur', 'Manwath', 'Palam', 'Pathri', 'Purna', 'Sailu', 'Sonpeth'],
+    'Pune': ['Pune', 'Ambegaon', 'Baramati', 'Bhor', 'Daund', 'Haveli', 'Indapur', 'Junnar', 'Khed', 'Mawal', 'Mulshi', 'Purandar', 'Shirur', 'Velhe'],
+    'Raigad': ['Raigad', 'Alibag', 'Karjat', 'Khalapur', 'Mahad', 'Mangaon', 'Mhasla', 'Murud', 'Panvel', 'Pen', 'Poladpur', 'Roha', 'Shrivardhan', 'Sudhagad', 'Tala', 'Uran'],
+    'Ratnagiri': ['Ratnagiri', 'Chiplun', 'Dapoli', 'Guhagar', 'Khed', 'Lanja', 'Mandangad', 'Rajapur', 'Sangameshwar'],
+    'Sangli': ['Sangli', 'Atpadi', 'Jat', 'Kadegaon', 'Kavathemahankal', 'Khanapur (Vita)', 'Miraj', 'Palus', 'Shirala', 'Tasgaon', 'Walwa'],
+    'Satara': ['Satara', 'Jaoli', 'Karad', 'Khandala', 'Khatav', 'Koregaon', 'Mahabaleshwar', 'Man', 'Patan', 'Phaltan', 'Wai'],
+    'Sindhudurg': ['Sindhudurg', 'Devgad', 'Kankavli', 'Kudal', 'Malvan', 'Sawantwadi', 'Vaibhavwadi', 'Vengurla'],
+    'Solapur': ['Solapur', 'Akkalkot', 'Barshi', 'Karmala', 'Madha', 'Mangalvedhe', 'Malshiras', 'Mohol', 'Pandharpur', 'Sangole'],
+    'Thane': ['Thane', 'Ambarnath', 'Bhiwandi', 'Kalyan', 'Mira-Bhayandar', 'Ulhasnagar', 'Vasai-Virar', 'Dombivali', 'Badlapur', 'Ambernath'],
+    'Wardha': ['Wardha', 'Arvi', 'Ashti', 'Deoli', 'Hinganghat', 'Karanja', 'Samudrapur', 'Seloo'],
+    'Washim': ['Washim', 'Karanja', 'Malegaon', 'Mangrulpir', 'Manora', 'Risod'],
+    'Yavatmal': ['Yavatmal', 'Arni', 'Babhulgaon', 'Darwha', 'Digras', 'Ghatanji', 'Kalamb', 'Kelapur', 'Mahagaon', 'Maregaon', 'Ner', 'Pusad', 'Ralegaon', 'Umarkhed', 'Wani', 'Zari-Jamani']
+  };
+
+  // Get all Maharashtra districts
+  const maharashtraDistricts = Object.keys(maharashtraData).sort();
+
+  // Get cities based on selected district
+  const getCitiesForDistrict = (district) => {
+    return maharashtraData[district] || [];
+  };
+
+  // Watch for district changes
+  const watchedDistrict = watch('district');
 
   const businessTypes = [
     { value: 'catering', label: 'Catering' },
@@ -194,7 +259,7 @@ const AddAssociationMemberForm = ({ association, onSuccess, onCancel }) => {
             <div className="text-blue-800 font-semibold">{association.name}</div>
           </div>
           <div className="text-blue-600 text-sm mt-1">
-            {association.address?.city}, {association.address?.district}, {association.address?.state}
+            {association.city}, {association.district}, {association.state}
           </div>
         </div>
       )}
@@ -277,7 +342,15 @@ const AddAssociationMemberForm = ({ association, onSuccess, onCancel }) => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">State *</label>
           <select
-            {...register('state', { required: 'State is required' })}
+            {...register('state', { 
+              required: 'State is required',
+              onChange: (e) => {
+                // Reset district and city when state changes
+                setValue('district', '');
+                setValue('city', '');
+                setSelectedDistrict('');
+              }
+            })}
             className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
               errors.state ? 'border-red-500' : 'border-gray-300'
             }`}
@@ -327,20 +400,56 @@ const AddAssociationMemberForm = ({ association, onSuccess, onCancel }) => {
         </div>
 
         <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">District *</label>
+          <select
+            {...register('district', { 
+              required: 'District is required',
+              onChange: (e) => {
+                // Reset city when district changes
+                setValue('city', '');
+                setSelectedDistrict(e.target.value);
+              }
+            })}
+            className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+              errors.district ? 'border-red-500' : 'border-gray-300'
+            }`}
+            disabled={!watch('state') || watch('state') !== 'Maharashtra'}
+          >
+            <option value="">Select district</option>
+            {watch('state') === 'Maharashtra' && maharashtraDistricts.map(district => (
+              <option key={district} value={district}>{district}</option>
+            ))}
+          </select>
+          {errors.district && (
+            <p className="text-red-500 text-sm mt-1">{errors.district.message}</p>
+          )}
+          {watch('state') && watch('state') !== 'Maharashtra' && (
+            <p className="text-gray-500 text-sm mt-1">District selection is available only for Maharashtra</p>
+          )}
+        </div>
+
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">City *</label>
           <select
             {...register('city', { required: 'City is required' })}
             className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
               errors.city ? 'border-red-500' : 'border-gray-300'
             }`}
+            disabled={!watch('district') || watch('state') !== 'Maharashtra'}
           >
             <option value="">Select city</option>
-            {cities.map(city => (
+            {watch('state') === 'Maharashtra' && watchedDistrict && getCitiesForDistrict(watchedDistrict).map(city => (
               <option key={city} value={city}>{city}</option>
             ))}
           </select>
           {errors.city && (
             <p className="text-red-500 text-sm mt-1">{errors.city.message}</p>
+          )}
+          {watch('state') === 'Maharashtra' && !watchedDistrict && (
+            <p className="text-gray-500 text-sm mt-1">Please select a district first</p>
+          )}
+          {watch('state') && watch('state') !== 'Maharashtra' && (
+            <p className="text-gray-500 text-sm mt-1">City selection is available only for Maharashtra</p>
           )}
         </div>
 

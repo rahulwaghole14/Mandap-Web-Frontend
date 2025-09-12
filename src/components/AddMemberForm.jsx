@@ -133,6 +133,7 @@ const AddMemberForm = ({ onSuccess, onCancel }) => {
         state: data.state || 'Maharashtra',
         businessType: data.businessType,
         city: data.city,
+        district: data.district,
         pincode: data.pincode,
         associationName: data.associationName,
         // Optional fields - only include if they have values
@@ -334,6 +335,16 @@ const AddMemberForm = ({ onSuccess, onCancel }) => {
           {errors.city && (
             <p className="text-red-500 text-sm mt-1">{errors.city.message}</p>
           )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">District</label>
+          <input
+            type="text"
+            {...register('district')}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            placeholder="Enter district"
+          />
         </div>
 
         <div>

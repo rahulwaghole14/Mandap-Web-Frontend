@@ -26,6 +26,16 @@ export const memberApi = {
       const instance = createAuthInstance();
       const response = await instance.get('/members', { params });
       console.log('MemberApi - Response:', response.data);
+      
+      // Debug: Check the structure of member data
+      if (response.data.members && response.data.members.length > 0) {
+        console.log('MemberApi - Sample member structure:', response.data.members[0]);
+        console.log('MemberApi - Sample member keys:', Object.keys(response.data.members[0]));
+        console.log('MemberApi - Sample member district:', response.data.members[0].district);
+        console.log('MemberApi - Sample member city:', response.data.members[0].city);
+        console.log('MemberApi - Sample member state:', response.data.members[0].state);
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Error fetching members:', error);
@@ -95,11 +105,21 @@ export const memberApi = {
   // Update existing member
   updateMember: async (id, memberData) => {
     try {
+      console.log('MemberApi - Updating member with ID:', id);
+      console.log('MemberApi - Update data being sent:', memberData);
+      console.log('MemberApi - District being sent:', memberData.district);
+      
       const instance = createAuthInstance();
       const response = await instance.put(`/members/${id}`, memberData);
+      
+      console.log('MemberApi - Update response:', response.data);
+      console.log('MemberApi - Updated member district:', response.data.member?.district);
+      
       return response.data;
     } catch (error) {
       console.error('Error updating member:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
       throw error;
     }
   },

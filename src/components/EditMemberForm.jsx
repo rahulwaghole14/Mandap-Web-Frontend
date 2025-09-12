@@ -8,26 +8,98 @@ const EditMemberForm = ({ member, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [selectedDistrict, setSelectedDistrict] = useState('');
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    setValue
+    setValue,
+    watch
   } = useForm();
+
+  // Maharashtra districts and their cities
+  const maharashtraData = {
+    'Ahmednagar': ['Ahmednagar', 'Shrirampur', 'Kopargaon', 'Sangamner', 'Rahuri', 'Pathardi', 'Parner', 'Nevasa', 'Shevgaon', 'Karjat'],
+    'Akola': ['Akola', 'Akot', 'Balapur', 'Murtijapur', 'Patur', 'Telhara', 'Barshitakli', 'Patur'],
+    'Amravati': ['Amravati', 'Achalpur', 'Daryapur', 'Anjangaon', 'Chandur Railway', 'Dhamangaon Railway', 'Morshi', 'Warud', 'Teosa', 'Chandur Bazar'],
+    'Aurangabad': ['Aurangabad', 'Gangapur', 'Paithan', 'Sillod', 'Vaijapur', 'Kannad', 'Soegaon', 'Khuldabad', 'Phulambri'],
+    'Beed': ['Beed', 'Georai', 'Majalgaon', 'Parli', 'Ashti', 'Patoda', 'Shirur (Kasar)', 'Wadwani', 'Kaij', 'Dharur'],
+    'Bhandara': ['Bhandara', 'Tumsar', 'Sakoli', 'Lakhani', 'Lakhandur', 'Mohadi', 'Pauni', 'Lakhni'],
+    'Buldhana': ['Buldhana', 'Chikhli', 'Deulgaon Raja', 'Jalgaon (Jamod)', 'Khamgaon', 'Lonar', 'Mehkar', 'Motala', 'Nandura', 'Sangrampur', 'Shegaon'],
+    'Chandrapur': ['Chandrapur', 'Ballarpur', 'Bhadravati', 'Bramhapuri', 'Chimur', 'Gondpipri', 'Jiwati', 'Korpana', 'Mul', 'Nagbhid', 'Pombhurna', 'Rajura', 'Sawali', 'Sindewahi', 'Warora'],
+    'Dhule': ['Dhule', 'Shirpur', 'Sakri', 'Shindkheda'],
+    'Gadchiroli': ['Gadchiroli', 'Aheri', 'Armori', 'Bhamragad', 'Chamorshi', 'Desaiganj', 'Dhanora', 'Etapalli', 'Kurkheda', 'Korchi', 'Mulchera', 'Sironcha', 'Wadsa'],
+    'Gondia': ['Gondia', 'Arjuni Morgaon', 'Deori', 'Goregaon', 'Salekasa', 'Tirora'],
+    'Hingoli': ['Hingoli', 'Aundha (Nagnath)', 'Kalamnuri', 'Sengaon'],
+    'Jalgaon': ['Jalgaon', 'Amalner', 'Bhusawal', 'Chalisgaon', 'Chopda', 'Erandol', 'Jamner', 'Muktainagar', 'Pachora', 'Parola', 'Raver', 'Yawal'],
+    'Jalna': ['Jalna', 'Ambad', 'Bhokardan', 'Ghansawangi', 'Jafferabad', 'Mantha', 'Partur'],
+    'Kolhapur': ['Kolhapur', 'Ajra', 'Bavda', 'Bhudargad', 'Chandgad', 'Gadhinglaj', 'Gaganbawada', 'Hatkanangle', 'Kagal', 'Karveer', 'Panhala', 'Radhanagari', 'Shahuwadi', 'Shirol'],
+    'Latur': ['Latur', 'Ahmadpur', 'Ausa', 'Chakur', 'Deoni', 'Jalkot', 'Nilanga', 'Renapur', 'Shirur Anantpal', 'Udgir'],
+    'Mumbai City': ['Mumbai'],
+    'Mumbai Suburban': ['Mumbai', 'Thane', 'Kalyan', 'Ulhasnagar', 'Ambernath', 'Badlapur', 'Mira-Bhayandar', 'Vasai-Virar', 'Bhiwandi-Nizampur', 'Kalyan-Dombivali'],
+    'Nagpur': ['Nagpur', 'Hingna', 'Kamptee', 'Katol', 'Kuhi', 'Mauda', 'Narkhed', 'Parseoni', 'Ramtek', 'Savner', 'Umred'],
+    'Nanded': ['Nanded', 'Ardhapur', 'Bhokar', 'Biloli', 'Deglur', 'Dharmabad', 'Hadgaon', 'Kandhar', 'Kinwat', 'Loha', 'Mahur', 'Mudkhed', 'Mukhed', 'Naigaon (Khairgaon)', 'Niwasa', 'Parbhani', 'Purna'],
+    'Nandurbar': ['Nandurbar', 'Akkalkuwa', 'Nawapur', 'Shahade', 'Taloda'],
+    'Nashik': ['Nashik', 'Baglan', 'Chandwad', 'Deola', 'Dindori', 'Igatpuri', 'Kalwan', 'Malegaon', 'Nandgaon', 'Niphad', 'Peth', 'Sinnar', 'Surgana', 'Trimbakeshwar', 'Yevla'],
+    'Osmanabad': ['Osmanabad', 'Bhum', 'Kalamb', 'Lohara', 'Paranda', 'Tuljapur', 'Washi'],
+    'Palghar': ['Palghar', 'Dahanu', 'Jawhar', 'Mokhada', 'Talasari', 'Vikramgad', 'Vasai'],
+    'Parbhani': ['Parbhani', 'Gangakhed', 'Jintur', 'Manwath', 'Palam', 'Pathri', 'Purna', 'Sailu', 'Sonpeth'],
+    'Pune': ['Pune', 'Ambegaon', 'Baramati', 'Bhor', 'Daund', 'Haveli', 'Indapur', 'Junnar', 'Khed', 'Mawal', 'Mulshi', 'Purandar', 'Shirur', 'Velhe'],
+    'Raigad': ['Raigad', 'Alibag', 'Karjat', 'Khalapur', 'Mahad', 'Mangaon', 'Mhasla', 'Murud', 'Panvel', 'Pen', 'Poladpur', 'Roha', 'Shrivardhan', 'Sudhagad', 'Tala', 'Uran'],
+    'Ratnagiri': ['Ratnagiri', 'Chiplun', 'Dapoli', 'Guhagar', 'Khed', 'Lanja', 'Mandangad', 'Rajapur', 'Sangameshwar'],
+    'Sangli': ['Sangli', 'Atpadi', 'Jat', 'Kadegaon', 'Kavathemahankal', 'Khanapur (Vita)', 'Miraj', 'Palus', 'Shirala', 'Tasgaon', 'Walwa'],
+    'Satara': ['Satara', 'Jaoli', 'Karad', 'Khandala', 'Khatav', 'Koregaon', 'Mahabaleshwar', 'Man', 'Patan', 'Phaltan', 'Wai'],
+    'Sindhudurg': ['Sindhudurg', 'Devgad', 'Kankavli', 'Kudal', 'Malvan', 'Sawantwadi', 'Vaibhavwadi', 'Vengurla'],
+    'Solapur': ['Solapur', 'Akkalkot', 'Barshi', 'Karmala', 'Madha', 'Mangalvedhe', 'Malshiras', 'Mohol', 'Pandharpur', 'Sangole'],
+    'Thane': ['Thane', 'Ambarnath', 'Bhiwandi', 'Kalyan', 'Mira-Bhayandar', 'Ulhasnagar', 'Vasai-Virar', 'Dombivali', 'Badlapur', 'Ambernath'],
+    'Wardha': ['Wardha', 'Arvi', 'Ashti', 'Deoli', 'Hinganghat', 'Karanja', 'Samudrapur', 'Seloo'],
+    'Washim': ['Washim', 'Karanja', 'Malegaon', 'Mangrulpir', 'Manora', 'Risod'],
+    'Yavatmal': ['Yavatmal', 'Arni', 'Babhulgaon', 'Darwha', 'Digras', 'Ghatanji', 'Kalamb', 'Kelapur', 'Mahagaon', 'Maregaon', 'Ner', 'Pusad', 'Ralegaon', 'Umarkhed', 'Wani', 'Zari-Jamani']
+  };
+
+  const states = [
+    'Maharashtra', 'Delhi', 'Karnataka', 'Tamil Nadu', 'Telangana', 'Gujarat', 'Rajasthan',
+    'Uttar Pradesh', 'West Bengal', 'Andhra Pradesh', 'Madhya Pradesh', 'Kerala'
+  ];
+
+  // Get all Maharashtra districts
+  const maharashtraDistricts = Object.keys(maharashtraData).sort();
+
+  // Get cities based on selected district
+  const getCitiesForDistrict = (district) => {
+    return maharashtraData[district] || [];
+  };
+
+  // Watch for district changes
+  const watchedDistrict = watch('district');
 
   // Populate form with existing member data
   useEffect(() => {
     if (member) {
+      console.log('EditMemberForm - Member data:', member);
+      console.log('EditMemberForm - District value:', member.district);
+      console.log('EditMemberForm - State value:', member.state);
+      console.log('EditMemberForm - City value:', member.city);
+      
       setValue('name', member.name);
       setValue('businessName', member.businessName);
       setValue('phone', member.phone);
       setValue('state', member.state);
       setValue('businessType', member.businessType);
       setValue('city', member.city);
+      setValue('district', member.district);
       setValue('pincode', member.pincode);
       setValue('associationName', member.associationName);
       setValue('birthDate', member.birthDate ? member.birthDate.split('T')[0] : '');
+      
+      // Set selectedDistrict state for cascading dropdowns
+      if (member.district) {
+        console.log('EditMemberForm - Setting selectedDistrict to:', member.district);
+        setSelectedDistrict(member.district);
+      } else {
+        console.log('EditMemberForm - No district data, selectedDistrict remains empty');
+      }
     }
   }, [member, setValue]);
 
@@ -50,6 +122,9 @@ const EditMemberForm = ({ member, onSuccess, onCancel }) => {
     try {
       setLoading(true);
       
+      console.log('EditMemberForm - Form data:', data);
+      console.log('EditMemberForm - District from form:', data.district);
+      
       // Transform form data to match backend schema
       const memberData = {
         name: data.name.trim(),
@@ -58,13 +133,18 @@ const EditMemberForm = ({ member, onSuccess, onCancel }) => {
         state: data.state,
         businessType: data.businessType,
         city: data.city,
+        district: data.district,
         pincode: data.pincode,
         associationName: data.associationName,
         profileImage: image?.name || member.profileImage,
         birthDate: data.birthDate ? formatDateForAPI(data.birthDate) : null
       };
 
+      console.log('EditMemberForm - Member data being sent:', memberData);
+      console.log('EditMemberForm - District being sent:', memberData.district);
+
       const response = await memberApi.updateMember(member._id, memberData);
+      console.log('EditMemberForm - Response from API:', response);
       onSuccess(response.member);
     } catch (error) {
       console.error('Error updating member:', error);
@@ -157,31 +237,23 @@ const EditMemberForm = ({ member, onSuccess, onCancel }) => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">State *</label>
           <select
-            {...register('state', { required: 'State is required' })}
+            {...register('state', { 
+              required: 'State is required',
+              onChange: (e) => {
+                // Reset district and city when state changes
+                setValue('district', '');
+                setValue('city', '');
+                setSelectedDistrict('');
+              }
+            })}
             className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
               errors.state ? 'border-red-500' : 'border-gray-300'
             }`}
           >
-            <option value="Maharashtra">Maharashtra</option>
-            <option value="Delhi">Delhi</option>
-            <option value="Karnataka">Karnataka</option>
-            <option value="Tamil Nadu">Tamil Nadu</option>
-            <option value="Telangana">Telangana</option>
-            <option value="Gujarat">Gujarat</option>
-            <option value="Uttar Pradesh">Uttar Pradesh</option>
-            <option value="West Bengal">West Bengal</option>
-            <option value="Rajasthan">Rajasthan</option>
-            <option value="Andhra Pradesh">Andhra Pradesh</option>
-            <option value="Madhya Pradesh">Madhya Pradesh</option>
-            <option value="Kerala">Kerala</option>
-            <option value="Odisha">Odisha</option>
-            <option value="Punjab">Punjab</option>
-            <option value="Haryana">Haryana</option>
-            <option value="Bihar">Bihar</option>
-            <option value="Jharkhand">Jharkhand</option>
-            <option value="Assam">Assam</option>
-            <option value="Chhattisgarh">Chhattisgarh</option>
-            <option value="Uttarakhand">Uttarakhand</option>
+            <option value="">Select state</option>
+            {states.map(state => (
+              <option key={state} value={state}>{state}</option>
+            ))}
           </select>
           {errors.state && (
             <p className="text-red-500 text-sm mt-1">{errors.state.message}</p>
@@ -210,48 +282,53 @@ const EditMemberForm = ({ member, onSuccess, onCancel }) => {
         </div>
 
         <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">District *</label>
+          <select
+            {...register('district', { 
+              required: 'District is required',
+              onChange: (e) => {
+                // Reset city when district changes
+                setValue('city', '');
+                setSelectedDistrict(e.target.value);
+              }
+            })}
+            className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+              errors.district ? 'border-red-500' : 'border-gray-300'
+            }`}
+            disabled={!watch('state') || watch('state') !== 'Maharashtra'}
+          >
+            <option value="">Select district</option>
+            {watch('state') === 'Maharashtra' && maharashtraDistricts.map(district => (
+              <option key={district} value={district}>{district}</option>
+            ))}
+          </select>
+          {errors.district && (
+            <p className="text-red-500 text-sm mt-1">{errors.district.message}</p>
+          )}
+          {watch('state') && watch('state') !== 'Maharashtra' && (
+            <p className="text-gray-500 text-sm mt-1">District selection is available only for Maharashtra</p>
+          )}
+        </div>
+
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">City *</label>
           <select
             {...register('city', { required: 'City is required' })}
             className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
               errors.city ? 'border-red-500' : 'border-gray-300'
             }`}
+            disabled={!watchedDistrict || !getCitiesForDistrict(watchedDistrict).length}
           >
             <option value="">Select city</option>
-            <option value="Mumbai">Mumbai</option>
-            <option value="Pune">Pune</option>
-            <option value="Nagpur">Nagpur</option>
-            <option value="Thane">Thane</option>
-            <option value="Nashik">Nashik</option>
-            <option value="Aurangabad">Aurangabad</option>
-            <option value="Solapur">Solapur</option>
-            <option value="Kolhapur">Kolhapur</option>
-            <option value="Amravati">Amravati</option>
-            <option value="Nanded">Nanded</option>
-            <option value="Sangli">Sangli</option>
-            <option value="Jalgaon">Jalgaon</option>
-            <option value="Akola">Akola</option>
-            <option value="Latur">Latur</option>
-            <option value="Dhule">Dhule</option>
-            <option value="Ahmednagar">Ahmednagar</option>
-            <option value="Chandrapur">Chandrapur</option>
-            <option value="Parbhani">Parbhani</option>
-            <option value="Beed">Beed</option>
-            <option value="Gondia">Gondia</option>
-            <option value="Wardha">Wardha</option>
-            <option value="Yavatmal">Yavatmal</option>
-            <option value="Buldhana">Buldhana</option>
-            <option value="Hingoli">Hingoli</option>
-            <option value="Washim">Washim</option>
-            <option value="Gadchiroli">Gadchiroli</option>
-            <option value="Bhandara">Bhandara</option>
-            <option value="Osmanabad">Osmanabad</option>
-            <option value="Satara">Satara</option>
-            <option value="Ratnagiri">Ratnagiri</option>
-            <option value="Sindhudurg">Sindhudurg</option>
+            {watchedDistrict && getCitiesForDistrict(watchedDistrict).map(city => (
+              <option key={city} value={city}>{city}</option>
+            ))}
           </select>
           {errors.city && (
             <p className="text-red-500 text-sm mt-1">{errors.city.message}</p>
+          )}
+          {watchedDistrict && !getCitiesForDistrict(watchedDistrict).length && (
+            <p className="text-gray-500 text-sm mt-1">No cities available for selected district</p>
           )}
         </div>
 

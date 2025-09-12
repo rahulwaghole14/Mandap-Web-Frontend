@@ -7,6 +7,7 @@ import { memberApi } from '../services/memberApi';
 import AddMemberForm from '../components/AddMemberForm';
 import EditMemberForm from '../components/EditMemberForm';
 import { formatDateForDisplay, calculateAge } from '../utils/dateUtils';
+import * as XLSX from 'xlsx';
 
 const Members = () => {
   const [search, setSearch] = useState('');
@@ -21,6 +22,7 @@ const Members = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
+  const [exportLoading, setExportLoading] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -153,11 +155,16 @@ const Members = () => {
   };
 
   const handleView = (member) => {
+    console.log('Member data for view:', member);
+    console.log('Available fields:', Object.keys(member));
+    console.log('District value:', member.district);
     setSelectedMember(member);
     setShowViewModal(true);
   };
 
   const handleEdit = (member) => {
+    console.log('Member data for edit:', member);
+    console.log('District value for edit:', member.district);
     setSelectedMember(member);
     setShowEditModal(true);
   };
@@ -185,8 +192,197 @@ const Members = () => {
     }
   };
 
-  const exportMembers = () => {
-    toast.success('Members list exported successfully');
+  const exportMembers = async () => {
+    try {
+      setExportLoading(true);
+      console.log('Starting members export...');
+
+      // Fetch all members from API (with current filters) using pagination
+      let allMembers = [];
+      let currentPage = 1;
+      let hasMorePages = true;
+      const limitPerPage = 50; // Reasonable page size
+
+      const baseParams = {};
+
+      if (search && search.trim()) {
+        baseParams.search = search.trim();
+      }
+
+      if (city && city.trim()) {
+        baseParams.city = city.trim();
+      }
+
+      if (businessType && businessType.trim()) {
+        baseParams.businessType = businessType.trim();
+      }
+
+      console.log('Exporting members with base params:', baseParams);
+
+      // Fetch all pages
+      while (hasMorePages) {
+        const params = {
+          ...baseParams,
+          page: currentPage,
+          limit: limitPerPage
+        };
+
+        console.log(`Fetching page ${currentPage} with params:`, params);
+
+        const response = await memberApi.getMembers(params);
+        console.log(`Page ${currentPage} response:`, response);
+
+        const pageMembers = response.members || [];
+        allMembers = [...allMembers, ...pageMembers];
+
+        // Check if there are more pages
+        const totalPages = response.totalPages || 1;
+        hasMorePages = currentPage < totalPages;
+        currentPage++;
+
+        console.log(`Page ${currentPage - 1}: ${pageMembers.length} members, Total so far: ${allMembers.length}, Has more pages: ${hasMorePages}`);
+      }
+
+      console.log(`Fetched ${allMembers.length} total members for export`);
+
+      if (allMembers.length === 0) {
+        toast.error('No members found to export');
+        return;
+      }
+
+      // Debug: Log the structure of the first member to see available fields
+      if (allMembers.length > 0) {
+        console.log('Sample member data structure:', allMembers[0]);
+        console.log('Available fields:', Object.keys(allMembers[0]));
+      }
+
+      // Prepare export data
+      const exportData = allMembers.map((member, index) => {
+        try {
+          return {
+            'S.No': index + 1,
+            'Member Name': member.name || 'N/A',
+            'Business Name': member.businessName || 'N/A',
+            'Business Type': member.businessType || 'N/A',
+            'Phone': member.phone || 'N/A',
+            'City': member.city || 'N/A',
+            'District': member.district || 'N/A',
+            'State': member.state || 'N/A',
+            'Pincode': member.pincode || 'N/A',
+            'Birth Date': member.birthDate ? formatDateForDisplay(member.birthDate) : 'N/A',
+            'Age': member.birthDate ? calculateAge(member.birthDate) : 'N/A',
+            'Association': member.associationName || 'N/A',
+            'Status': member.isActive !== undefined ? (member.isActive ? 'Active' : 'Inactive') : 'N/A'
+          };
+        } catch (memberError) {
+          console.error('Error processing member:', member, memberError);
+          return {
+            'S.No': index + 1,
+            'Member Name': 'Error processing member',
+            'Business Name': 'N/A',
+            'Business Type': 'N/A',
+            'Phone': 'N/A',
+            'City': 'N/A',
+            'District': 'N/A',
+            'State': 'N/A',
+            'Pincode': 'N/A',
+            'Birth Date': 'N/A',
+            'Age': 'N/A',
+            'Association': 'N/A',
+            'Status': 'N/A'
+          };
+        }
+      });
+
+      console.log('Prepared export data:', exportData.slice(0, 2)); // Log first 2 rows
+
+      // Create workbook and worksheet
+      console.log('Creating Excel workbook...');
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(exportData);
+
+      // Set column widths
+      const columnWidths = [
+        { wch: 8 },   // S.No
+        { wch: 20 },  // Member Name
+        { wch: 25 },  // Business Name
+        { wch: 15 },  // Business Type
+        { wch: 15 },  // Phone
+        { wch: 15 },  // City
+        { wch: 15 },  // District
+        { wch: 15 },  // State
+        { wch: 10 },  // Pincode
+        { wch: 12 },  // Birth Date
+        { wch: 8 },   // Age
+        { wch: 25 },  // Association
+        { wch: 10 }   // Status
+      ];
+      ws['!cols'] = columnWidths;
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Members');
+
+      // Generate filename with current filters
+      let filename = 'Members_Export';
+      const filters = [];
+
+      if (search && search.trim()) {
+        filters.push(`Search_${search.trim().replace(/[^a-zA-Z0-9]/g, '_')}`);
+      }
+      if (city && city.trim()) {
+        filters.push(`City_${city.trim().replace(/[^a-zA-Z0-9]/g, '_')}`);
+      }
+      if (businessType && businessType.trim()) {
+        filters.push(`Business_${businessType.trim().replace(/[^a-zA-Z0-9]/g, '_')}`);
+      }
+
+      if (filters.length > 0) {
+        filename += `_${filters.join('_')}`;
+      }
+
+      filename += `_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+      console.log('Downloading file:', filename);
+
+      // Download the file
+      XLSX.writeFile(wb, filename);
+
+      // Show success message with details
+      const filterDetails = [];
+      if (search && search.trim()) filterDetails.push(`Search: "${search.trim()}"`);
+      if (city && city.trim()) filterDetails.push(`City: "${city.trim()}"`);
+      if (businessType && businessType.trim()) filterDetails.push(`Business Type: "${businessType.trim()}"`);
+
+      const message = filterDetails.length > 0 
+        ? `Exported ${exportData.length} members (${filterDetails.join(', ')})`
+        : `Exported ${exportData.length} members`;
+
+      console.log('Export successful:', message);
+      toast.success(message);
+
+    } catch (error) {
+      console.error('Error exporting members:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+
+      // More specific error messages
+      if (error.response?.status === 401) {
+        toast.error('Authentication failed. Please login again.');
+      } else if (error.response?.status === 403) {
+        toast.error('Access denied. You do not have permission to export members.');
+      } else if (error.response?.status >= 500) {
+        toast.error('Server error. Please try again later.');
+      } else if (error.message?.includes('Network Error')) {
+        toast.error('Network error. Please check your internet connection.');
+      } else {
+        toast.error(`Failed to export members: ${error.message || 'Unknown error'}`);
+      }
+    } finally {
+      setExportLoading(false);
+    }
   };
 
 
@@ -209,10 +405,20 @@ const Members = () => {
             </button> */}
             <button
               onClick={exportMembers}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+              disabled={exportLoading}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Download className="h-4 w-4" />
-              <span>Export</span>
+              {exportLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Exporting...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  <span>Export</span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -496,6 +702,10 @@ const Members = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700">City</label>
                 <p className="text-sm text-gray-900">{selectedMember.city}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">District</label>
+                <p className="text-sm text-gray-900">{selectedMember.district || 'N/A'}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">State</label>
