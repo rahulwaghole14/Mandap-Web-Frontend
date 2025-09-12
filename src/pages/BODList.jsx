@@ -66,6 +66,22 @@ const BODList = () => {
       const response = await bodApi.getBODs({
         type: 'national'
       });
+      console.log('BOD API Response:', response);
+      console.log('BOD members data:', response.bods);
+      
+      // Log each BOD member's data structure
+      if (response.bods && response.bods.length > 0) {
+        response.bods.forEach((bod, index) => {
+          console.log(`BOD ${index + 1}:`, {
+            id: bod.id,
+            name: bod.name,
+            createdAt: bod.createdAt,
+            createdAtType: typeof bod.createdAt,
+            createdAtValue: bod.createdAt
+          });
+        });
+      }
+      
       setBods(response.bods || []);
     } catch (error) {
       console.error('Error fetching BOD members:', error);
@@ -178,14 +194,33 @@ const BODList = () => {
 
   // Helper function to format dates safely
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return null; // Return null instead of 'N/A' to allow fallback
     try {
       console.log('Formatting date:', dateString);
-      const date = new Date(dateString);
+      
+      // Handle different date formats
+      let date;
+      if (typeof dateString === 'string') {
+        // Try to parse the date string
+        date = new Date(dateString);
+      } else if (dateString instanceof Date) {
+        date = dateString;
+      } else if (dateString.timestamp) {
+        // Handle timestamp objects
+        date = new Date(dateString.timestamp);
+      } else if (dateString.$date) {
+        // Handle MongoDB date objects
+        date = new Date(dateString.$date);
+      } else {
+        console.log('Unknown date format:', dateString);
+        return null;
+      }
+      
       if (isNaN(date.getTime())) {
         console.log('Invalid date:', dateString);
-        return 'N/A';
+        return null;
       }
+      
       const formatted = date.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
@@ -195,7 +230,7 @@ const BODList = () => {
       return formatted;
     } catch (error) {
       console.error('Error formatting date:', error, 'Input:', dateString);
-      return 'N/A';
+      return null;
     }
   };
 
@@ -511,7 +546,9 @@ const BODList = () => {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{bod.name}</div>
-                          <div className="text-sm text-gray-500">Added: {formatDate(bod.createdAt)}</div>
+                          <div className="text-sm text-gray-500">
+                            Added: {formatDate(bod.createdAt) || formatDate(bod.created_at) || formatDate(bod.dateAdded) || 'Today'}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -1073,7 +1110,9 @@ const BODList = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Date Added</label>
-                <p className="text-sm text-gray-900">{formatDate(selected.createdAt)}</p>
+                <p className="text-sm text-gray-900">
+                  {formatDate(selected.createdAt) || formatDate(selected.created_at) || formatDate(selected.dateAdded) || 'Today'}
+                </p>
               </div>
             </div>
 
