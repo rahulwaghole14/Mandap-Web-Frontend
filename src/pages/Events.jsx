@@ -5,6 +5,7 @@ import Layout from '../components/Layout';
 import Modal from '../components/Modal';
 import { Plus, Edit, Trash2, Eye, Upload, X, CheckCircle, Calendar, MapPin, Users, Loader2 } from 'lucide-react';
 import { eventApi } from '../services/eventApi';
+import { uploadApi } from '../services/uploadApi';
 import toast from 'react-hot-toast';
 
 const Events = () => {
@@ -18,6 +19,7 @@ const Events = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const {
     register,
@@ -72,7 +74,13 @@ const Events = () => {
         return;
       }
       setImage(file);
-      setPreview(URL.createObjectURL(file));
+      // Use base64 for immediate preview (works without CORS issues)
+      uploadApi.convertToBase64(file).then(base64 => {
+        setPreview(base64);
+      }).catch(error => {
+        console.error('Error converting image to base64:', error);
+        setPreview(URL.createObjectURL(file));
+      });
     }
   };
 
@@ -102,6 +110,15 @@ const Events = () => {
     setValue('pincode', event.pincode || '');
     setValue('priority', event.priority || 'Medium');
     setValue('maxAttendees', event.maxAttendees || 100);
+    
+    // Set existing image preview if available
+    if (event.image || event.imageURL) {
+      setPreview(uploadApi.getImageUrl(event.image || event.imageURL));
+    } else {
+      setPreview(null);
+    }
+    setImage(null); // Reset new image selection
+    
     setShowEdit(true);
   };
 
@@ -117,14 +134,24 @@ const Events = () => {
 
   const onSubmitAdd = async (data) => {
     try {
+      setUploading(true);
       console.log('Form data received:', data);
+      
+      // Upload image first if provided
+      let imageFilename = null;
+      if (image) {
+        console.log('Uploading image for new event...');
+        const uploadResponse = await uploadApi.uploadImage(image);
+        imageFilename = uploadResponse.filename;
+        console.log('Image uploaded successfully:', imageFilename);
+      }
       
       // Transform form data to match backend schema
       const eventData = {
         title: data.title,
         description: data.description,
         type: data.type,
-        startDate: data.startDate, // Fixed: was using 'date' instead of 'startDate'
+        startDate: data.startDate,
         startTime: data.startTime,
         endTime: data.endTime,
         address: data.address || '',
@@ -136,13 +163,13 @@ const Events = () => {
         contactPerson: {
           name: data.contactPersonName || 'Admin',
           phone: data.contactPersonPhone || '9876543210',
-          email: data.contactPersonEmail || 'admin@mandapam.com' // Fixed email domain
+          email: data.contactPersonEmail || 'admin@mandapam.com'
         },
         priority: data.priority || 'Medium',
         targetAudience: data.targetAudience || [],
         maxAttendees: data.maxAttendees || 100,
         registrationRequired: data.registrationRequired || false,
-        imageURL: image?.name || null
+        image: imageFilename
       };
 
       console.log('Event data being sent:', eventData);
@@ -164,17 +191,30 @@ const Events = () => {
       console.error('Error status:', error.response?.status);
       const errorMessage = error.response?.data?.message || 'Failed to create event';
       toast.error(errorMessage);
+    } finally {
+      setUploading(false);
     }
   };
 
   const onSubmitEdit = async (data) => {
     try {
+      setUploading(true);
+      
+      // Upload new image if provided
+      let imageFilename = selected.image || selected.imageURL;
+      if (image) {
+        console.log('Uploading new image for event update...');
+        const uploadResponse = await uploadApi.uploadImage(image);
+        imageFilename = uploadResponse.filename;
+        console.log('New image uploaded successfully:', imageFilename);
+      }
+      
       // Transform form data to match backend schema
       const eventData = {
         title: data.title,
         description: data.description,
         type: data.type,
-        startDate: data.startDate, // Fixed: was using 'date' instead of 'startDate'
+        startDate: data.startDate,
         startTime: data.startTime,
         endTime: data.endTime,
         address: data.address || '',
@@ -192,16 +232,16 @@ const Events = () => {
         targetAudience: data.targetAudience || [],
         maxAttendees: data.maxAttendees || 100,
         registrationRequired: data.registrationRequired || false,
-        imageURL: image?.name || selected.imageURL
+        image: imageFilename
       };
 
       // Update event via API
-      const response = await eventApi.updateEvent(selected._id, eventData);
+      const response = await eventApi.updateEvent(selected.id, eventData);
       
       // Update event in the list
       setEvents(prevEvents => 
         prevEvents.map(event => 
-          event._id === selected._id ? response.event : event
+          event.id === selected.id ? response.event : event
         )
       );
       
@@ -213,17 +253,19 @@ const Events = () => {
       console.error('Error updating event:', error);
       const errorMessage = error.response?.data?.message || 'Failed to update event';
       toast.error(errorMessage);
+    } finally {
+      setUploading(false);
     }
   };
 
   const confirmDelete = async () => {
     try {
       // Delete event via API
-      await eventApi.deleteEvent(selected._id);
+      await eventApi.deleteEvent(selected.id);
       
       // Remove event from the list
       setEvents(prevEvents => 
-        prevEvents.filter(event => event._id !== selected._id)
+        prevEvents.filter(event => event.id !== selected.id)
       );
       
       toast.success(`Event "${selected.title}" deleted successfully`);
@@ -330,10 +372,10 @@ const Events = () => {
         {!loading && !error && events.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map(event => (
-              <div key={event._id} className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow">
+              <div key={event.id} className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow">
                 <div className="h-48 bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center">
-                  {event.imageURL ? (
-                    <img src={event.imageURL} alt={event.title} className="h-full w-full object-cover" />
+                  {(event.image || event.imageURL) ? (
+                    <img src={uploadApi.getImageUrl(event.image || event.imageURL)} alt={event.title} className="h-full w-full object-cover" />
                   ) : (
                     <Calendar className="h-16 w-16 text-primary-600" />
                   )}
@@ -677,9 +719,17 @@ const Events = () => {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              disabled={uploading}
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
-              Create Event
+              {uploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Creating...</span>
+                </>
+              ) : (
+                <span>Create Event</span>
+              )}
             </button>
           </div>
         </form>
@@ -945,9 +995,17 @@ const Events = () => {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              disabled={uploading}
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
-              Update Event
+              {uploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Updating...</span>
+                </>
+              ) : (
+                <span>Update Event</span>
+              )}
             </button>
           </div>
         </form>
@@ -959,8 +1017,8 @@ const Events = () => {
           <div className="space-y-4">
             <div className="text-center">
               <div className="h-32 bg-gradient-to-br from-primary-100 to-primary-200 rounded-lg flex items-center justify-center mb-4">
-                {selected.imageURL ? (
-                  <img src={selected.imageURL} alt={selected.title} className="h-full w-full object-cover rounded-lg" />
+                {(selected.image || selected.imageURL) ? (
+                  <img src={uploadApi.getImageUrl(selected.image || selected.imageURL)} alt={selected.title} className="h-full w-full object-cover rounded-lg" />
                 ) : (
                   <Calendar className="h-16 w-16 text-primary-600" />
                 )}

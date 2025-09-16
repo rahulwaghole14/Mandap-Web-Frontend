@@ -1,0 +1,5 @@
+name,businessName,businessType,phone,email,city,state,district,associationName,birthDate,address,pincode,gstNumber,description,experience
+"John Doe","ABC Mandap","mandap","9876543210","john@example.com","Mumbai","Maharashtra","Mumbai","Mumbai Association","1990-01-01","123 Main Street","400001","27ABCDE1234F1Z5","Professional mandap services","5"
+"Jane Smith","XYZ Catering","catering","9876543211","jane@example.com","Pune","Maharashtra","Pune","Pune Association","1985-05-15","456 Oak Avenue","411001","27FGHIJ5678K9L2","Quality catering services","8"
+"Mike Johnson","Sound Solutions","sound","9876543212","mike@example.com","Nagpur","Maharashtra","Nagpur","Nagpur Association","1988-12-10","789 Pine Road","440001","27MNOPQ9012R3S4","Professional sound systems","6"
+

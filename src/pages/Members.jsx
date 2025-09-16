@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { Search, Filter, Eye, Edit, Trash2, Plus, Download, UserCheck, UserX, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Filter, Eye, Edit, Trash2, Plus, Download, UserCheck, UserX, Loader2, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 import { memberApi } from '../services/memberApi';
 import AddMemberForm from '../components/AddMemberForm';
 import EditMemberForm from '../components/EditMemberForm';
+import CSVImportModal from '../components/CSVImportModal';
 import { formatDateForDisplay, calculateAge } from '../utils/dateUtils';
 import * as XLSX from 'xlsx';
 
@@ -18,6 +19,7 @@ const Members = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -69,7 +71,7 @@ const Members = () => {
         setCurrentPage(response.page || 1);
       } else {
         // Fallback for old API response format
-        setMembers(response.members || []);
+      setMembers(response.members || []);
         setTotalMembers(response.total || response.members?.length || 0);
         setTotalPages(Math.ceil((response.total || response.members?.length || 0) / pageSize));
       }
@@ -396,13 +398,20 @@ const Members = () => {
             <p className="text-gray-600 mt-2">Manage association members and their status</p>
           </div>
           <div className="flex space-x-3">
-            {/* <button
+            <button
               onClick={() => setShowAddModal(true)}
               className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2"
             >
               <Plus className="h-4 w-4" />
               <span>Add Member</span>
-            </button> */}
+            </button>
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+            >
+              <Upload className="h-4 w-4" />
+              <span>Import CSV</span>
+            </button>
             <button
               onClick={exportMembers}
               disabled={exportLoading}
@@ -415,8 +424,8 @@ const Members = () => {
                 </>
               ) : (
                 <>
-                  <Download className="h-4 w-4" />
-                  <span>Export</span>
+              <Download className="h-4 w-4" />
+              <span>Export</span>
                 </>
               )}
             </button>
@@ -466,7 +475,7 @@ const Members = () => {
         {/* Results Summary */}
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
-            <p className="text-gray-600">
+          <p className="text-gray-600">
               Showing <span className="font-semibold">{((currentPage - 1) * pageSize) + 1}</span> to <span className="font-semibold">{Math.min(currentPage * pageSize, totalMembers)}</span> of <span className="font-semibold">{totalMembers}</span> members
             </p>
             <select
@@ -511,95 +520,95 @@ const Members = () => {
         {/* Members Table */}
         {!loading && !error && (
           <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Birth Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Association</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filtered.map(member => (
-                    <tr key={member.id || member._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                            <span className="text-sm font-medium text-gray-700">
-                              {member.name.split(' ').map(n => n[0]).join('')}
-                            </span>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{member.name}</div>
-                            <div className="text-sm text-gray-500">ID: {member.id || member._id}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm text-gray-900">{member.businessName}</div>
-                          <div className="text-sm text-gray-500">{member.phone}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm text-gray-900">{formatDateForDisplay(member.birthDate)}</div>
-                          {member.birthDate && (
-                            <div className="text-sm text-gray-500">Age: {calculateAge(member.birthDate)} years</div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm text-gray-900">{member.city}</div>
-                          <div className="text-sm text-gray-500">{member.state}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="space-y-1">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getBusinessTypeColor(member.businessType)}`}>
-                            {member.businessType ? member.businessType.charAt(0).toUpperCase() + member.businessType.slice(1) : 'N/A'}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                                 <tr>
+                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
+                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business</th>
+                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Birth Date</th>
+                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business Type</th>
+                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Association</th>
+                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                 </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filtered.map(member => (
+                  <tr key={member.id || member._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                          <span className="text-sm font-medium text-gray-700">
+                            {member.name.split(' ').map(n => n[0]).join('')}
                           </span>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{member.associationName}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleView(member)}
-                            className="text-blue-600 hover:text-blue-900 p-1"
-                            title="View Details"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleEdit(member)}
-                            className="text-yellow-600 hover:text-yellow-900 p-1"
-                            title="Edit Member"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(member)}
-                            className="text-red-600 hover:text-red-900 p-1"
-                            title="Delete Member"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{member.name}</div>
+                          <div className="text-sm text-gray-500">ID: {member.id || member._id}</div>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                    </td>
+                                         <td className="px-6 py-4 whitespace-nowrap">
+                       <div>
+                         <div className="text-sm text-gray-900">{member.businessName}</div>
+                         <div className="text-sm text-gray-500">{member.phone}</div>
+                       </div>
+                     </td>
+                     <td className="px-6 py-4 whitespace-nowrap">
+                       <div>
+                         <div className="text-sm text-gray-900">{formatDateForDisplay(member.birthDate)}</div>
+                         {member.birthDate && (
+                           <div className="text-sm text-gray-500">Age: {calculateAge(member.birthDate)} years</div>
+                         )}
+                       </div>
+                     </td>
+                     <td className="px-6 py-4 whitespace-nowrap">
+                       <div>
+                         <div className="text-sm text-gray-900">{member.city}</div>
+                         <div className="text-sm text-gray-500">{member.state}</div>
+                       </div>
+                     </td>
+                     <td className="px-6 py-4 whitespace-nowrap">
+                       <div className="space-y-1">
+                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getBusinessTypeColor(member.businessType)}`}>
+                           {member.businessType ? member.businessType.charAt(0).toUpperCase() + member.businessType.slice(1) : 'N/A'}
+                         </span>
+                       </div>
+                     </td>
+                     <td className="px-6 py-4 whitespace-nowrap">
+                       <div className="text-sm text-gray-900">{member.associationName}</div>
+                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleView(member)}
+                          className="text-blue-600 hover:text-blue-900 p-1"
+                          title="View Details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleEdit(member)}
+                          className="text-yellow-600 hover:text-yellow-900 p-1"
+                          title="Edit Member"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(member)}
+                          className="text-red-600 hover:text-red-900 p-1"
+                          title="Delete Member"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
             
             {/* Pagination Controls */}
             {totalPages > 1 && (
@@ -662,7 +671,7 @@ const Members = () => {
                 </div>
               </div>
             )}
-          </div>
+        </div>
         )}
       </div>
 
@@ -784,6 +793,17 @@ const Members = () => {
           />
         )}
       </Modal>
+
+      {/* CSV Import Modal */}
+      <CSVImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImportSuccess={() => {
+          setShowImportModal(false);
+          fetchMembers(currentPage);
+          fetchStats();
+        }}
+      />
     </Layout>
   );
 };
