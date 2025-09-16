@@ -3,6 +3,11 @@
 ## Overview
 This document outlines the backend requirements for implementing CSV import functionality for the Members page. The system should allow bulk import of member data with proper validation, error handling, and progress tracking.
 
+## Character Encoding Support
+- **UTF-8 Encoding**: Full support for international characters including Marathi, Hindi, and other Devanagari scripts
+- **Unicode Support**: All Unicode characters should be properly handled and stored
+- **No Character Limitations**: Names, addresses, and descriptions can contain any valid Unicode characters
+
 ## API Endpoint Specification
 
 ### Endpoint

@@ -6,7 +6,14 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
-    open: true
+    open: true,
+    proxy: {
+      '/uploads': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false
+      }
+    }
   },
   build: {
     rollupOptions: {
@@ -19,6 +26,9 @@ export default defineConfig({
   preview: {
     port: 3000
   }
+  
 })
+
+
 
 

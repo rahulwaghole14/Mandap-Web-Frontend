@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import jwtDecode from 'jwt-decode';
 import axios from 'axios';
+import { API_BASE_URL } from '../constants';
 
 const AuthContext = createContext();
 
@@ -20,7 +21,7 @@ export const AuthProvider = ({ children }) => {
   // Configure axios defaults with backend URL
   useEffect(() => {
     // Set base URL for backend API
-    axios.defaults.baseURL = 'https://mandapam-backend-97mi.onrender.com';
+    axios.defaults.baseURL = API_BASE_URL.replace('/api', '');
     
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;

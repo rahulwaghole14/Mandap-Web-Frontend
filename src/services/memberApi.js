@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_BASE_URL = 'https://mandapam-backend-97mi.onrender.com/api';
+import { API_BASE_URL } from '../constants';
 
 const getAuthToken = () => {
   return localStorage.getItem('token');
@@ -8,11 +7,24 @@ const getAuthToken = () => {
 
 const createAuthInstance = () => {
   const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
   return axios.create({
     baseURL: API_BASE_URL,
     timeout: 10000, // 10 second timeout
+    headers
+  });
+};
+
+const createPublicInstance = () => {
+  return axios.create({
+    baseURL: API_BASE_URL,
+    timeout: 10000,
     headers: {
-      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     }
   });
@@ -23,8 +35,7 @@ export const memberApi = {
   getMembers: async (params = {}) => {
     try {
       console.log('MemberApi - Sending params:', params);
-      const instance = createAuthInstance();
-      const response = await instance.get('/members', { params });
+      const response = await createAuthInstance().get('/members', { params });
       console.log('MemberApi - Response:', response.data);
       
       // Debug: Check the structure of member data
@@ -38,6 +49,16 @@ export const memberApi = {
       
       return response.data;
     } catch (error) {
+      if (error.response?.status === 401) {
+        try {
+          console.log('MemberApi - Trying public access...');
+          const response = await createPublicInstance().get('/members', { params });
+          return response.data;
+        } catch (publicError) {
+          console.error('MemberApi - Public access also failed:', publicError);
+          throw publicError;
+        }
+      }
       console.error('Error fetching members:', error);
       console.error('Error response:', error.response?.data);
       console.error('Error status:', error.response?.status);

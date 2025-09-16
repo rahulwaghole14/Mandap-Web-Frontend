@@ -14,6 +14,12 @@ const CSVImportModal = ({ isOpen, onClose, onImportSuccess }) => {
   const handleFileSelect = (event) => {
     const selectedFile = event.target.files[0];
     if (selectedFile) {
+      // Prevent multiple file selections while processing
+      if (isProcessing) {
+        toast.error('Please wait for the current file to finish processing');
+        return;
+      }
+      
       if (selectedFile.type !== 'text/csv' && !selectedFile.name.endsWith('.csv')) {
         toast.error('Please select a valid CSV file');
         return;
@@ -32,7 +38,9 @@ const CSVImportModal = ({ isOpen, onClose, onImportSuccess }) => {
   const parseCSVFile = (file) => {
     setIsProcessing(true);
     
+    // Create a new FileReader instance for each file read operation
     const reader = new FileReader();
+    
     reader.onload = (e) => {
       try {
         const csvText = e.target.result;
@@ -42,8 +50,13 @@ const CSVImportModal = ({ isOpen, onClose, onImportSuccess }) => {
           const result = Papa.parse(csvText, {
             header: true,
             skipEmptyLines: true,
+            encoding: 'UTF-8',
             transformHeader: (header) => header.trim(),
-            transform: (value) => value.trim()
+            transform: (value) => value.trim(),
+            // Support for Unicode characters including Marathi/Devanagari
+            delimiter: ',',
+            quoteChar: '"',
+            escapeChar: '"'
           });
 
           if (result.errors.length > 0) {
@@ -87,7 +100,14 @@ const CSVImportModal = ({ isOpen, onClose, onImportSuccess }) => {
       }
     };
     
-    reader.readAsText(file);
+    reader.onerror = (error) => {
+      console.error('FileReader error:', error);
+      toast.error('Error reading CSV file');
+      setIsProcessing(false);
+    };
+    
+    // Read file with UTF-8 encoding to support Marathi/Devanagari characters
+    reader.readAsText(file, 'UTF-8');
   };
 
   const validateCSVStructure = (data) => {
@@ -97,12 +117,31 @@ const CSVImportModal = ({ isOpen, onClose, onImportSuccess }) => {
     
     // Check if all required fields are present
     const headers = Object.keys(data[0] || {});
-    const missingFields = requiredFields.filter(field => !headers.includes(field));
+    
+    // Create a mapping for alternative column names
+    const columnMapping = {
+      'Name': 'name',
+      'Business_Name': 'businessName',
+      'BusinessType': 'businessType',
+      'Contact_No.': 'phone',
+      'Email_Id': 'email',
+      'City': 'city',
+      'State': 'state',
+      'District': 'district',
+      'AssociationName': 'associationName'
+    };
+    
+    // Check for missing fields, considering both original and mapped names
+    const missingFields = requiredFields.filter(field => {
+      const hasOriginalField = headers.includes(field);
+      const hasMappedField = headers.some(header => columnMapping[header] === field);
+      return !hasOriginalField && !hasMappedField;
+    });
     
     if (missingFields.length > 0) {
       errors.push({
         type: 'structure',
-        message: `Missing required columns: ${missingFields.join(', ')}`
+        message: `Missing required columns: ${missingFields.join(', ')}. Available columns: ${headers.join(', ')}`
       });
     }
 
@@ -110,35 +149,55 @@ const CSVImportModal = ({ isOpen, onClose, onImportSuccess }) => {
     data.forEach((row, index) => {
       const rowErrors = [];
       
+      // Helper function to get field value with mapping
+      const getFieldValue = (field) => {
+        // Try original field name first
+        if (row[field] !== undefined) {
+          return row[field];
+        }
+        // Try mapped field names
+        for (const [mappedName, originalName] of Object.entries(columnMapping)) {
+          if (originalName === field && row[mappedName] !== undefined) {
+            return row[mappedName];
+          }
+        }
+        return undefined;
+      };
+      
       // Check required fields
       requiredFields.forEach(field => {
-        if (!row[field] || row[field].trim() === '') {
+        const value = getFieldValue(field);
+        if (!value || value.toString().trim() === '') {
           rowErrors.push(`${field} is required`);
         }
       });
 
       // Validate business type
-      if (row.businessType && !validBusinessTypes.includes(row.businessType.toLowerCase())) {
-        rowErrors.push(`Invalid business type: ${row.businessType}`);
+      const businessType = getFieldValue('businessType');
+      if (businessType && !validBusinessTypes.includes(businessType.toLowerCase())) {
+        rowErrors.push(`Invalid business type: ${businessType}`);
       }
 
       // Validate phone number (basic check)
-      if (row.phone && !/^\d{10}$/.test(row.phone.replace(/\D/g, ''))) {
+      const phone = getFieldValue('phone');
+      if (phone && !/^\d{10}$/.test(phone.toString().replace(/\D/g, ''))) {
         rowErrors.push('Invalid phone number format');
       }
 
       // Validate email
-      if (row.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) {
+      const email = getFieldValue('email');
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         rowErrors.push('Invalid email format');
       }
 
       // Validate birth date
-      if (row.birthDate && row.birthDate.trim() !== '') {
-        const birthDate = new Date(row.birthDate);
-        if (isNaN(birthDate.getTime())) {
+      const birthDate = getFieldValue('birthDate');
+      if (birthDate && birthDate.toString().trim() !== '') {
+        const date = new Date(birthDate);
+        if (isNaN(date.getTime())) {
           rowErrors.push('Invalid birth date format');
         } else {
-          const age = new Date().getFullYear() - birthDate.getFullYear();
+          const age = new Date().getFullYear() - date.getFullYear();
           if (age < 18) {
             rowErrors.push('Member must be at least 18 years old');
           }
@@ -165,14 +224,39 @@ const CSVImportModal = ({ isOpen, onClose, onImportSuccess }) => {
     setStep(3);
     
     try {
-      const result = await memberImportApi.importMembers(parsedData);
+      // Map column names to expected format
+      const columnMapping = {
+        'Name': 'name',
+        'Business_Name': 'businessName',
+        'BusinessType': 'businessType',
+        'Contact_No.': 'phone',
+        'Email_Id': 'email',
+        'City': 'city',
+        'State': 'state',
+        'District': 'district',
+        'AssociationName': 'associationName'
+      };
+      
+      const mappedData = parsedData.map(row => {
+        const mappedRow = {};
+        Object.keys(row).forEach(key => {
+          const mappedKey = columnMapping[key] || key;
+          mappedRow[mappedKey] = row[key];
+        });
+        return mappedRow;
+      });
+      
+      console.log('Sending data to backend:', mappedData.slice(0, 2)); // Log first 2 records
+      const result = await memberImportApi.importMembers(mappedData);
+      console.log('Backend response:', result);
       
       if (result.success) {
         toast.success(`Import completed! ${result.summary.imported} members imported successfully.`);
         onImportSuccess && onImportSuccess();
         handleClose();
       } else {
-        toast.error('Import failed');
+        console.error('Import failed - result:', result);
+        toast.error(`Import failed: ${result.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Import error:', error);
@@ -240,6 +324,7 @@ const CSVImportModal = ({ isOpen, onClose, onImportSuccess }) => {
                   type="file"
                   accept=".csv"
                   onChange={handleFileSelect}
+                  disabled={isProcessing}
                   className="hidden"
                 />
                 <button

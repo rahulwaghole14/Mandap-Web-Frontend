@@ -3,9 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import Layout from '../components/Layout';
 import Modal from '../components/Modal';
-import { Plus, Edit, Trash2, Eye, Upload, X, CheckCircle, Calendar, MapPin, Users, Loader2 } from 'lucide-react';
+import EventGallery from '../components/EventGallery';
+import { Plus, Edit, Trash2, Eye, Upload, X, CheckCircle, Calendar, MapPin, Users, Loader2, Image } from 'lucide-react';
 import { eventApi } from '../services/eventApi';
 import { uploadApi } from '../services/uploadApi';
+import { galleryApi } from '../services/galleryApi';
+import { tokenFix } from '../utils/tokenFix';
 import toast from 'react-hot-toast';
 
 const Events = () => {
@@ -14,6 +17,7 @@ const Events = () => {
   const [showDelete, setShowDelete] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [showView, setShowView] = useState(false);
+  const [showGallery, setShowGallery] = useState(false);
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
   const [events, setEvents] = useState([]);
@@ -46,6 +50,15 @@ const Events = () => {
     } catch (error) {
       console.error('Error fetching events:', error);
       console.error('Error details:', error.response?.data);
+      
+      // Handle token-related errors
+      if (error.response?.status === 401) {
+        console.log('🚨 Authentication error detected');
+        toast.error('Authentication failed. Please login again.');
+        tokenFix.fixTokenIssues();
+        return;
+      }
+      
       setError('Failed to fetch events. Please try again.');
       toast.error('Failed to fetch events');
     } finally {
@@ -130,6 +143,11 @@ const Events = () => {
   const handleDelete = (event) => {
     setSelected(event);
     setShowDelete(true);
+  };
+
+  const handleOpenGallery = (event) => {
+    setSelected(event);
+    setShowGallery(true);
   };
 
   const onSubmitAdd = async (data) => {
@@ -375,10 +393,21 @@ const Events = () => {
               <div key={event.id} className="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow">
                 <div className="h-48 bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center">
                   {(event.image || event.imageURL) ? (
-                    <img src={uploadApi.getImageUrl(event.image || event.imageURL)} alt={event.title} className="h-full w-full object-cover" />
-                  ) : (
+                    <img 
+                      src={uploadApi.getImageUrl(event.image || event.imageURL)} 
+                      alt={event.title} 
+                      className="h-full w-full object-cover"
+                      crossOrigin="anonymous"
+                      onError={(e) => {
+                        console.error('Image failed to load:', e.target.src);
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div className="h-full w-full flex items-center justify-center" style={{display: (event.image || event.imageURL) ? 'none' : 'flex'}}>
                     <Calendar className="h-16 w-16 text-primary-600" />
-                  )}
+                  </div>
                 </div>
                 
                 <div className="p-6">
@@ -415,6 +444,13 @@ const Events = () => {
                         title="View Details"
                       >
                         <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleOpenGallery(event)}
+                        className="text-purple-600 hover:text-purple-900 p-1"
+                        title="Manage Gallery"
+                      >
+                        <Image className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleEdit(event)}
@@ -1018,10 +1054,21 @@ const Events = () => {
             <div className="text-center">
               <div className="h-32 bg-gradient-to-br from-primary-100 to-primary-200 rounded-lg flex items-center justify-center mb-4">
                 {(selected.image || selected.imageURL) ? (
-                  <img src={uploadApi.getImageUrl(selected.image || selected.imageURL)} alt={selected.title} className="h-full w-full object-cover rounded-lg" />
-                ) : (
+                  <img 
+                    src={uploadApi.getImageUrl(selected.image || selected.imageURL)} 
+                    alt={selected.title} 
+                    className="h-full w-full object-cover rounded-lg"
+                    crossOrigin="anonymous"
+                    onError={(e) => {
+                      console.error('Image failed to load in modal:', e.target.src);
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                ) : null}
+                <div className="h-full w-full flex items-center justify-center" style={{display: (selected.image || selected.imageURL) ? 'none' : 'flex'}}>
                   <Calendar className="h-16 w-16 text-primary-600" />
-                )}
+                </div>
               </div>
               <h3 className="text-xl font-semibold text-gray-900">{selected.title}</h3>
               <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selected.status)}`}>
@@ -1095,6 +1142,18 @@ const Events = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Event Gallery Modal */}
+      {showGallery && selected && (
+        <EventGallery
+          eventId={selected.id}
+          eventTitle={selected.title}
+          onClose={() => {
+            setShowGallery(false);
+            setSelected(null);
+          }}
+        />
+      )}
     </Layout>
   );
 };

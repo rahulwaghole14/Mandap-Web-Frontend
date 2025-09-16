@@ -1,12 +1,11 @@
 import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://mandapam-backend-97mi.onrender.com';
+import { API_BASE_URL } from '../constants';
 
 // Create axios instance with auth token
 const createAuthInstance = () => {
   const token = localStorage.getItem('token');
   return axios.create({
-    baseURL: `${API_BASE_URL}/api`,
+    baseURL: API_BASE_URL,
     headers: {
       'Authorization': token ? `Bearer ${token}` : '',
       'Content-Type': 'application/json'
@@ -19,14 +18,24 @@ export const memberImportApi = {
   importMembers: async (members) => {
     try {
       console.log('MemberImportApi - Importing members:', members.length);
+      console.log('MemberImportApi - Sample data:', members.slice(0, 1));
+      
       const authInstance = createAuthInstance();
       const response = await authInstance.post('/members/import-csv', {
         members
       });
-      console.log('MemberImportApi - Import response:', response.data);
+      
+      console.log('MemberImportApi - Full response:', response);
+      console.log('MemberImportApi - Response data:', response.data);
+      console.log('MemberImportApi - Response status:', response.status);
+      
       return response.data;
     } catch (error) {
       console.error('MemberImportApi - Import error:', error);
+      console.error('MemberImportApi - Error response:', error.response);
+      console.error('MemberImportApi - Error status:', error.response?.status);
+      console.error('MemberImportApi - Error data:', error.response?.data);
+      
       if (error.response?.data) {
         throw new Error(error.response.data.message || 'Import failed');
       }
@@ -38,11 +47,11 @@ export const memberImportApi = {
   downloadTemplate: () => {
     const templateData = [
       {
-        name: 'John Doe',
+        name: 'राजेश कुमार शर्मा',
         businessName: 'ABC Mandap',
         businessType: 'mandap',
         phone: '9876543210',
-        email: 'john@example.com',
+        email: 'rajesh@example.com',
         city: 'Mumbai',
         state: 'Maharashtra',
         district: 'Mumbai',
@@ -53,6 +62,23 @@ export const memberImportApi = {
         gstNumber: '27ABCDE1234F1Z5',
         description: 'Professional mandap services',
         experience: '5'
+      },
+      {
+        name: 'Priya Sharma',
+        businessName: 'XYZ Catering',
+        businessType: 'catering',
+        phone: '9876543211',
+        email: 'priya@example.com',
+        city: 'Pune',
+        state: 'Maharashtra',
+        district: 'Pune',
+        associationName: 'Pune Association',
+        birthDate: '1985-05-15',
+        address: '456 Oak Avenue',
+        pincode: '411001',
+        gstNumber: '27FGHIJ5678K9L2',
+        description: 'Quality catering services',
+        experience: '8'
       }
     ];
 

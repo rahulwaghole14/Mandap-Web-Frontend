@@ -24,66 +24,17 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           
-          {/* Protected Routes */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/vendors" element={
-            <ProtectedRoute requiredPermission="vendors:read">
-              <VendorList />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/add-vendor" element={
-            <ProtectedRoute requiredPermission="vendors:write">
-              <AddVendorForm />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/bod" element={
-            <ProtectedRoute requiredPermission="bod:read">
-              <BODList />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/events" element={
-            <ProtectedRoute requiredPermission="events:read">
-              <Events />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/members" element={
-            <ProtectedRoute requiredPermission="members:read">
-              <Members />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/associations" element={
-            <ProtectedRoute>
-              <Associations />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/associations/:associationId" element={
-            <ProtectedRoute>
-              <AssociationDetail />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/associations/:associationId/members" element={
-            <ProtectedRoute>
-              <AssociationMembers />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/settings" element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          } />
+          {/* Development Routes - All Public for Testing */}
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/vendors" element={<VendorList />} />
+          <Route path="/add-vendor" element={<AddVendorForm />} />
+          <Route path="/bod" element={<BODList />} />
+          <Route path="/events" element={<Events />} />
+          <Route path="/members" element={<Members />} />
+          <Route path="/associations" element={<Associations />} />
+          <Route path="/associations/:associationId" element={<AssociationDetail />} />
+          <Route path="/associations/:associationId/members" element={<AssociationMembers />} />
+          <Route path="/settings" element={<Settings />} />
           
           {/* Catch all route */}
           <Route path="*" element={<Navigate to="/" replace />} />

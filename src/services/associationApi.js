@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://mandapam-backend-97mi.onrender.com/api';
+import { API_BASE_URL } from '../constants';
 
 // Get auth token from localStorage
 const getAuthToken = () => {
@@ -28,6 +27,16 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Create public instance for fallback
+const createPublicInstance = () => {
+  return axios.create({
+    baseURL: API_BASE_URL,
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
+};
+
 export const associationApi = {
   // Get all associations
   getAssociations: async (params = {}) => {
@@ -35,6 +44,16 @@ export const associationApi = {
       const response = await api.get('/associations', { params });
       return response.data;
     } catch (error) {
+      if (error.response?.status === 401) {
+        try {
+          console.log('AssociationApi - Trying public access...');
+          const response = await createPublicInstance().get('/associations', { params });
+          return response.data;
+        } catch (publicError) {
+          console.error('AssociationApi - Public access also failed:', publicError);
+          throw publicError;
+        }
+      }
       console.error('Error fetching associations:', error);
       throw error;
     }

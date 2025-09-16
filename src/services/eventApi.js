@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_BASE_URL = 'https://mandapam-backend-97mi.onrender.com/api';
+import { API_BASE_URL } from '../constants';
 
 // Get auth token from localStorage
 const getAuthToken = () => {
@@ -10,10 +9,26 @@ const getAuthToken = () => {
 // Create axios instance with auth header
 const createAuthInstance = () => {
   const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+  
+  // Only add Authorization header if token exists
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return axios.create({
+    baseURL: API_BASE_URL,
+    headers
+  });
+};
+
+// Create public axios instance (no auth required)
+const createPublicInstance = () => {
   return axios.create({
     baseURL: API_BASE_URL,
     headers: {
-      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     }
   });
@@ -23,10 +38,22 @@ export const eventApi = {
   // Get all events with filtering and pagination
   getEvents: async (params = {}) => {
     try {
-      const authInstance = createAuthInstance();
-      const response = await authInstance.get('/events', { params });
+      // Try public access first (for unauthenticated users)
+      const publicInstance = createPublicInstance();
+      const response = await publicInstance.get('/events', { params });
       return response.data;
     } catch (error) {
+      // If public access fails, try with authentication
+      if (error.response?.status === 401) {
+        try {
+          const authInstance = createAuthInstance();
+          const response = await authInstance.get('/events', { params });
+          return response.data;
+        } catch (authError) {
+          console.error('Error fetching events (authenticated):', authError);
+          throw authError;
+        }
+      }
       console.error('Error fetching events:', error);
       throw error;
     }

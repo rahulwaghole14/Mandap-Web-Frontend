@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_BASE_URL = 'https://mandapam-backend-97mi.onrender.com/api';
+import { API_BASE_URL } from '../constants';
 
 // Get auth token from localStorage
 const getAuthToken = () => {
@@ -10,10 +9,22 @@ const getAuthToken = () => {
 // Create axios instance with auth header
 const createAuthInstance = () => {
   const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return axios.create({
+    baseURL: API_BASE_URL,
+    headers
+  });
+};
+
+const createPublicInstance = () => {
   return axios.create({
     baseURL: API_BASE_URL,
     headers: {
-      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     }
   });
@@ -23,10 +34,19 @@ export const vendorApi = {
   // Get all vendors with filtering and pagination
   getVendors: async (params = {}) => {
     try {
-      const authInstance = createAuthInstance();
-      const response = await authInstance.get('/vendors', { params });
+      const response = await createAuthInstance().get('/vendors', { params });
       return response.data;
     } catch (error) {
+      if (error.response?.status === 401) {
+        try {
+          console.log('VendorApi - Trying public access...');
+          const response = await createPublicInstance().get('/vendors', { params });
+          return response.data;
+        } catch (publicError) {
+          console.error('VendorApi - Public access also failed:', publicError);
+          throw publicError;
+        }
+      }
       console.error('Error fetching vendors:', error);
       throw error;
     }

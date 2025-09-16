@@ -1,12 +1,11 @@
 import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://mandapam-backend-97mi.onrender.com';
+import { API_BASE_URL } from '../constants';
 
 // Create axios instance with auth token
 const createAuthInstance = () => {
   const token = localStorage.getItem('token');
   return axios.create({
-    baseURL: `${API_BASE_URL}/api`,
+    baseURL: API_BASE_URL,
     headers: {
       'Authorization': token ? `Bearer ${token}` : ''
     }
@@ -14,10 +13,36 @@ const createAuthInstance = () => {
 };
 
 export const uploadApi = {
-  // Upload image file
+  // Upload image file (for events)
   uploadImage: async (file) => {
     try {
       console.log('UploadApi - Uploading image:', file.name);
+      
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      const authInstance = createAuthInstance();
+      const response = await authInstance.post('/upload/event-image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      console.log('UploadApi - Upload response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('UploadApi - Upload error:', error);
+      if (error.response?.data) {
+        throw new Error(error.response.data.message || 'Upload failed');
+      }
+      throw new Error('Network error during upload');
+    }
+  },
+
+  // Upload profile image file
+  uploadProfileImage: async (file) => {
+    try {
+      console.log('UploadApi - Uploading profile image:', file.name);
       
       const formData = new FormData();
       formData.append('image', file);
@@ -29,10 +54,10 @@ export const uploadApi = {
         }
       });
       
-      console.log('UploadApi - Upload response:', response.data);
+      console.log('UploadApi - Profile upload response:', response.data);
       return response.data;
     } catch (error) {
-      console.error('UploadApi - Upload error:', error);
+      console.error('UploadApi - Profile upload error:', error);
       if (error.response?.data) {
         throw new Error(error.response.data.message || 'Upload failed');
       }
@@ -64,6 +89,20 @@ export const uploadApi = {
     if (filename.startsWith('http')) return filename;
     // Otherwise, construct the URL
     return `${API_BASE_URL}/uploads/${filename}`;
+  },
+
+  // Get image URL with CORS proxy fallback
+  getImageUrlWithFallback: (filename) => {
+    if (!filename) return null;
+    // If it's already a full URL, return as is
+    if (filename.startsWith('http')) return filename;
+    
+    const directUrl = `${API_BASE_URL}/uploads/${filename}`;
+    
+    // For development, you can use a CORS proxy if needed
+    // const proxyUrl = `https://cors-anywhere.herokuapp.com/${directUrl}`;
+    
+    return directUrl;
   },
 
   // Check if image URL is accessible (for debugging CORS issues)
