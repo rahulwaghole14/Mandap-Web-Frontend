@@ -24,17 +24,17 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           
-          {/* Development Routes - All Public for Testing */}
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/vendors" element={<VendorList />} />
-          <Route path="/add-vendor" element={<AddVendorForm />} />
-          <Route path="/bod" element={<BODList />} />
-          <Route path="/events" element={<Events />} />
-          <Route path="/members" element={<Members />} />
-          <Route path="/associations" element={<Associations />} />
-          <Route path="/associations/:associationId" element={<AssociationDetail />} />
-          <Route path="/associations/:associationId/members" element={<AssociationMembers />} />
-          <Route path="/settings" element={<Settings />} />
+          {/* Protected Routes - Require Authentication */}
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/vendors" element={<ProtectedRoute><VendorList /></ProtectedRoute>} />
+          <Route path="/add-vendor" element={<ProtectedRoute><AddVendorForm /></ProtectedRoute>} />
+          <Route path="/bod" element={<ProtectedRoute><BODList /></ProtectedRoute>} />
+          <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
+          <Route path="/members" element={<ProtectedRoute><Members /></ProtectedRoute>} />
+          <Route path="/associations" element={<ProtectedRoute><Associations /></ProtectedRoute>} />
+          <Route path="/associations/:associationId" element={<ProtectedRoute><AssociationDetail /></ProtectedRoute>} />
+          <Route path="/associations/:associationId/members" element={<ProtectedRoute><AssociationMembers /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           
           {/* Catch all route */}
           <Route path="*" element={<Navigate to="/" replace />} />

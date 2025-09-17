@@ -87,8 +87,9 @@ export const uploadApi = {
     if (!filename) return null;
     // If it's already a full URL, return as is
     if (filename.startsWith('http')) return filename;
-    // Otherwise, construct the URL
-    return `${API_BASE_URL}/uploads/${filename}`;
+    // Remove /api from the base URL for image serving
+    const baseUrl = API_BASE_URL.replace('/api', '');
+    return `${baseUrl}/uploads/${filename}`;
   },
 
   // Get image URL with CORS proxy fallback
@@ -97,7 +98,9 @@ export const uploadApi = {
     // If it's already a full URL, return as is
     if (filename.startsWith('http')) return filename;
     
-    const directUrl = `${API_BASE_URL}/uploads/${filename}`;
+    // Remove /api from the base URL for image serving
+    const baseUrl = API_BASE_URL.replace('/api', '');
+    const directUrl = `${baseUrl}/uploads/${filename}`;
     
     // For development, you can use a CORS proxy if needed
     // const proxyUrl = `https://cors-anywhere.herokuapp.com/${directUrl}`;

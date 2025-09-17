@@ -143,7 +143,9 @@ export const galleryApi = {
   getImageUrl: (filename) => {
     if (!filename) return null;
     if (filename.startsWith('http')) return filename;
-    return `${API_BASE_URL}/uploads/${filename}`;
+    // Remove /api from the base URL for image serving
+    const baseUrl = API_BASE_URL.replace('/api', '');
+    return `${baseUrl}/uploads/${filename}`;
   },
 
   // Format file size
