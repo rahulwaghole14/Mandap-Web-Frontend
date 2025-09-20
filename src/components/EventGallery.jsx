@@ -83,7 +83,7 @@ const EventGallery = ({ eventId, eventTitle, onClose }) => {
       const files = Array.from(data.images);
       const captions = data.captions || [];
       const altTexts = data.altTexts || [];
-      console.log(files, captions, altTexts);
+
       const response = await galleryApi.uploadGalleryImages(
         'event', 
         eventId, 

@@ -160,7 +160,7 @@ const Events = () => {
       if (image) {
         console.log('Uploading image for new event...');
         const uploadResponse = await uploadApi.uploadImage(image);
-        imageFilename = uploadResponse.filename;
+        imageFilename = uploadResponse.file.filename;
         console.log('Image uploaded successfully:', imageFilename);
       }
       
@@ -223,7 +223,7 @@ const Events = () => {
       if (image) {
         console.log('Uploading new image for event update...');
         const uploadResponse = await uploadApi.uploadImage(image);
-        imageFilename = uploadResponse.filename;
+        imageFilename = uploadResponse.file.filename;
         console.log('New image uploaded successfully:', imageFilename);
       }
       
@@ -306,6 +306,28 @@ const Events = () => {
       case 'Postponed': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  // Check if event date has passed
+  const isEventDatePassed = (eventDate) => {
+    if (!eventDate) return false;
+    
+    const eventDateObj = new Date(eventDate);
+    const today = new Date();
+    
+    // Set time to start of day for accurate comparison
+    today.setHours(0, 0, 0, 0);
+    eventDateObj.setHours(0, 0, 0, 0);
+    
+    return eventDateObj < today;
+  };
+
+  // Get display status (hide "Upcoming" if date has passed)
+  const getDisplayStatus = (event) => {
+    if (event.status === 'Upcoming' && isEventDatePassed(event.startDate)) {
+      return null; // Don't show status if event date has passed
+    }
+    return event.status;
   };
 
   const formatDate = (dateString) => {
@@ -413,9 +435,11 @@ const Events = () => {
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-3">
                     <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">{event.title}</h3>
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(event.status)}`}>
-                      {event.status}
-                    </span>
+                    {getDisplayStatus(event) && (
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(getDisplayStatus(event))}`}>
+                        {getDisplayStatus(event)}
+                      </span>
+                    )}
                   </div>
                   
                   <p className="text-gray-600 text-sm mb-4 line-clamp-3">{event.description}</p>
@@ -1071,9 +1095,11 @@ const Events = () => {
                 </div>
               </div>
               <h3 className="text-xl font-semibold text-gray-900">{selected.title}</h3>
-              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selected.status)}`}>
-                {selected.status}
-              </span>
+              {getDisplayStatus(selected) && (
+                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(getDisplayStatus(selected))}`}>
+                  {getDisplayStatus(selected)}
+                </span>
+              )}
             </div>
             
             <div className="space-y-3">

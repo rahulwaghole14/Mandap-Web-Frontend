@@ -89,7 +89,7 @@ export const uploadApi = {
     if (filename.startsWith('http')) return filename;
     // Remove /api from the base URL for image serving
     const baseUrl = API_BASE_URL.replace('/api', '');
-    return `${baseUrl}/uploads/${filename}`;
+    return `${baseUrl}/uploads/event-images/${filename}`;
   },
 
   // Get image URL with CORS proxy fallback
@@ -100,7 +100,7 @@ export const uploadApi = {
     
     // Remove /api from the base URL for image serving
     const baseUrl = API_BASE_URL.replace('/api', '');
-    const directUrl = `${baseUrl}/uploads/${filename}`;
+    const directUrl = `${baseUrl}/uploads/event-images/${filename}`;
     
     // For development, you can use a CORS proxy if needed
     // const proxyUrl = `https://cors-anywhere.herokuapp.com/${directUrl}`;
