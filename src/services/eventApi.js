@@ -153,6 +153,72 @@ export const eventApi = {
       console.error('Error fetching event registrations:', error);
       throw error;
     }
+  },
+
+  // Exhibitors: List
+  listExhibitors: async (eventId) => {
+    try {
+      const publicInstance = createPublicInstance();
+      const response = await publicInstance.get(`/events/${eventId}/exhibitors`);
+      return response.data;
+    } catch (error) {
+      // fallback with auth if needed
+      if (error.response?.status === 401) {
+        const authInstance = createAuthInstance();
+        const response = await authInstance.get(`/events/${eventId}/exhibitors`);
+        return response.data;
+      }
+      console.error('Error listing exhibitors:', error);
+      throw error;
+    }
+  },
+
+  // Exhibitors: Create
+  createExhibitor: async (eventId, payload) => {
+    try {
+      const authInstance = createAuthInstance();
+      const response = await authInstance.post(`/events/${eventId}/exhibitors`, payload);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating exhibitor:', error);
+      throw error;
+    }
+  },
+
+  // Exhibitors: Update
+  updateExhibitor: async (eventId, exhibitorId, payload) => {
+    try {
+      const authInstance = createAuthInstance();
+      const response = await authInstance.put(`/events/${eventId}/exhibitors/${exhibitorId}`, payload);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating exhibitor:', error);
+      throw error;
+    }
+  },
+
+  // Exhibitors: Delete
+  deleteExhibitor: async (eventId, exhibitorId) => {
+    try {
+      const authInstance = createAuthInstance();
+      const response = await authInstance.delete(`/events/${eventId}/exhibitors/${exhibitorId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting exhibitor:', error);
+      throw error;
+    }
+  },
+
+  // Attendance via QR check-in (idempotent)
+  checkinByQr: async (qrToken) => {
+    try {
+      const authInstance = createAuthInstance();
+      const response = await authInstance.post('/events/checkin', { qrToken });
+      return response.data;
+    } catch (error) {
+      console.error('Error during check-in:', error);
+      throw error;
+    }
   }
 };
 

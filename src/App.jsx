@@ -9,6 +9,8 @@ import VendorList from './pages/VendorList';
 import AddVendorForm from './pages/AddVendorForm';
 import BODList from './pages/BODList';
 import Events from './pages/Events';
+import EventForm from './pages/EventForm';
+import EventDetails from './pages/EventDetails';
 import Members from './pages/Members';
 import Associations from './pages/Associations';
 import AssociationDetail from './pages/AssociationDetail';
@@ -30,6 +32,9 @@ function App() {
           <Route path="/add-vendor" element={<ProtectedRoute><AddVendorForm /></ProtectedRoute>} />
           <Route path="/bod" element={<ProtectedRoute><BODList /></ProtectedRoute>} />
           <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
+          <Route path="/events/new" element={<ProtectedRoute><EventForm /></ProtectedRoute>} />
+          <Route path="/events/:eventId" element={<ProtectedRoute><EventDetails /></ProtectedRoute>} />
+          <Route path="/events/:eventId/edit" element={<ProtectedRoute><EventForm /></ProtectedRoute>} />
           <Route path="/members" element={<ProtectedRoute><Members /></ProtectedRoute>} />
           <Route path="/associations" element={<ProtectedRoute><Associations /></ProtectedRoute>} />
           <Route path="/associations/:associationId" element={<ProtectedRoute><AssociationDetail /></ProtectedRoute>} />

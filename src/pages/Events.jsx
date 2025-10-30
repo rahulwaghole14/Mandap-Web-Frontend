@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import Layout from '../components/Layout';
 import Modal from '../components/Modal';
@@ -12,6 +13,7 @@ import { tokenFix } from '../utils/tokenFix';
 import toast from 'react-hot-toast';
 
 const Events = () => {
+  const navigate = useNavigate();
   const [selected, setSelected] = useState(null);
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
@@ -103,9 +105,8 @@ const Events = () => {
   };
 
   const handleAdd = () => {
-    setShowAdd(true);
-    reset();
-    removeImage();
+    // Navigate to new Event form page
+    navigate('/events/new');
   };
 
   const handleEdit = (event) => {
@@ -136,8 +137,7 @@ const Events = () => {
   };
 
   const handleView = (event) => {
-    setSelected(event);
-    setShowView(true);
+    navigate(`/events/${event.id}`);
   };
 
   const handleDelete = (event) => {
@@ -477,7 +477,7 @@ const Events = () => {
                         <Image className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleEdit(event)}
+                        onClick={() => navigate(`/events/${event.id}/edit`)}
                         className="text-yellow-600 hover:text-yellow-900 p-1"
                         title="Edit Event"
                       >
