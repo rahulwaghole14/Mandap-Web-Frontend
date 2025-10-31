@@ -185,7 +185,7 @@ const EventDetails = () => {
                   </div>
                 </div>
                 <div className="flex items-center"><MapPin className="h-4 w-4 mr-2" />{event.address}{event.city ? `, ${event.city}` : ''}</div>
-                <div className="flex items-center"><IndianRupee className="h-4 w-4 mr-2" />₹ {event.fee ?? 0}</div>
+                <div className="flex items-center"><IndianRupee className="h-4 w-4 mr-2" />₹ {event.registrationFee ?? event.fee ?? 0}</div>
               </div>
             </div>
           </div>
