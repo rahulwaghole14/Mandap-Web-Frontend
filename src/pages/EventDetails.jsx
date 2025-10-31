@@ -119,6 +119,24 @@ const EventDetails = () => {
     return registrations.reduce((sum, r) => sum + (r.amountPaid ?? 0), 0);
   }, [registrations]);
 
+  // Format datetime
+  const formatDateTime = (dateTimeStr) => {
+    if (!dateTimeStr) return 'N/A';
+    try {
+      const dt = new Date(dateTimeStr);
+      return dt.toLocaleString('en-IN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return dateTimeStr;
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -154,9 +172,20 @@ const EventDetails = () => {
               <h2 className="text-xl font-semibold text-gray-900">{event.name || event.title}</h2>
               <p className="text-gray-700">{event.description}</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                <div className="flex items-center"><Calendar className="h-4 w-4 mr-2" />{event.startDateTime || event.startDate} → {event.endDateTime || event.endDate || '-'}</div>
+                <div className="flex items-center"><Calendar className="h-4 w-4 mr-2" />
+                  <div>
+                    <div className="font-medium">From:</div>
+                    <div>{formatDateTime(event.startDateTime || event.startDate)}</div>
+                    {event.endDateTime || event.endDate ? (
+                      <>
+                        <div className="font-medium mt-1">To:</div>
+                        <div>{formatDateTime(event.endDateTime || event.endDate)}</div>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
                 <div className="flex items-center"><MapPin className="h-4 w-4 mr-2" />{event.address}{event.city ? `, ${event.city}` : ''}</div>
-                <div className="flex items-center"><IndianRupee className="h-4 w-4 mr-2" />{event.fee ?? 0}</div>
+                <div className="flex items-center"><IndianRupee className="h-4 w-4 mr-2" />₹ {event.fee ?? 0}</div>
               </div>
             </div>
           </div>
