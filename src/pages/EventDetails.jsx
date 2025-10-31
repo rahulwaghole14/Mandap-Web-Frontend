@@ -114,6 +114,11 @@ const EventDetails = () => {
 
   const imgUrl = useMemo(() => uploadApi.getImageUrl(event?.image || event?.imageURL), [event]);
 
+  // Calculate total fees from registrations
+  const totalFees = useMemo(() => {
+    return registrations.reduce((sum, r) => sum + (r.amountPaid ?? 0), 0);
+  }, [registrations]);
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -167,8 +172,17 @@ const EventDetails = () => {
         {activeTab === 'registrations' && (
           <div className="bg-white rounded-lg shadow">
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">Registrations</h3>
-              <button onClick={loadRegistrations} className="text-sm text-primary-600 hover:underline">Refresh</button>
+              <div className="flex items-center gap-4">
+                <h3 className="font-semibold text-gray-900">Registrations</h3>
+                <span className="text-sm text-gray-600">({registrations.length} registered)</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-xs text-gray-500">Total Fees Collected</p>
+                  <p className="text-lg font-bold text-green-600">₹ {totalFees.toFixed(2)}</p>
+                </div>
+                <button onClick={loadRegistrations} className="text-sm text-primary-600 hover:underline">Refresh</button>
+              </div>
             </div>
             <div className="p-6 overflow-x-auto">
               {loadingRegs ? (
