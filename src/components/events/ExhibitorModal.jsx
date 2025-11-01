@@ -4,6 +4,15 @@ import { useForm } from 'react-hook-form';
 import { uploadApi } from '../../services/uploadApi';
 import { Loader2, Upload, X } from 'lucide-react';
 
+const BUSINESS_CATEGORIES = [
+  'Flower Decoration',
+  'Tent',
+  'Lighting',
+  'Sound',
+  'Furniture',
+  'Other'
+];
+
 const ExhibitorModal = ({ isOpen, onClose, onSubmit, defaultValues = null }) => {
   const { register, handleSubmit, formState: { errors } } = useForm({ defaultValues: defaultValues || {} });
   const [uploading, setUploading] = useState(false);
@@ -39,6 +48,7 @@ const ExhibitorModal = ({ isOpen, onClose, onSubmit, defaultValues = null }) => 
       }
       await onSubmit({
         name: values.name,
+        businessCategory: values.businessCategory || 'Other',
         description: values.description || '',
         phone: values.phone || '',
         logo: logoUrl || null,
@@ -60,6 +70,18 @@ const ExhibitorModal = ({ isOpen, onClose, onSubmit, defaultValues = null }) => 
             placeholder="Exhibitor name"
           />
           {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Business Category</label>
+          <select
+            {...register('businessCategory')}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          >
+            {BUSINESS_CATEGORIES.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
         </div>
 
         <div>
