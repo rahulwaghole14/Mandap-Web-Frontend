@@ -120,7 +120,10 @@ const EventDetails = () => {
 
   // Calculate total fees from registrations
   const totalFees = useMemo(() => {
-    return registrations.reduce((sum, r) => sum + (r.amountPaid ?? 0), 0);
+    return registrations.reduce((sum, r) => {
+      const amount = parseFloat(r.amountPaid) || 0;
+      return sum + amount;
+    }, 0);
   }, [registrations]);
 
   // Pagination logic for registrations
@@ -220,7 +223,7 @@ const EventDetails = () => {
                   </div>
                 </div>
                 <div className="flex items-center"><MapPin className="h-4 w-4 mr-2" />{event.address}{event.city ? `, ${event.city}` : ''}</div>
-                <div className="flex items-center"><IndianRupee className="h-4 w-4 mr-2" />₹ {event.registrationFee ?? event.fee ?? 0}</div>
+                <div className="flex items-center"><IndianRupee className="h-4 w-4 mr-2" />₹ {parseFloat(event.registrationFee ?? event.fee) || 0}</div>
               </div>
             </div>
           </div>
@@ -267,7 +270,7 @@ const EventDetails = () => {
                       <tr key={idx}>
                         <td className="px-6 py-4 text-sm text-gray-900">{r.name || r.memberName}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{r.phone}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">₹ {r.amountPaid ?? 0}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">₹ {parseFloat(r.amountPaid) || 0}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{r.registeredAt ? new Date(r.registeredAt).toLocaleString() : '-'}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">
                           <label className="inline-flex items-center cursor-pointer">
