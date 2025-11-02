@@ -4,7 +4,7 @@ import Layout from '../components/Layout';
 import { eventApi } from '../services/eventApi';
 import { uploadApi } from '../services/uploadApi';
 import ExhibitorModal from '../components/events/ExhibitorModal';
-import { Calendar, MapPin, IndianRupee, Pencil, Plus, Loader2 } from 'lucide-react';
+import { Calendar, MapPin, IndianRupee, Pencil, Plus, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const TabButton = ({ active, onClick, children }) => (
@@ -27,6 +27,10 @@ const EventDetails = () => {
   const [exhibitors, setExhibitors] = useState([]);
   const [loadingExh, setLoadingExh] = useState(false);
   const [showExhibitorModal, setShowExhibitorModal] = useState(false);
+  
+  // Pagination state for registrations
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
 
   const loadEvent = useCallback(async () => {
     try {
@@ -119,6 +123,22 @@ const EventDetails = () => {
     return registrations.reduce((sum, r) => sum + (r.amountPaid ?? 0), 0);
   }, [registrations]);
 
+  // Pagination logic for registrations
+  const paginatedRegistrations = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return registrations.slice(startIndex, endIndex);
+  }, [registrations, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(registrations.length / itemsPerPage);
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   // Format datetime
   const formatDateTime = (dateTimeStr) => {
     if (!dateTimeStr) return 'N/A';
@@ -163,7 +183,22 @@ const EventDetails = () => {
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="h-48 bg-gray-100 flex items-center justify-center">
               {imgUrl ? (
-                <img src={imgUrl} alt={event.name || event.title} className="h-full w-full object-cover" />
+                <>
+                  <img 
+                    src={imgUrl} 
+                    alt={event.name || event.title} 
+                    className="h-full w-full object-cover" 
+                    crossOrigin="anonymous"
+                    onError={(e) => {
+                      console.error('Image failed to load:', e.target.src);
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                  <div className="h-full w-full flex items-center justify-center" style={{display: 'none'}}>
+                    <Calendar className="h-12 w-12 text-primary-600" />
+                  </div>
+                </>
               ) : (
                 <Calendar className="h-12 w-12 text-primary-600" />
               )}
@@ -228,7 +263,7 @@ const EventDetails = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {registrations.map((r, idx) => (
+                    {paginatedRegistrations.map((r, idx) => (
                       <tr key={idx}>
                         <td className="px-6 py-4 text-sm text-gray-900">{r.name || r.memberName}</td>
                         <td className="px-6 py-4 text-sm text-gray-600">{r.phone}</td>
@@ -252,6 +287,46 @@ const EventDetails = () => {
                 </table>
               )}
             </div>
+            
+            {/* Pagination Controls */}
+            {!loadingRegs && registrations.length > itemsPerPage && (
+              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, registrations.length)} of {registrations.length} registrations
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 2)
+                      .map((page, idx, arr) => (
+                        <React.Fragment key={page}>
+                          {idx > 0 && arr[idx - 1] !== page - 1 && <span className="px-2">...</span>}
+                          <button
+                            onClick={() => handlePageChange(page)}
+                            className={`px-3 py-1 rounded-lg ${currentPage === page ? 'bg-primary-600 text-white' : 'border border-gray-300 hover:bg-gray-50'}`}
+                          >
+                            {page}
+                          </button>
+                        </React.Fragment>
+                      ))}
+                  </div>
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
