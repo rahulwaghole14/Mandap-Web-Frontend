@@ -1,12 +1,14 @@
 services:
   - type: web
     name: mandapam-ui-frontend
-    env: static
+    env: node
     buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 10000
     headers:
       - path: /*
         name: X-Frame-Options
@@ -24,5 +26,3 @@ services:
       - path: /*
         name: Cache-Control
         value: no-cache, no-store, must-revalidate
-    # SPA routing - Render will automatically use _redirects file from dist folder
-    # The _redirects file should contain: /*    /index.html   200
