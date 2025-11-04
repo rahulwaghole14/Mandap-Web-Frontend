@@ -210,7 +210,7 @@ export const uploadApi = {
   // Get full image URL - handles both Cloudinary URLs and local uploads
   // Accepts either a filename or an object with {image, imageURL} fields
   getImageUrl: (filenameOrObject) => {
-    // Handle object with imageURL and image fields (prioritize imageURL)
+    // Handle object with imageURL and image fields
     let filename = null;
     let imageURL = null;
     
@@ -221,24 +221,27 @@ export const uploadApi = {
       filename = filenameOrObject;
     }
     
-    // Priority 1: If imageURL is provided and is a full URL, use it directly
-    if (imageURL && imageURL.startsWith('http')) {
+    // Priority 1: If imageURL is provided and is a full URL (Cloudinary or other), use it directly
+    if (imageURL && typeof imageURL === 'string' && imageURL.startsWith('http')) {
       return imageURL;
     }
     
-    // Priority 2: If imageURL is a local path, construct full local URL
-    if (imageURL && !imageURL.startsWith('http')) {
+    // Priority 2: If filename (image field) is a full URL (Cloudinary or other), use it directly
+    // This handles cases where backend stores Cloudinary URL in image field but imageURL is old/null
+    if (filename && typeof filename === 'string' && filename.startsWith('http')) {
+      return filename;
+    }
+    
+    // Priority 3: If imageURL is a local path, construct full local URL
+    if (imageURL && typeof imageURL === 'string' && !imageURL.startsWith('http')) {
       const baseUrl = API_BASE_URL.replace('/api', '');
       // Remove leading slash if present to avoid double slashes
       const cleanPath = imageURL.startsWith('/') ? imageURL.slice(1) : imageURL;
       return `${baseUrl}/${cleanPath}`;
     }
     
-    // Priority 3: Use filename (if provided)
+    // Priority 4: Use filename (if provided) for Cloudinary or local construction
     if (!filename) return null;
-    
-    // If it's already a full URL, return as is
-    if (filename.startsWith('http')) return filename;
     
     // If using Cloudinary, construct Cloudinary URL
     if (USE_CLOUDINARY) {

@@ -109,12 +109,11 @@ const EventForm = () => {
         console.log('EventForm - Uploading image to Cloudinary for', isEdit ? 'edit' : 'create');
         const up = await uploadApi.uploadImage(imageFile);
         console.log('EventForm - Upload response:', up);
-        // Backend might expect public_id instead of full URL
-        // Try public_id first, fallback to filename, then URL
-        imageFilename = up.public_id || up.filename || up.url || null;
-        console.log('EventForm - Extracted imageFilename (public_id or filename):', imageFilename);
-        console.log('EventForm - Also available - secure_url:', up.url);
-        console.log('EventForm - Also available - public_id:', up.public_id);
+        // Send full Cloudinary URL to backend
+        imageFilename = up.url || up.image || up.filename || null;
+        console.log('EventForm - Extracted imageFilename (full URL):', imageFilename);
+        console.log('EventForm - Cloudinary secure_url:', up.url);
+        console.log('EventForm - Cloudinary public_id:', up.public_id);
       }
 
       // Normalize payload for backend - same structure for both create and edit
