@@ -45,11 +45,8 @@ function App() {
           <Route path="/associations/:associationId/members" element={<ProtectedRoute><AssociationMembers /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           
-          {/* Public Event Registration Routes - Specific routes for known event slugs */}
-          <Route path="/kolhapur-2026" element={<EventRegistrationPage />} />
-          <Route path="/Kolhapur-2026" element={<EventRegistrationPage />} />
-          
-          {/* Generic slug route for other events - Must be after all other routes */}
+          {/* Public Event Registration Routes - Generic slug route handles all event slugs */}
+          {/* The component handles slug to event ID mapping internally */}
           <Route path="/:slug" element={<EventRegistrationPage />} />
           
           {/* Catch all route */}

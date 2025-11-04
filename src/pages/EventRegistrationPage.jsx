@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { eventApi } from '../services/eventApi';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import eventApi, { publicAssociationApi } from '../services/eventApi';
 import { uploadApi } from '../services/uploadApi';
-import { useAuth } from '../contexts/AuthContext';
 import { EVENT_SLUGS } from '../constants';
 import { 
   Calendar, 
@@ -14,15 +14,34 @@ import {
   ArrowLeft,
   CreditCard,
   Download,
-  Clock
+  Clock,
+  User,
+  Phone,
+  Mail,
+  Building2,
+  MapPin as MapPinIcon
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MandapamLogo from '../components/MandapamLogo';
 
+const BUSINESS_TYPES = [
+  { value: 'catering', label: 'Catering' },
+  { value: 'sound', label: 'Sound' },
+  { value: 'mandap', label: 'Mandap' },
+  { value: 'madap', label: 'Madap' },
+  { value: 'light', label: 'Light' },
+  { value: 'decorator', label: 'Decorator' },
+  { value: 'photography', label: 'Photography' },
+  { value: 'videography', label: 'Videography' },
+  { value: 'transport', label: 'Transport' },
+  { value: 'other', label: 'Other' }
+];
+
 const EventRegistrationPage = () => {
   const { slug } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
-  const { user, token } = useAuth();
+  const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm();
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [checkingStatus, setCheckingStatus] = useState(false);
@@ -30,95 +49,114 @@ const EventRegistrationPage = () => {
   const [registering, setRegistering] = useState(false);
   const [error, setError] = useState(null);
   const [resolvedEventId, setResolvedEventId] = useState(null);
+  const [associations, setAssociations] = useState([]);
+  const [loadingAssociations, setLoadingAssociations] = useState(false);
+  const [memberId, setMemberId] = useState(null);
   
-  // Normalize slug to lowercase for case-insensitive matching
-  const normalizedSlug = slug?.toLowerCase();
+  // Get slug from params or extract from pathname if params is undefined
+  const actualSlug = slug || location.pathname.replace(/^\//, '').split('/')[0];
+  const normalizedSlug = actualSlug?.toLowerCase();
   
-  // Debug logging
+  // Watch city to load associations
+  const selectedCity = watch('city');
+  
+  // Resolve event ID from slug
   useEffect(() => {
-    console.log('EventRegistrationPage - slug:', slug);
-    console.log('EventRegistrationPage - normalizedSlug:', normalizedSlug);
-    console.log('EventRegistrationPage - EVENT_SLUGS:', EVENT_SLUGS);
-  }, [slug, normalizedSlug]);
-  
-  useEffect(() => {
-    // Resolve event ID from slug
     let finalEventId = null;
     
-    if (!slug) {
-      console.error('EventRegistrationPage - No slug provided');
+    if (!actualSlug) {
       setError('Event not found. Please check the URL.');
       setLoading(false);
       return;
     }
     
-    // Try to find event ID from slug mapping (case-insensitive)
-    finalEventId = EVENT_SLUGS[normalizedSlug] || EVENT_SLUGS[slug];
+    finalEventId = EVENT_SLUGS[normalizedSlug] || EVENT_SLUGS[actualSlug];
     
-    // If not found in mapping, try using slug as direct ID if it's numeric
-    if (!finalEventId && !isNaN(slug)) {
-      finalEventId = slug;
+    if (!finalEventId && !isNaN(actualSlug)) {
+      finalEventId = actualSlug;
     }
     
     if (!finalEventId) {
-      console.error('EventRegistrationPage - No eventId found for slug:', slug);
-      console.error('Available slugs:', Object.keys(EVENT_SLUGS));
-      setError(`Event not found for "${slug}". Please check the event URL.`);
+      setError(`Event not found for "${actualSlug}". Please check the event URL.`);
       setLoading(false);
-      setResolvedEventId(null);
       return;
     }
     
-    console.log('EventRegistrationPage - Resolved eventId:', finalEventId);
     setResolvedEventId(finalEventId);
-  }, [slug, normalizedSlug]);
+  }, [actualSlug, normalizedSlug]);
   
+  // Load event
   useEffect(() => {
     if (resolvedEventId) {
       loadEvent(resolvedEventId);
     }
   }, [resolvedEventId]);
 
+  // Load associations when city changes
   useEffect(() => {
-    if (event && token && resolvedEventId) {
-      checkRegistrationStatus(resolvedEventId);
+    if (selectedCity && selectedCity.length >= 2) {
+      loadAssociations(selectedCity);
+    } else {
+      setAssociations([]);
+      setValue('associationId', '');
     }
-  }, [event, token, resolvedEventId]);
+  }, [selectedCity, setValue]);
 
   const loadEvent = async (eventIdToLoad) => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Loading event with ID:', eventIdToLoad);
-      const data = await eventApi.getEventPublic(eventIdToLoad);
+      const data = await eventApi.getPublicEvent(eventIdToLoad);
       setEvent(data.event || data);
-      console.log('Event loaded successfully:', data.event || data);
     } catch (err) {
       console.error('Error loading event:', err);
-      console.error('Error details:', {
-        status: err.response?.status,
-        message: err.response?.data?.message,
-        data: err.response?.data
-      });
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to load event details';
-      setError(`Event not found: ${errorMsg}. Event ID: ${eventIdToLoad}`);
+      let errorMsg = 'Failed to load event details';
+      if (err.response?.status === 404) {
+        errorMsg = `Event with ID ${eventIdToLoad} not found.`;
+      } else if (err.response?.data?.message) {
+        errorMsg = err.response.data.message;
+      }
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
-  const checkRegistrationStatus = async (eventIdToCheck) => {
-    if (!token || !eventIdToCheck) return; // Skip if not authenticated or no event ID
+  const loadAssociations = async (city) => {
+    try {
+      setLoadingAssociations(true);
+      const data = await publicAssociationApi.getAssociationsByCity(city);
+      setAssociations(data.associations || []);
+    } catch (err) {
+      console.error('Error loading associations:', err);
+      toast.error('Failed to load associations');
+      setAssociations([]);
+    } finally {
+      setLoadingAssociations(false);
+    }
+  };
+
+  const checkRegistrationStatus = async (phone) => {
+    if (!phone || phone.length !== 10 || !resolvedEventId) {
+      // Reset registration if phone is not valid
+      setRegistration(null);
+      return;
+    }
     
     try {
       setCheckingStatus(true);
-      const data = await eventApi.checkRegistrationStatus(eventIdToCheck);
+      const data = await eventApi.checkPublicRegistrationStatus(resolvedEventId, phone);
       if (data.isRegistered) {
         setRegistration(data.registration);
+        toast.success('You are already registered for this event!');
+      } else {
+        // Not registered, clear any previous registration
+        setRegistration(null);
       }
     } catch (err) {
       console.error('Error checking registration status:', err);
-      // Not an error if not registered yet
+      // If error checking, assume not registered - allow form submission
+      setRegistration(null);
     } finally {
       setCheckingStatus(false);
     }
@@ -141,56 +179,70 @@ const EventRegistrationPage = () => {
     }
   };
 
-  const handleRegister = async () => {
-    // Check if user is authenticated
-    if (!token) {
-      toast.error('Please login to register for this event');
-      navigate('/login', { state: { returnTo: `/${slug}` } });
-      return;
-    }
-
+  const onSubmitRegistration = async (formData) => {
     try {
       setRegistering(true);
       setError(null);
 
       if (!resolvedEventId) {
         toast.error('Event ID not resolved. Please refresh the page.');
+        setRegistering(false);
         return;
       }
 
-      // Step 1: Initiate payment
-      const paymentData = await eventApi.initiatePayment(resolvedEventId);
-
-      // Free event
-      if (paymentData.isFree) {
-        toast.error('This is a free event. Please use RSVP endpoint.');
+      // Check if user is already registered before submitting
+      if (registration) {
+        toast.error('You are already registered for this event!');
+        setRegistering(false);
         return;
       }
 
-      // Step 2: Open Razorpay Checkout
+      // Step 1: Initiate registration and payment
+      const registrationData = {
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email,
+        businessName: formData.businessName,
+        businessType: formData.businessType,
+        city: formData.city,
+        associationId: parseInt(formData.associationId)
+      };
+
+      const paymentData = await eventApi.initiatePublicRegistration(resolvedEventId, registrationData);
+
+             // Free event - registration complete
+       if (paymentData.isFree) {
+         setRegistration(paymentData.registration);
+         toast.success('Registration successful!');
+         return;
+       }
+
+      // Store memberId for payment confirmation
+      setMemberId(paymentData.member?.id);
+
+      // Paid event - open Razorpay Checkout
       const options = {
         ...paymentData.paymentOptions,
         handler: async function (response) {
           try {
-            // Step 3: Confirm payment
-            const confirmData = await eventApi.confirmPayment(
+            // Step 2: Confirm payment
+            const confirmData = await eventApi.confirmPublicPayment(
               resolvedEventId,
               {
+                memberId: paymentData.member.id,
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
+                razorpay_signature: response.razorpay_signature
               }
             );
 
-            // Update registration state
-            setRegistration(confirmData.registration);
-            toast.success('Registration successful!');
-            
-            // Reload registration status to get QR code
-            await checkRegistrationStatus(resolvedEventId);
+                         setRegistration(confirmData.registration);
+             toast.success('Registration successful!');
           } catch (err) {
             console.error('Payment confirmation error:', err);
             toast.error(err.response?.data?.message || 'Payment confirmation failed');
+          } finally {
+            setRegistering(false);
           }
         },
         modal: {
@@ -201,7 +253,6 @@ const EventRegistrationPage = () => {
         }
       };
 
-      // Check if Razorpay is available
       if (typeof window.Razorpay === 'undefined') {
         throw new Error('Payment gateway not loaded. Please refresh the page.');
       }
@@ -218,9 +269,29 @@ const EventRegistrationPage = () => {
     } catch (err) {
       console.error('Registration error:', err);
       const errorMsg = err.response?.data?.message || err.message || 'Registration failed';
-      setError(errorMsg);
-      toast.error(errorMsg);
+      if (err.response?.data?.errors) {
+        const errorMessages = err.response.data.errors.map(e => e.msg || e.message).join(', ');
+        setError(errorMessages);
+        toast.error(errorMessages);
+      } else {
+        setError(errorMsg);
+        toast.error(errorMsg);
+      }
       setRegistering(false);
+    }
+  };
+
+  const handlePhoneCheck = (e) => {
+    const phone = e.target.value.replace(/\D/g, ''); // Remove non-digits
+    // Update the form value with cleaned phone number
+    setValue('phone', phone, { shouldValidate: true });
+    
+    // Check registration status when phone is 10 digits
+    if (phone.length === 10) {
+      checkRegistrationStatus(phone);
+    } else {
+      // Clear registration if phone is not 10 digits
+      setRegistration(null);
     }
   };
 
@@ -293,7 +364,6 @@ const EventRegistrationPage = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Event Details */}
         <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
-          {/* Event Image */}
           {imgUrl && (
             <div className="h-64 md:h-96 bg-gray-200 relative overflow-hidden">
               <img
@@ -382,13 +452,8 @@ const EventRegistrationPage = () => {
           </div>
         </div>
 
-        {/* Registration Section */}
-        {checkingStatus ? (
-          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-            <Loader2 className="h-8 w-8 text-primary-600 animate-spin mx-auto mb-4" />
-            <p className="text-gray-600">Checking registration status...</p>
-          </div>
-        ) : registration ? (
+                 {/* Registration Section */}
+         {registration ? (
           // Already Registered
           <div className="bg-white rounded-lg shadow-lg p-6 md:p-8">
             <div className="flex items-start mb-6">
@@ -429,7 +494,6 @@ const EventRegistrationPage = () => {
                 </div>
               </div>
 
-              {/* QR Code */}
               {registration.qrDataURL && (
                 <div className="border-t border-gray-200 pt-6">
                   <div className="text-center">
@@ -452,73 +516,241 @@ const EventRegistrationPage = () => {
                     </button>
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          // Not Registered - Show Register Button
-          <div className="bg-white rounded-lg shadow-lg p-6 md:p-8">
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <div className="flex items-center">
-                  <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-                  <p className="text-red-700">{error}</p>
+                             )}
+             </div>
+           </div>
+         ) : (
+           // Registration Form
+           <div className="bg-white rounded-lg shadow-lg p-6 md:p-8">
+             <h2 className="text-2xl font-bold text-gray-900 mb-6">Register for this Event</h2>
+             
+             {checkingStatus && (
+               <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                 <div className="flex items-center">
+                   <Loader2 className="h-5 w-5 text-blue-500 mr-2 animate-spin" />
+                   <p className="text-blue-700">Checking if you're already registered...</p>
+                 </div>
+               </div>
+             )}
+             
+             {error && (
+               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                 <div className="flex items-center">
+                   <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+                   <p className="text-red-700">{error}</p>
+                 </div>
+               </div>
+             )}
+
+            <form onSubmit={handleSubmit(onSubmitRegistration)} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <User className="h-4 w-4 inline mr-1" />
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    {...register('name', { 
+                      required: 'Name is required',
+                      minLength: { value: 2, message: 'Name must be at least 2 characters' },
+                      maxLength: { value: 100, message: 'Name must be less than 100 characters' }
+                    })}
+                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                      errors.name ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="Enter your full name"
+                  />
+                  {errors.name && (
+                    <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
+                  )}
+                </div>
+
+                                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                     <Phone className="h-4 w-4 inline mr-1" />
+                     Phone Number *
+                   </label>
+                   <input
+                     type="tel"
+                     {...register('phone', { 
+                       required: 'Phone number is required',
+                       pattern: {
+                         value: /^[0-9]{10}$/,
+                         message: 'Phone must be 10 digits'
+                       },
+                       onChange: handlePhoneCheck
+                     })}
+                     maxLength={10}
+                     className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                       errors.phone ? 'border-red-500' : 'border-gray-300'
+                     }`}
+                     placeholder="9876543210"
+                     onBlur={handlePhoneCheck}
+                   />
+                   {errors.phone && (
+                     <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
+                   )}
+                   {checkingStatus && (
+                     <p className="text-blue-600 text-sm mt-1">Checking registration status...</p>
+                   )}
+                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Mail className="h-4 w-4 inline mr-1" />
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    {...register('email', { 
+                      required: 'Email is required',
+                      pattern: {
+                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                        message: 'Invalid email address'
+                      }
+                    })}
+                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                      errors.email ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="your@email.com"
+                  />
+                  {errors.email && (
+                    <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Building2 className="h-4 w-4 inline mr-1" />
+                    Business Name *
+                  </label>
+                  <input
+                    type="text"
+                    {...register('businessName', { 
+                      required: 'Business name is required',
+                      minLength: { value: 2, message: 'Business name must be at least 2 characters' },
+                      maxLength: { value: 200, message: 'Business name must be less than 200 characters' }
+                    })}
+                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                      errors.businessName ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="Your business name"
+                  />
+                  {errors.businessName && (
+                    <p className="text-red-500 text-sm mt-1">{errors.businessName.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Business Type *
+                  </label>
+                  <select
+                    {...register('businessType', { required: 'Business type is required' })}
+                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                      errors.businessType ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Select business type</option>
+                    {BUSINESS_TYPES.map(type => (
+                      <option key={type.value} value={type.value}>{type.label}</option>
+                    ))}
+                  </select>
+                  {errors.businessType && (
+                    <p className="text-red-500 text-sm mt-1">{errors.businessType.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <MapPinIcon className="h-4 w-4 inline mr-1" />
+                    City *
+                  </label>
+                  <input
+                    type="text"
+                    {...register('city', { required: 'City is required' })}
+                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                      errors.city ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="Enter city name"
+                  />
+                  {errors.city && (
+                    <p className="text-red-500 text-sm mt-1">{errors.city.message}</p>
+                  )}
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Association *
+                  </label>
+                  {loadingAssociations ? (
+                    <div className="flex items-center p-3 border border-gray-300 rounded-lg">
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      <span className="text-gray-600">Loading associations...</span>
+                    </div>
+                  ) : (
+                    <select
+                      {...register('associationId', { required: 'Association is required' })}
+                      className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                        errors.associationId ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      disabled={!selectedCity || associations.length === 0}
+                    >
+                      <option value="">
+                        {!selectedCity 
+                          ? 'Please enter city first' 
+                          : associations.length === 0 
+                            ? 'No associations found for this city' 
+                            : 'Select association'}
+                      </option>
+                      {associations.map(assoc => (
+                        <option key={assoc.id} value={assoc.id}>{assoc.name}</option>
+                      ))}
+                    </select>
+                  )}
+                  {errors.associationId && (
+                    <p className="text-red-500 text-sm mt-1">{errors.associationId.message}</p>
+                  )}
                 </div>
               </div>
-            )}
 
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                Register for this Event
-              </h2>
-              <p className="text-gray-600 mb-6">
-                {!token && 'Please login to register for this event.'}
-                {token && isFree && 'This event is free. Click below to register.'}
-                {token && !isFree && `Complete your registration by paying ₹${registrationFee.toFixed(2)}`}
-              </p>
-
-              <button
-                onClick={handleRegister}
-                disabled={registering || !token}
-                className={`inline-flex items-center px-8 py-3 text-lg font-semibold rounded-lg transition-all ${
-                  !token
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : registering
-                    ? 'bg-primary-400 text-white cursor-not-allowed'
-                    : 'bg-primary-600 text-white hover:bg-primary-700 shadow-lg hover:shadow-xl transform hover:scale-105'
-                }`}
-              >
-                {registering ? (
-                  <>
-                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : !token ? (
-                  'Login to Register'
-                ) : isFree ? (
-                  'Register Now (Free)'
-                ) : (
-                  <>
-                    <CreditCard className="h-5 w-5 mr-2" />
-                    Register & Pay ₹{registrationFee.toFixed(2)}
-                  </>
-                )}
-              </button>
-
-              {!token && (
-                <p className="mt-4 text-sm text-gray-500">
-                  Don't have an account?{' '}
-                  <button
-                    onClick={() => navigate('/login', { state: { returnTo: `/${slug}` } })}
-                    className="text-primary-600 hover:underline"
-                  >
-                    Login here
-                  </button>
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                <div className="text-gray-600">
+                  <span className="font-semibold">Registration Fee: </span>
+                  {isFree ? (
+                    <span className="text-green-600 font-bold">Free</span>
+                  ) : (
+                    <span className="text-gray-900">₹ {registrationFee.toFixed(2)}</span>
+                  )}
+                </div>
+                                 <button
+                   type="submit"
+                   disabled={registering || checkingStatus || registration}
+                   className={`inline-flex items-center px-6 py-3 text-lg font-semibold rounded-lg transition-all ${
+                     registering || checkingStatus || registration
+                       ? 'bg-primary-400 text-white cursor-not-allowed'
+                       : 'bg-primary-600 text-white hover:bg-primary-700 shadow-lg hover:shadow-xl'
+                   }`}
+                 >
+                  {registering ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : isFree ? (
+                    'Register Now (Free)'
+                  ) : (
+                    <>
+                      <CreditCard className="h-5 w-5 mr-2" />
+                      Register & Pay ₹{registrationFee.toFixed(2)}
+                    </>
+                  )}
+                </button>
+                             </div>
+             </form>
+           </div>
+         )}
       </div>
     </div>
   );

@@ -291,8 +291,80 @@ export const eventApi = {
       console.error('Error fetching event:', error);
       throw error;
     }
+  },
+
+  // Public Event Registration APIs (no authentication required)
+  
+  // Get public event details
+  getPublicEvent: async (id) => {
+    try {
+      const publicInstance = createPublicInstance();
+      const response = await publicInstance.get(`/public/events/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching public event:', error);
+      throw error;
+    }
+  },
+
+  // Check registration status by phone (public)
+  checkPublicRegistrationStatus: async (eventId, phone) => {
+    try {
+      const publicInstance = createPublicInstance();
+      const response = await publicInstance.get(`/public/events/${eventId}/check-registration`, {
+        params: { phone }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error checking registration status:', error);
+      throw error;
+    }
+  },
+
+  // Initiate public registration and payment
+  initiatePublicRegistration: async (eventId, registrationData) => {
+    try {
+      const publicInstance = createPublicInstance();
+      const response = await publicInstance.post(`/public/events/${eventId}/register-payment`, registrationData);
+      return response.data;
+    } catch (error) {
+      console.error('Error initiating registration:', error);
+      throw error;
+    }
+  },
+
+  // Confirm payment and complete registration (public)
+  confirmPublicPayment: async (eventId, paymentData) => {
+    try {
+      const publicInstance = createPublicInstance();
+      const response = await publicInstance.post(`/public/events/${eventId}/confirm-payment`, paymentData);
+      return response.data;
+    } catch (error) {
+      console.error('Error confirming payment:', error);
+      throw error;
+    }
   }
 };
+
+// Public Association API
+export const publicAssociationApi = {
+  // Get associations by city (public)
+  getAssociationsByCity: async (city) => {
+    try {
+      const publicInstance = createPublicInstance();
+      const response = await publicInstance.get('/public/associations', {
+        params: { city }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching associations:', error);
+      throw error;
+    }
+  }
+};
+
+// Export eventApi as default (it's already exported as named export via export const)
+export default eventApi;
 
 
 

@@ -1,7 +1,15 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../constants';
 
-// Create axios instance with auth token
+// Cloudinary configuration from environment variables
+// Note: API Secret should NEVER be exposed in frontend code - use unsigned upload preset instead
+const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
+const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
+
+// Use Cloudinary if cloud name and upload preset are configured
+const USE_CLOUDINARY = !!CLOUDINARY_CLOUD_NAME && !!CLOUDINARY_UPLOAD_PRESET;
+
+// Create axios instance with auth token (for fallback API uploads)
 const createAuthInstance = () => {
   const token = localStorage.getItem('token');
   return axios.create({
@@ -12,30 +20,89 @@ const createAuthInstance = () => {
   });
 };
 
+// Cloudinary upload function using unsigned upload preset
+const uploadToCloudinary = async (file, folder = 'mandap-events') => {
+  if (!USE_CLOUDINARY || !CLOUDINARY_UPLOAD_PRESET) {
+    throw new Error('Cloudinary is not properly configured. Please set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET');
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  formData.append('folder', folder);
+  formData.append('resource_type', 'auto');
+
+  try {
+    const response = await axios.post(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+
+    return {
+      success: true,
+      url: response.data.secure_url,
+      public_id: response.data.public_id,
+      format: response.data.format,
+      width: response.data.width,
+      height: response.data.height,
+      bytes: response.data.bytes,
+      // Maintain compatibility with existing code
+      filename: response.data.public_id,
+      image: response.data.secure_url,
+    };
+  } catch (error) {
+    console.error('Cloudinary upload error:', error);
+    throw new Error(error.response?.data?.error?.message || 'Cloudinary upload failed');
+  }
+};
+
+// Delete from Cloudinary (requires backend API for security with API secret)
+const deleteFromCloudinary = async (publicId) => {
+  // Deletion requires API secret, so we'll call backend API
+  try {
+    const authInstance = createAuthInstance();
+    const response = await authInstance.delete(`/upload/cloudinary/${publicId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Cloudinary delete error:', error);
+    throw new Error(error.response?.data?.message || 'Delete failed');
+  }
+};
+
 export const uploadApi = {
-  // Upload image file (for events)
+  // Upload image file (for events) - uses Cloudinary if configured, otherwise backend API
   uploadImage: async (file) => {
     try {
       console.log('UploadApi - Uploading image:', file.name);
       
-      const formData = new FormData();
-      formData.append('image', file);
-      
-      const authInstance = createAuthInstance();
-      const response = await authInstance.post('/upload/event-image', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      
-      console.log('UploadApi - Upload response:', response.data);
-      return response.data;
+      if (USE_CLOUDINARY) {
+        return await uploadToCloudinary(file, 'mandap-events');
+      } else {
+        // Fallback to backend API upload
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        const authInstance = createAuthInstance();
+        const response = await authInstance.post('/upload/event-image', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        
+        console.log('UploadApi - Upload response:', response.data);
+        return response.data;
+      }
     } catch (error) {
       console.error('UploadApi - Upload error:', error);
       if (error.response?.data) {
         throw new Error(error.response.data.message || 'Upload failed');
       }
-      throw new Error('Network error during upload');
+      throw error;
     }
   },
 
@@ -44,24 +111,29 @@ export const uploadApi = {
     try {
       console.log('UploadApi - Uploading profile image:', file.name);
       
-      const formData = new FormData();
-      formData.append('image', file);
-      
-      const authInstance = createAuthInstance();
-      const response = await authInstance.post('/upload/profile-image', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      
-      console.log('UploadApi - Profile upload response:', response.data);
-      return response.data;
+      if (USE_CLOUDINARY) {
+        return await uploadToCloudinary(file, 'mandap-profiles');
+      } else {
+        // Fallback to backend API upload
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        const authInstance = createAuthInstance();
+        const response = await authInstance.post('/upload/profile-image', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        
+        console.log('UploadApi - Profile upload response:', response.data);
+        return response.data;
+      }
     } catch (error) {
       console.error('UploadApi - Profile upload error:', error);
       if (error.response?.data) {
         throw new Error(error.response.data.message || 'Upload failed');
       }
-      throw new Error('Network error during upload');
+      throw error;
     }
   },
 
@@ -69,10 +141,20 @@ export const uploadApi = {
   deleteImage: async (filename) => {
     try {
       console.log('UploadApi - Deleting image:', filename);
-      const authInstance = createAuthInstance();
-      const response = await authInstance.delete(`/upload/${filename}`);
-      console.log('UploadApi - Delete response:', response.data);
-      return response.data;
+      
+      if (USE_CLOUDINARY) {
+        // Extract public_id from filename (could be a URL or public_id)
+        const publicId = filename.includes('cloudinary.com') 
+          ? filename.split('/').slice(-2).join('/').replace(/\.[^/.]+$/, '')
+          : filename;
+        return await deleteFromCloudinary(publicId);
+      } else {
+        // Fallback to backend API delete
+        const authInstance = createAuthInstance();
+        const response = await authInstance.delete(`/upload/${filename}`);
+        console.log('UploadApi - Delete response:', response.data);
+        return response.data;
+      }
     } catch (error) {
       console.error('UploadApi - Delete error:', error);
       if (error.response?.data) {
@@ -82,30 +164,26 @@ export const uploadApi = {
     }
   },
 
-  // Get full image URL with CORS fallback
+  // Get full image URL - handles both Cloudinary URLs and local uploads
   getImageUrl: (filename) => {
     if (!filename) return null;
-    // If it's already a full URL, return as is
+    
+    // If it's already a full URL (Cloudinary or other), return as is
     if (filename.startsWith('http')) return filename;
-    // Remove /api from the base URL for image serving
+    
+    // If using Cloudinary but got a public_id, construct Cloudinary URL
+    if (USE_CLOUDINARY && !filename.includes('/')) {
+      return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${filename}`;
+    }
+    
+    // Fallback to local uploads URL
     const baseUrl = API_BASE_URL.replace('/api', '');
     return `${baseUrl}/uploads/event-images/${filename}`;
   },
 
   // Get image URL with CORS proxy fallback
   getImageUrlWithFallback: (filename) => {
-    if (!filename) return null;
-    // If it's already a full URL, return as is
-    if (filename.startsWith('http')) return filename;
-    
-    // Remove /api from the base URL for image serving
-    const baseUrl = API_BASE_URL.replace('/api', '');
-    const directUrl = `${baseUrl}/uploads/event-images/${filename}`;
-    
-    // For development, you can use a CORS proxy if needed
-    // const proxyUrl = `https://cors-anywhere.herokuapp.com/${directUrl}`;
-    
-    return directUrl;
+    return uploadApi.getImageUrl(filename);
   },
 
   // Check if image URL is accessible (for debugging CORS issues)
