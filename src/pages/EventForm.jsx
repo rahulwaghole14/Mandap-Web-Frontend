@@ -27,6 +27,10 @@ const EventForm = () => {
           setLoadingEvent(true);
           const data = await eventApi.getEvent(eventId);
           const e = data.event || data; // support both shapes
+          console.log('EventForm - Loaded event data:', e);
+          console.log('EventForm - Event image field:', e.image);
+          console.log('EventForm - Event imageURL field:', e.imageURL);
+          
           setValue('name', e.name || e.title || '');
           setValue('description', e.description || '');
           
@@ -60,7 +64,9 @@ const EventForm = () => {
           // Use registrationFee if available, fallback to fee
           setValue('fee', e.registrationFee ?? e.fee ?? '');
           if (e.image || e.imageURL) {
-            setImagePreview(uploadApi.getImageUrl(e.image || e.imageURL));
+            const imageUrl = uploadApi.getImageUrl(e.image || e.imageURL);
+            console.log('EventForm - Setting image preview URL:', imageUrl);
+            setImagePreview(imageUrl);
           }
         } catch (err) {
           console.error(err);
