@@ -19,7 +19,10 @@ import {
   Phone,
   Mail,
   Building2,
-  MapPin as MapPinIcon
+  MapPin as MapPinIcon,
+  Camera,
+  X,
+  Image as ImageIcon
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MandapamLogo from '../components/MandapamLogo';
@@ -52,6 +55,8 @@ const EventRegistrationPage = () => {
   const [associations, setAssociations] = useState([]);
   const [loadingAssociations, setLoadingAssociations] = useState(false);
   const [memberId, setMemberId] = useState(null);
+  const [photo, setPhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
   
   // Get slug from params or extract from pathname if params is undefined
   const actualSlug = slug || location.pathname.replace(/^\//, '').split('/')[0];
@@ -197,22 +202,29 @@ const EventRegistrationPage = () => {
         return;
       }
 
-      // Step 1: Initiate registration and payment
-      const registrationData = {
-        name: formData.name,
-        phone: formData.phone,
-        email: formData.email,
-        businessName: formData.businessName,
-        businessType: formData.businessType,
-        city: formData.city,
-        associationId: parseInt(formData.associationId)
-      };
+      // Step 1: Initiate registration and payment with FormData (to support photo upload)
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('phone', formData.phone);
+      formDataToSend.append('email', formData.email);
+      formDataToSend.append('businessName', formData.businessName);
+      formDataToSend.append('businessType', formData.businessType);
+      formDataToSend.append('city', formData.city);
+      formDataToSend.append('associationId', formData.associationId);
+      
+      // Add photo if selected
+      if (photo) {
+        formDataToSend.append('photo', photo);
+      }
 
-      const paymentData = await eventApi.initiatePublicRegistration(resolvedEventId, registrationData);
+      const paymentData = await eventApi.initiatePublicRegistration(resolvedEventId, formDataToSend);
 
              // Free event - registration complete
        if (paymentData.isFree) {
          setRegistration(paymentData.registration);
+         // Clear photo after successful registration
+         setPhoto(null);
+         setPhotoPreview(null);
          toast.success('Registration successful!');
          return;
        }
@@ -236,7 +248,10 @@ const EventRegistrationPage = () => {
               }
             );
 
-                         setRegistration(confirmData.registration);
+                                                   setRegistration(confirmData.registration);
+             // Clear photo after successful registration
+             setPhoto(null);
+             setPhotoPreview(null);
              toast.success('Registration successful!');
           } catch (err) {
             console.error('Payment confirmation error:', err);
@@ -292,6 +307,51 @@ const EventRegistrationPage = () => {
     } else {
       // Clear registration if phone is not 10 digits
       setRegistration(null);
+    }
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    
+    if (!file) {
+      setPhoto(null);
+      setPhotoPreview(null);
+      return;
+    }
+    
+    // Validate file size (5MB = 5 * 1024 * 1024 bytes)
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (file.size > maxSize) {
+      toast.error('File size exceeds 5MB limit. Please choose a smaller image.');
+      e.target.value = ''; // Clear the input
+      return;
+    }
+    
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Invalid file type. Please upload an image (JPG, PNG, GIF, or WEBP).');
+      e.target.value = ''; // Clear the input
+      return;
+    }
+    
+    setPhoto(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setPhotoPreview(e.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removePhoto = () => {
+    setPhoto(null);
+    setPhotoPreview(null);
+    // Clear the file input
+    const fileInput = document.getElementById('photo');
+    if (fileInput) {
+      fileInput.value = '';
     }
   };
 
@@ -467,6 +527,20 @@ const EventRegistrationPage = () => {
             </div>
 
             <div className="border-t border-gray-200 pt-6">
+              {/* Display uploaded photo if available */}
+              {registration.member?.profileImageURL && (
+                <div className="mb-6 text-center">
+                  <div className="text-sm text-gray-500 mb-2">Profile Photo</div>
+                  <div className="inline-block">
+                    <img 
+                      src={registration.member.profileImageURL} 
+                      alt="Profile" 
+                      className="w-32 h-32 rounded-full object-cover border-4 border-primary-200 shadow-lg"
+                    />
+                  </div>
+                </div>
+              )}
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
                   <div className="text-sm text-gray-500 mb-1">Registration ID</div>
@@ -712,6 +786,52 @@ const EventRegistrationPage = () => {
                   {errors.associationId && (
                     <p className="text-red-500 text-sm mt-1">{errors.associationId.message}</p>
                   )}
+                </div>
+
+                {/* Photo Upload Field - Camera Capture Only */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Camera className="h-4 w-4 inline mr-1" />
+                    Profile Photo (Optional)
+                  </label>
+                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-primary-400 transition-colors">
+                    <div className="space-y-1 text-center w-full">
+                      {!photoPreview ? (
+                        <>
+                          <Camera className="mx-auto h-10 w-10 text-gray-400" />
+                          <div className="flex text-sm text-gray-600 justify-center">
+                            <label className="relative cursor-pointer bg-white rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none">
+                              <span>Capture Photo from Camera</span>
+                                                             <input
+                                 id="photo"
+                                 type="file"
+                                 className="sr-only"
+                                 accept="image/*"
+                                 capture="user"
+                                 onChange={handlePhotoChange}
+                               />
+                            </label>
+                          </div>
+                          <p className="text-xs text-gray-500">Max 5MB - JPG, PNG, GIF, WEBP</p>
+                        </>
+                      ) : (
+                        <div className="relative inline-block">
+                          <img 
+                            src={photoPreview} 
+                            alt="Photo preview" 
+                            className="h-32 w-32 object-cover rounded-lg border-2 border-gray-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={removePhoto}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 

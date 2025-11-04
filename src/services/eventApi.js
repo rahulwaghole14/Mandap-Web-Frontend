@@ -324,7 +324,12 @@ export const eventApi = {
   // Initiate public registration and payment
   initiatePublicRegistration: async (eventId, registrationData) => {
     try {
-      const publicInstance = createPublicInstance();
+      // Create instance without Content-Type header if FormData (browser will set it with boundary)
+      const isFormData = registrationData instanceof FormData;
+      const publicInstance = axios.create({
+        baseURL: API_BASE_URL,
+        headers: isFormData ? {} : { 'Content-Type': 'application/json' }
+      });
       const response = await publicInstance.post(`/public/events/${eventId}/register-payment`, registrationData);
       return response.data;
     } catch (error) {
