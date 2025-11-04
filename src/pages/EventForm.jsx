@@ -135,7 +135,27 @@ const EventForm = () => {
         // Add image file directly (backend expects field name 'image')
         formData.append('image', imageFile);
         
-        await eventApi.updateEvent(eventId, formData);
+        console.log('EventForm - Edit with image: Sending FormData');
+        console.log('EventForm - Event ID:', eventId);
+        console.log('EventForm - FormData fields:', {
+          title: values.name,
+          description: values.description,
+          startDateTime: values.startDateTime,
+          endDateTime: values.endDateTime,
+          address: values.address,
+          city: values.city,
+          state: values.state,
+          district: values.district,
+          pincode: values.pincode,
+          registrationFee: values.fee ? Number(values.fee) : undefined,
+          image: imageFile ? `${imageFile.name} (${imageFile.size} bytes, type: ${imageFile.type})` : 'none'
+        });
+        
+        const updateResponse = await eventApi.updateEvent(eventId, formData);
+        console.log('EventForm - Update response:', updateResponse);
+        console.log('EventForm - Event image after update:', updateResponse.event?.image || updateResponse.image);
+        console.log('EventForm - Event imageURL after update:', updateResponse.event?.imageURL || updateResponse.imageURL);
+        
         toast.success('Event updated');
         navigate(`/events/${eventId}`);
       } else {
@@ -170,11 +190,20 @@ const EventForm = () => {
         }
 
         if (isEdit) {
-          await eventApi.updateEvent(eventId, payload);
+          console.log('EventForm - Edit without image: Sending JSON payload');
+          console.log('EventForm - Event ID:', eventId);
+          console.log('EventForm - Payload:', payload);
+          const updateResponse = await eventApi.updateEvent(eventId, payload);
+          console.log('EventForm - Update response:', updateResponse);
+          console.log('EventForm - Event image after update:', updateResponse.event?.image || updateResponse.image);
           toast.success('Event updated');
           navigate(`/events/${eventId}`);
         } else {
+          console.log('EventForm - Create event: Sending JSON payload');
+          console.log('EventForm - Payload:', payload);
           const res = await eventApi.createEvent(payload);
+          console.log('EventForm - Create response:', res);
+          console.log('EventForm - Event image after create:', res.event?.image || res.image);
           const newId = res.event?.id || res.id;
           toast.success('Event created');
           if (newId) {
