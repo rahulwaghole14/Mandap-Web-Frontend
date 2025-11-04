@@ -50,6 +50,15 @@ const uploadToCloudinary = async (file, folder = 'mandap-events') => {
     // Cloudinary rejects requests with Authorization headers for unsigned uploads
     const cloudinaryInstance = createCloudinaryInstance();
     
+    console.log('uploadToCloudinary - Uploading to Cloudinary:', {
+      cloudName: CLOUDINARY_CLOUD_NAME,
+      uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+      folder: folder,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type
+    });
+    
     const response = await cloudinaryInstance.post(
       `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`,
       formData,
@@ -62,7 +71,15 @@ const uploadToCloudinary = async (file, folder = 'mandap-events') => {
       }
     );
 
-    return {
+    console.log('uploadToCloudinary - Cloudinary response:', response.data);
+    console.log('uploadToCloudinary - secure_url:', response.data.secure_url);
+    console.log('uploadToCloudinary - public_id:', response.data.public_id);
+    console.log('uploadToCloudinary - format:', response.data.format);
+    console.log('uploadToCloudinary - width:', response.data.width);
+    console.log('uploadToCloudinary - height:', response.data.height);
+    console.log('uploadToCloudinary - bytes:', response.data.bytes);
+
+    const result = {
       success: true,
       url: response.data.secure_url,
       public_id: response.data.public_id,
@@ -74,6 +91,13 @@ const uploadToCloudinary = async (file, folder = 'mandap-events') => {
       filename: response.data.public_id,
       image: response.data.secure_url,
     };
+    
+    console.log('uploadToCloudinary - Returning result object:', result);
+    console.log('uploadToCloudinary - Result.url (secure_url):', result.url);
+    console.log('uploadToCloudinary - Result.filename (public_id):', result.filename);
+    console.log('uploadToCloudinary - Result.image (secure_url):', result.image);
+
+    return result;
   } catch (error) {
     console.error('Cloudinary upload error:', error);
     throw new Error(error.response?.data?.error?.message || 'Cloudinary upload failed');
