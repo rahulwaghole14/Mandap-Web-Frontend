@@ -127,7 +127,7 @@ const Events = () => {
     
     // Set existing image preview if available
     if (event.image || event.imageURL) {
-      setPreview(uploadApi.getImageUrl(event.image || event.imageURL));
+      setPreview(uploadApi.getImageUrl({ image: event.image, imageURL: event.imageURL }));
     } else {
       setPreview(null);
     }
@@ -416,7 +416,7 @@ const Events = () => {
                 <div className="h-48 bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center">
                   {(event.image || event.imageURL) ? (
                     <img 
-                      src={uploadApi.getImageUrl(event.image || event.imageURL)} 
+                      src={uploadApi.getImageUrl({ image: event.image, imageURL: event.imageURL })} 
                       alt={event.title} 
                       className="h-full w-full object-cover"
                       crossOrigin="anonymous"
@@ -1079,7 +1079,7 @@ const Events = () => {
               <div className="h-32 bg-gradient-to-br from-primary-100 to-primary-200 rounded-lg flex items-center justify-center mb-4">
                 {(selected.image || selected.imageURL) ? (
                   <img 
-                    src={uploadApi.getImageUrl(selected.image || selected.imageURL)} 
+                    src={uploadApi.getImageUrl({ image: selected.image, imageURL: selected.imageURL })} 
                     alt={selected.title} 
                     className="h-full w-full object-cover rounded-lg"
                     crossOrigin="anonymous"

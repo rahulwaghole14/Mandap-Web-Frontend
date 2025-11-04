@@ -116,7 +116,11 @@ const EventDetails = () => {
     }
   };
 
-  const imgUrl = useMemo(() => uploadApi.getImageUrl(event?.image || event?.imageURL), [event]);
+  const imgUrl = useMemo(() => {
+    if (!event) return null;
+    // Pass object with both fields so getImageUrl can prioritize imageURL
+    return uploadApi.getImageUrl({ image: event.image, imageURL: event.imageURL });
+  }, [event]);
 
   // Calculate total fees from registrations
   const totalFees = useMemo(() => {

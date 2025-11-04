@@ -368,7 +368,7 @@ const EventRegistrationPage = () => {
 
   const imgUrl = useMemo(() => {
     if (!event) return null;
-    return uploadApi.getImageUrl(event.image || event.imageURL);
+    return uploadApi.getImageUrl({ image: event.image, imageURL: event.imageURL });
   }, [event]);
 
   if (loading) {

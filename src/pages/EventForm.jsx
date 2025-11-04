@@ -64,7 +64,7 @@ const EventForm = () => {
           // Use registrationFee if available, fallback to fee
           setValue('fee', e.registrationFee ?? e.fee ?? '');
           if (e.image || e.imageURL) {
-            const imageUrl = uploadApi.getImageUrl(e.image || e.imageURL);
+            const imageUrl = uploadApi.getImageUrl({ image: e.image, imageURL: e.imageURL });
             console.log('EventForm - Setting image preview URL:', imageUrl);
             setImagePreview(imageUrl);
           }

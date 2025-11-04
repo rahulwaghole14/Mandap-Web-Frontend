@@ -184,49 +184,70 @@ export const uploadApi = {
   },
 
   // Get full image URL - handles both Cloudinary URLs and local uploads
-  getImageUrl: (filename) => {
+  // Accepts either a filename or an object with {image, imageURL} fields
+  getImageUrl: (filenameOrObject) => {
+    // Handle object with imageURL and image fields (prioritize imageURL)
+    let filename = null;
+    let imageURL = null;
+    
+    if (typeof filenameOrObject === 'object' && filenameOrObject !== null) {
+      imageURL = filenameOrObject.imageURL;
+      filename = filenameOrObject.image;
+    } else {
+      filename = filenameOrObject;
+    }
+    
+    // Priority 1: If imageURL is provided and is a full URL, use it directly
+    if (imageURL && imageURL.startsWith('http')) {
+      return imageURL;
+    }
+    
+    // Priority 2: If imageURL is a local path, construct full local URL
+    if (imageURL && !imageURL.startsWith('http')) {
+      const baseUrl = API_BASE_URL.replace('/api', '');
+      // Remove leading slash if present to avoid double slashes
+      const cleanPath = imageURL.startsWith('/') ? imageURL.slice(1) : imageURL;
+      return `${baseUrl}/${cleanPath}`;
+    }
+    
+    // Priority 3: Use filename (if provided)
     if (!filename) return null;
     
-    // If it's already a full URL (Cloudinary or other), return as is
+    // If it's already a full URL, return as is
     if (filename.startsWith('http')) return filename;
     
-    // If using Cloudinary, check if it's a Cloudinary public_id
+    // If using Cloudinary, construct Cloudinary URL
     if (USE_CLOUDINARY) {
-      // Cloudinary public_ids can include folders (e.g., "mandap-events/aeozaby4vhfyrmo5vxeb")
-      // Check if it looks like a Cloudinary public_id:
-      // 1. Contains '/' (folder structure) - definitely Cloudinary
-      // 2. No extension - likely Cloudinary public_id
-      // 3. Has extension but matches Cloudinary naming pattern - could be Cloudinary
-      
       const hasFolder = filename.includes('/');
       const hasExtension = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(filename);
       
       // If it has a folder structure, it's definitely a Cloudinary public_id
       if (hasFolder) {
-        return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${filename}`;
+        // Encode spaces and special characters properly for Cloudinary
+        const encodedFilename = encodeURIComponent(filename).replace(/%2F/g, '/');
+        return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${encodedFilename}`;
       }
       
-      // If no extension, likely a Cloudinary public_id (Cloudinary auto-generates these)
+      // If no extension, likely a Cloudinary public_id
       if (!hasExtension) {
-        return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${filename}`;
+        const encodedFilename = encodeURIComponent(filename).replace(/%2F/g, '/');
+        return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${encodedFilename}`;
       }
       
-      // If it has an extension, it could be either:
-      // - A Cloudinary public_id with original filename preserved (e.g., "Mandpam logo new-1762254791351-412252479.png")
-      // - A local filename stored in the database
-      // Since we're using Cloudinary, we'll assume it's Cloudinary unless it's clearly a local path
-      // Check if it looks like a local file path (starts with ./ or contains backslashes)
+      // If it has an extension, could be Cloudinary or local
       const isLocalPath = filename.startsWith('./') || filename.includes('\\');
       
       if (!isLocalPath) {
-        // Assume it's Cloudinary if we're using Cloudinary
-        return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${filename}`;
+        // Encode spaces for Cloudinary URLs (spaces should be %20)
+        const encodedFilename = encodeURIComponent(filename).replace(/%2F/g, '/');
+        return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${encodedFilename}`;
       }
     }
     
-    // Fallback to local uploads URL
+    // Fallback: local uploads URL (encode spaces in filename for URL)
     const baseUrl = API_BASE_URL.replace('/api', '');
-    return `${baseUrl}/uploads/event-images/${filename}`;
+    const encodedFilename = encodeURIComponent(filename);
+    return `${baseUrl}/uploads/event-images/${encodedFilename}`;
   },
 
   // Get image URL with CORS proxy fallback
