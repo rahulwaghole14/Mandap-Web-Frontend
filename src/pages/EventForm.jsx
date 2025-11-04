@@ -29,15 +29,36 @@ const EventForm = () => {
           const e = data.event || data; // support both shapes
           setValue('name', e.name || e.title || '');
           setValue('description', e.description || '');
-          // Expecting ISO strings; fallback to empty
-          setValue('startDateTime', e.startDateTime || (e.startDate && e.startTime ? `${e.startDate}T${(e.startTime || '00:00')}` : ''));
-          setValue('endDateTime', e.endDateTime || (e.endDate && e.endTime ? `${e.endDate}T${(e.endTime || '00:00')}` : ''));
+          
+          // Parse datetime properly from backend response
+          // Backend returns ISO strings like "2025-01-06T05:00:00.000Z"
+          // Convert to datetime-local format (YYYY-MM-DDTHH:MM)
+          const formatDateTimeForInput = (dateTimeStr) => {
+            if (!dateTimeStr) return '';
+            try {
+              const date = new Date(dateTimeStr);
+              // Convert to local time and format as YYYY-MM-DDTHH:MM
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, '0');
+              const day = String(date.getDate()).padStart(2, '0');
+              const hours = String(date.getHours()).padStart(2, '0');
+              const minutes = String(date.getMinutes()).padStart(2, '0');
+              return `${year}-${month}-${day}T${hours}:${minutes}`;
+            } catch (err) {
+              console.error('Error parsing datetime:', err);
+              return '';
+            }
+          };
+          
+          setValue('startDateTime', formatDateTimeForInput(e.startDateTime || e.startDate));
+          setValue('endDateTime', formatDateTimeForInput(e.endDateTime || e.endDate));
           setValue('address', e.address || '');
           setValue('city', e.city || '');
           setValue('state', e.state || '');
           setValue('district', e.district || '');
           setValue('pincode', e.pincode || '');
-          setValue('fee', e.fee ?? '');
+          // Use registrationFee if available, fallback to fee
+          setValue('fee', e.registrationFee ?? e.fee ?? '');
           if (e.image || e.imageURL) {
             setImagePreview(uploadApi.getImageUrl(e.image || e.imageURL));
           }
@@ -75,42 +96,83 @@ const EventForm = () => {
   const onSubmit = async (values) => {
     try {
       setUploading(true);
-      let imageFilename = null;
-      if (imageFile) {
-        const up = await uploadApi.uploadImage(imageFile);
-        imageFilename = up.file?.filename || up.filename || null;
-      }
-
-      // Normalize payload for backend
-      const payload = {
-        name: values.name,
-        description: values.description,
-        // prefer explicit datetime fields if backend expects them; also send split fields for compatibility
-        startDateTime: values.startDateTime,
-        endDateTime: values.endDateTime,
-        startDate: values.startDateTime ? values.startDateTime.slice(0, 10) : undefined,
-        endDate: values.endDateTime ? values.endDateTime.slice(0, 10) : undefined,
-        address: values.address,
-        city: values.city,
-        state: values.state,
-        district: values.district,
-        pincode: values.pincode,
-        fee: values.fee ? Number(values.fee) : 0,
-        image: imageFilename ?? undefined,
-      };
-
-      if (isEdit) {
-        await eventApi.updateEvent(eventId, payload);
+      
+      // For updates with image, send FormData directly to backend
+      // For create or updates without image, send JSON
+      const hasImageFile = imageFile !== null;
+      
+      if (hasImageFile && isEdit) {
+        // Update with image: Send FormData with image file directly (as per backend API)
+        const formData = new FormData();
+        formData.append('title', values.name); // Backend expects 'title' field
+        formData.append('description', values.description || '');
+        
+        // Send datetime in combined format (backend accepts this)
+        if (values.startDateTime) {
+          formData.append('startDateTime', values.startDateTime);
+        }
+        if (values.endDateTime) {
+          formData.append('endDateTime', values.endDateTime);
+        }
+        
+        formData.append('address', values.address || '');
+        formData.append('city', values.city || '');
+        formData.append('state', values.state || '');
+        formData.append('district', values.district || '');
+        formData.append('pincode', values.pincode || '');
+        
+        // Use registrationFee as backend expects
+        if (values.fee) {
+          formData.append('registrationFee', Number(values.fee));
+        }
+        
+        // Add image file directly (backend expects field name 'image')
+        formData.append('image', imageFile);
+        
+        await eventApi.updateEvent(eventId, formData);
         toast.success('Event updated');
         navigate(`/events/${eventId}`);
       } else {
-        const res = await eventApi.createEvent(payload);
-        const newId = res.event?.id || res.id;
-        toast.success('Event created');
-        if (newId) {
-          navigate(`/events/${newId}`);
+        // Create or update without image: Use JSON payload
+        let imageFilename = null;
+        if (imageFile && !isEdit) {
+          // For create, upload image first if using Cloudinary or backend upload API
+          const up = await uploadApi.uploadImage(imageFile);
+          imageFilename = up.url || up.file?.filename || up.filename || null;
+        }
+
+        // Normalize payload for backend
+        const payload = {
+          title: values.name, // Backend expects 'title' field
+          description: values.description,
+          startDateTime: values.startDateTime,
+          endDateTime: values.endDateTime,
+          address: values.address,
+          city: values.city,
+          state: values.state,
+          district: values.district,
+          pincode: values.pincode,
+          registrationFee: values.fee ? Number(values.fee) : 0,
+        };
+        
+        // Add image only if we have a filename (for create)
+        if (imageFilename) {
+          payload.image = imageFilename;
+        }
+
+        if (isEdit) {
+          await eventApi.updateEvent(eventId, payload);
+          toast.success('Event updated');
+          navigate(`/events/${eventId}`);
         } else {
-          navigate('/events');
+          const res = await eventApi.createEvent(payload);
+          const newId = res.event?.id || res.id;
+          toast.success('Event created');
+          if (newId) {
+            navigate(`/events/${newId}`);
+          } else {
+            navigate('/events');
+          }
         }
       }
     } catch (err) {

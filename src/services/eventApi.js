@@ -86,8 +86,21 @@ export const eventApi = {
   // Update event
   updateEvent: async (id, eventData) => {
     try {
-      const authInstance = createAuthInstance();
-      const response = await authInstance.put(`/events/${id}`, eventData);
+      const token = getAuthToken();
+      
+      // Check if eventData is FormData (for image uploads)
+      const isFormData = eventData instanceof FormData;
+      
+      // Create instance - don't set Content-Type if FormData (browser sets it automatically)
+      const instance = axios.create({
+        baseURL: API_BASE_URL,
+        headers: {
+          ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      
+      const response = await instance.put(`/events/${id}`, eventData);
       return response.data;
     } catch (error) {
       console.error('Error updating event:', error);
