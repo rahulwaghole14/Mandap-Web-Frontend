@@ -138,7 +138,9 @@ const EventForm = () => {
         if (imageFile && !isEdit) {
           // For create, upload image first if using Cloudinary or backend upload API
           const up = await uploadApi.uploadImage(imageFile);
+          console.log('EventForm - Upload response:', up);
           imageFilename = up.url || up.file?.filename || up.filename || null;
+          console.log('EventForm - Extracted imageFilename:', imageFilename);
         }
 
         // Normalize payload for backend
@@ -158,6 +160,7 @@ const EventForm = () => {
         // Add image only if we have a filename (for create)
         if (imageFilename) {
           payload.image = imageFilename;
+          console.log('EventForm - Payload with image:', payload);
         }
 
         if (isEdit) {
