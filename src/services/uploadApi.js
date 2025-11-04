@@ -190,9 +190,38 @@ export const uploadApi = {
     // If it's already a full URL (Cloudinary or other), return as is
     if (filename.startsWith('http')) return filename;
     
-    // If using Cloudinary but got a public_id, construct Cloudinary URL
-    if (USE_CLOUDINARY && !filename.includes('/')) {
-      return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${filename}`;
+    // If using Cloudinary, check if it's a Cloudinary public_id
+    if (USE_CLOUDINARY) {
+      // Cloudinary public_ids can include folders (e.g., "mandap-events/aeozaby4vhfyrmo5vxeb")
+      // Check if it looks like a Cloudinary public_id:
+      // 1. Contains '/' (folder structure) - definitely Cloudinary
+      // 2. No extension - likely Cloudinary public_id
+      // 3. Has extension but matches Cloudinary naming pattern - could be Cloudinary
+      
+      const hasFolder = filename.includes('/');
+      const hasExtension = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(filename);
+      
+      // If it has a folder structure, it's definitely a Cloudinary public_id
+      if (hasFolder) {
+        return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${filename}`;
+      }
+      
+      // If no extension, likely a Cloudinary public_id (Cloudinary auto-generates these)
+      if (!hasExtension) {
+        return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${filename}`;
+      }
+      
+      // If it has an extension, it could be either:
+      // - A Cloudinary public_id with original filename preserved (e.g., "Mandpam logo new-1762254791351-412252479.png")
+      // - A local filename stored in the database
+      // Since we're using Cloudinary, we'll assume it's Cloudinary unless it's clearly a local path
+      // Check if it looks like a local file path (starts with ./ or contains backslashes)
+      const isLocalPath = filename.startsWith('./') || filename.includes('\\');
+      
+      if (!isLocalPath) {
+        // Assume it's Cloudinary if we're using Cloudinary
+        return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/${filename}`;
+      }
     }
     
     // Fallback to local uploads URL
