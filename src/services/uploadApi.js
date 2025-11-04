@@ -20,6 +20,19 @@ const createAuthInstance = () => {
   });
 };
 
+// Create a fresh axios instance for Cloudinary WITHOUT any default headers
+// Cloudinary rejects requests with Authorization headers for unsigned uploads
+const createCloudinaryInstance = () => {
+  // Create instance without inheriting global defaults
+  const instance = axios.create();
+  
+  // Explicitly remove Authorization header if it exists in defaults
+  delete instance.defaults.headers.common['Authorization'];
+  delete instance.defaults.headers['Authorization'];
+  
+  return instance;
+};
+
 // Cloudinary upload function using unsigned upload preset
 const uploadToCloudinary = async (file, folder = 'mandap-events') => {
   if (!USE_CLOUDINARY || !CLOUDINARY_UPLOAD_PRESET) {
@@ -33,13 +46,26 @@ const uploadToCloudinary = async (file, folder = 'mandap-events') => {
   formData.append('resource_type', 'auto');
 
   try {
-    const response = await axios.post(
+    // Use fresh axios instance without any auth headers
+    // Cloudinary rejects requests with Authorization headers for unsigned uploads
+    const cloudinaryInstance = createCloudinaryInstance();
+    
+    const response = await cloudinaryInstance.post(
       `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`,
       formData,
       {
         headers: {
           'Content-Type': 'multipart/form-data',
+          // Explicitly ensure Authorization is NOT included
         },
+        // Prevent inheriting global axios defaults
+        transformRequest: [(data, headers) => {
+          // Remove Authorization header if it somehow got added
+          if (headers && headers['Authorization']) {
+            delete headers['Authorization'];
+          }
+          return data;
+        }]
       }
     );
 
