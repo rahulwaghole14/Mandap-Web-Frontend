@@ -27,6 +27,9 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           
+          {/* Test route to verify routing works */}
+          <Route path="/test-route" element={<div style={{padding: '20px'}}><h1>Test Route Works!</h1></div>} />
+          
           {/* Protected Routes - Require Authentication */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/vendors" element={<ProtectedRoute><VendorList /></ProtectedRoute>} />

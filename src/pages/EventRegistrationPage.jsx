@@ -29,57 +29,90 @@ const EventRegistrationPage = () => {
   const [registration, setRegistration] = useState(null);
   const [registering, setRegistering] = useState(false);
   const [error, setError] = useState(null);
+  const [resolvedEventId, setResolvedEventId] = useState(null);
   
   // Normalize slug to lowercase for case-insensitive matching
   const normalizedSlug = slug?.toLowerCase();
-  
-  // Map slug to event ID from constants (case-insensitive)
-  const eventId = EVENT_SLUGS[normalizedSlug] || EVENT_SLUGS[slug] || slug; // Try normalized first, then original, then fallback to slug if it's a direct ID
   
   // Debug logging
   useEffect(() => {
     console.log('EventRegistrationPage - slug:', slug);
     console.log('EventRegistrationPage - normalizedSlug:', normalizedSlug);
-    console.log('EventRegistrationPage - eventId:', eventId);
     console.log('EventRegistrationPage - EVENT_SLUGS:', EVENT_SLUGS);
-  }, [slug, normalizedSlug, eventId]);
+  }, [slug, normalizedSlug]);
   
   useEffect(() => {
-    if (!eventId) {
-      console.error('EventRegistrationPage - No eventId found for slug:', slug);
-      setError('Event not found. Please check the event ID.');
+    // Resolve event ID from slug
+    let finalEventId = null;
+    
+    if (!slug) {
+      console.error('EventRegistrationPage - No slug provided');
+      setError('Event not found. Please check the URL.');
       setLoading(false);
       return;
     }
-    loadEvent();
-  }, [eventId, slug]);
+    
+    // Try to find event ID from slug mapping (case-insensitive)
+    finalEventId = EVENT_SLUGS[normalizedSlug] || EVENT_SLUGS[slug];
+    
+    // If not found in mapping, try using slug as direct ID if it's numeric
+    if (!finalEventId && !isNaN(slug)) {
+      finalEventId = slug;
+    }
+    
+    if (!finalEventId) {
+      console.error('EventRegistrationPage - No eventId found for slug:', slug);
+      console.error('Available slugs:', Object.keys(EVENT_SLUGS));
+      setError(`Event not found for "${slug}". Please check the event URL.`);
+      setLoading(false);
+      setResolvedEventId(null);
+      return;
+    }
+    
+    console.log('EventRegistrationPage - Resolved eventId:', finalEventId);
+    setResolvedEventId(finalEventId);
+  }, [slug, normalizedSlug]);
+  
+  useEffect(() => {
+    if (resolvedEventId) {
+      loadEvent(resolvedEventId);
+    }
+  }, [resolvedEventId]);
 
   useEffect(() => {
-    if (event && token) {
-      checkRegistrationStatus();
+    if (event && token && resolvedEventId) {
+      checkRegistrationStatus(resolvedEventId);
     }
-  }, [event, token]);
+  }, [event, token, resolvedEventId]);
 
-  const loadEvent = async () => {
+  const loadEvent = async (eventIdToLoad) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await eventApi.getEventPublic(eventId);
+      console.log('Loading event with ID:', eventIdToLoad);
+      const data = await eventApi.getEventPublic(eventIdToLoad);
       setEvent(data.event || data);
+      console.log('Event loaded successfully:', data.event || data);
     } catch (err) {
       console.error('Error loading event:', err);
-      setError(err.response?.data?.message || 'Failed to load event details');
+      console.error('Error details:', {
+        status: err.response?.status,
+        message: err.response?.data?.message,
+        data: err.response?.data
+      });
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to load event details';
+      setError(`Event not found: ${errorMsg}. Event ID: ${eventIdToLoad}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const checkRegistrationStatus = async () => {
-    if (!token) return; // Skip if not authenticated
+  const checkRegistrationStatus = async (eventIdToCheck) => {
+    if (!token || !eventIdToCheck) return; // Skip if not authenticated or no event ID
     
     try {
       setCheckingStatus(true);
-      const data = await eventApi.checkRegistrationStatus(eventId);
+      const data = await eventApi.checkRegistrationStatus(eventIdToCheck);
       if (data.isRegistered) {
         setRegistration(data.registration);
       }
@@ -120,8 +153,13 @@ const EventRegistrationPage = () => {
       setRegistering(true);
       setError(null);
 
+      if (!resolvedEventId) {
+        toast.error('Event ID not resolved. Please refresh the page.');
+        return;
+      }
+
       // Step 1: Initiate payment
-      const paymentData = await eventApi.initiatePayment(eventId);
+      const paymentData = await eventApi.initiatePayment(resolvedEventId);
 
       // Free event
       if (paymentData.isFree) {
@@ -136,7 +174,7 @@ const EventRegistrationPage = () => {
           try {
             // Step 3: Confirm payment
             const confirmData = await eventApi.confirmPayment(
-              eventId,
+              resolvedEventId,
               {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
@@ -149,7 +187,7 @@ const EventRegistrationPage = () => {
             toast.success('Registration successful!');
             
             // Reload registration status to get QR code
-            await checkRegistrationStatus();
+            await checkRegistrationStatus(resolvedEventId);
           } catch (err) {
             console.error('Payment confirmation error:', err);
             toast.error(err.response?.data?.message || 'Payment confirmation failed');
@@ -187,11 +225,11 @@ const EventRegistrationPage = () => {
   };
 
   const downloadQRCode = () => {
-    if (!registration?.qrDataURL) return;
+    if (!registration?.qrDataURL || !resolvedEventId) return;
     
     const link = document.createElement('a');
     link.href = registration.qrDataURL;
-    link.download = `event-${eventId}-qr-code.png`;
+    link.download = `event-${resolvedEventId}-qr-code.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
