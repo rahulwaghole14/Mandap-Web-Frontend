@@ -103,114 +103,58 @@ const EventForm = () => {
     try {
       setUploading(true);
       
-      // For updates with image, send FormData directly to backend
-      // For create or updates without image, send JSON
-      const hasImageFile = imageFile !== null;
+      // For both create and edit: Upload image to Cloudinary first if a new image is selected
+      let imageFilename = null;
+      if (imageFile) {
+        console.log('EventForm - Uploading image to Cloudinary for', isEdit ? 'edit' : 'create');
+        const up = await uploadApi.uploadImage(imageFile);
+        console.log('EventForm - Upload response:', up);
+        imageFilename = up.url || up.file?.filename || up.filename || null;
+        console.log('EventForm - Extracted imageFilename:', imageFilename);
+      }
+
+      // Normalize payload for backend - same structure for both create and edit
+      const payload = {
+        title: values.name, // Backend expects 'title' field
+        description: values.description,
+        startDateTime: values.startDateTime,
+        endDateTime: values.endDateTime,
+        address: values.address,
+        city: values.city,
+        state: values.state,
+        district: values.district,
+        pincode: values.pincode,
+        registrationFee: values.fee ? Number(values.fee) : 0,
+      };
       
-      if (hasImageFile && isEdit) {
-        // Update with image: Send FormData with image file directly (as per backend API)
-        const formData = new FormData();
-        formData.append('title', values.name); // Backend expects 'title' field
-        formData.append('description', values.description || '');
-        
-        // Send datetime in combined format (backend accepts this)
-        if (values.startDateTime) {
-          formData.append('startDateTime', values.startDateTime);
-        }
-        if (values.endDateTime) {
-          formData.append('endDateTime', values.endDateTime);
-        }
-        
-        formData.append('address', values.address || '');
-        formData.append('city', values.city || '');
-        formData.append('state', values.state || '');
-        formData.append('district', values.district || '');
-        formData.append('pincode', values.pincode || '');
-        
-        // Use registrationFee as backend expects
-        if (values.fee) {
-          formData.append('registrationFee', Number(values.fee));
-        }
-        
-        // Add image file directly (backend expects field name 'image')
-        formData.append('image', imageFile);
-        
-        console.log('EventForm - Edit with image: Sending FormData');
+      // Add image only if we have a filename (either from Cloudinary upload or existing)
+      if (imageFilename) {
+        payload.image = imageFilename;
+        console.log('EventForm - Payload with image:', payload);
+      }
+
+      if (isEdit) {
+        console.log('EventForm - Edit event: Sending JSON payload');
         console.log('EventForm - Event ID:', eventId);
-        console.log('EventForm - FormData fields:', {
-          title: values.name,
-          description: values.description,
-          startDateTime: values.startDateTime,
-          endDateTime: values.endDateTime,
-          address: values.address,
-          city: values.city,
-          state: values.state,
-          district: values.district,
-          pincode: values.pincode,
-          registrationFee: values.fee ? Number(values.fee) : undefined,
-          image: imageFile ? `${imageFile.name} (${imageFile.size} bytes, type: ${imageFile.type})` : 'none'
-        });
-        
-        const updateResponse = await eventApi.updateEvent(eventId, formData);
+        console.log('EventForm - Payload:', payload);
+        const updateResponse = await eventApi.updateEvent(eventId, payload);
         console.log('EventForm - Update response:', updateResponse);
         console.log('EventForm - Event image after update:', updateResponse.event?.image || updateResponse.image);
         console.log('EventForm - Event imageURL after update:', updateResponse.event?.imageURL || updateResponse.imageURL);
-        
         toast.success('Event updated');
         navigate(`/events/${eventId}`);
       } else {
-        // Create or update without image: Use JSON payload
-        let imageFilename = null;
-        if (imageFile && !isEdit) {
-          // For create, upload image first if using Cloudinary or backend upload API
-          const up = await uploadApi.uploadImage(imageFile);
-          console.log('EventForm - Upload response:', up);
-          imageFilename = up.url || up.file?.filename || up.filename || null;
-          console.log('EventForm - Extracted imageFilename:', imageFilename);
-        }
-
-        // Normalize payload for backend
-        const payload = {
-          title: values.name, // Backend expects 'title' field
-          description: values.description,
-          startDateTime: values.startDateTime,
-          endDateTime: values.endDateTime,
-          address: values.address,
-          city: values.city,
-          state: values.state,
-          district: values.district,
-          pincode: values.pincode,
-          registrationFee: values.fee ? Number(values.fee) : 0,
-        };
-        
-        // Add image only if we have a filename (for create)
-        if (imageFilename) {
-          payload.image = imageFilename;
-          console.log('EventForm - Payload with image:', payload);
-        }
-
-        if (isEdit) {
-          console.log('EventForm - Edit without image: Sending JSON payload');
-          console.log('EventForm - Event ID:', eventId);
-          console.log('EventForm - Payload:', payload);
-          const updateResponse = await eventApi.updateEvent(eventId, payload);
-          console.log('EventForm - Update response:', updateResponse);
-          console.log('EventForm - Event image after update:', updateResponse.event?.image || updateResponse.image);
-          toast.success('Event updated');
-          navigate(`/events/${eventId}`);
+        console.log('EventForm - Create event: Sending JSON payload');
+        console.log('EventForm - Payload:', payload);
+        const res = await eventApi.createEvent(payload);
+        console.log('EventForm - Create response:', res);
+        console.log('EventForm - Event image after create:', res.event?.image || res.image);
+        const newId = res.event?.id || res.id;
+        toast.success('Event created');
+        if (newId) {
+          navigate(`/events/${newId}`);
         } else {
-          console.log('EventForm - Create event: Sending JSON payload');
-          console.log('EventForm - Payload:', payload);
-          const res = await eventApi.createEvent(payload);
-          console.log('EventForm - Create response:', res);
-          console.log('EventForm - Event image after create:', res.event?.image || res.image);
-          const newId = res.event?.id || res.id;
-          toast.success('Event created');
-          if (newId) {
-            navigate(`/events/${newId}`);
-          } else {
-            navigate('/events');
-          }
+          navigate('/events');
         }
       }
     } catch (err) {
