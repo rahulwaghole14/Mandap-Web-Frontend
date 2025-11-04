@@ -1,14 +1,20 @@
-# SPA routing support for Render
+# SPA routing support for Render/Netlify
 # Handle all routes and redirect to index.html
 
-# API routes (if any) - don't redirect these
-/api/* 200
-
-# Static assets - serve directly
+# Static assets - serve directly (must come first)
 /assets/* 200
 /favicon.ico 200
 /robots.txt 200
 /manifest.json 200
+/*.js 200
+/*.css 200
+/*.png 200
+/*.jpg 200
+/*.svg 200
+/*.ico 200
 
-# All other routes - redirect to index.html for SPA routing
+# API routes (if any) - don't redirect these
+/api/* 200
+
+# All other routes - redirect to index.html for SPA routing (must be last)
 /*    /index.html   200
