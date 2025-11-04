@@ -1,5 +1,29 @@
 # SPA routing support for Apache servers
-Options -MultiViews
-RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteRule ^ index.html [QSA,L]
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  
+  # Don't rewrite files or directories that exist
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  
+  # Don't rewrite API routes
+  RewriteCond %{REQUEST_URI} !^/api/
+  
+  # Don't rewrite assets
+  RewriteCond %{REQUEST_URI} !^/assets/
+  
+  # Rewrite everything else to index.html
+  RewriteRule ^ index.html [QSA,L]
+</IfModule>
+
+# Handle MIME types
+<IfModule mod_mime.c>
+  AddType application/javascript js
+  AddType text/css css
+</IfModule>
+
+# Enable CORS for assets if needed
+<IfModule mod_headers.c>
+  Header set Access-Control-Allow-Origin "*"
+</IfModule>
