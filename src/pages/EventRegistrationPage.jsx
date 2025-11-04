@@ -36,14 +36,23 @@ const EventRegistrationPage = () => {
   // Map slug to event ID from constants (case-insensitive)
   const eventId = EVENT_SLUGS[normalizedSlug] || EVENT_SLUGS[slug] || slug; // Try normalized first, then original, then fallback to slug if it's a direct ID
   
+  // Debug logging
+  useEffect(() => {
+    console.log('EventRegistrationPage - slug:', slug);
+    console.log('EventRegistrationPage - normalizedSlug:', normalizedSlug);
+    console.log('EventRegistrationPage - eventId:', eventId);
+    console.log('EventRegistrationPage - EVENT_SLUGS:', EVENT_SLUGS);
+  }, [slug, normalizedSlug, eventId]);
+  
   useEffect(() => {
     if (!eventId) {
+      console.error('EventRegistrationPage - No eventId found for slug:', slug);
       setError('Event not found. Please check the event ID.');
       setLoading(false);
       return;
     }
     loadEvent();
-  }, [eventId]);
+  }, [eventId, slug]);
 
   useEffect(() => {
     if (event && token) {
