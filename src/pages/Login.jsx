@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff, Lock, Mail, Info, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -12,6 +12,10 @@ const Login = () => {
   
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get returnTo path from location state, default to dashboard
+  const returnTo = location.state?.returnTo || '/dashboard';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,9 +33,9 @@ const Login = () => {
       console.log('Login result:', result);
       
       if (result.success) {
-        console.log('Login successful, navigating to dashboard...');
+        console.log('Login successful, navigating to:', returnTo);
         toast.success('Login successful!');
-        navigate('/dashboard');
+        navigate(returnTo);
       } else {
         console.log('Login failed:', result.error);
         toast.error(result.error || 'Login failed');

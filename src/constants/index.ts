@@ -58,3 +58,13 @@ export const LANGUAGES = [
 ];
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://mandapam-backend-97mi.onrender.com/api';
+
+// Event slug to event ID mapping for public registration pages
+// Example: Access /kolhapur-2026 will map to the event with ID 32
+// To add a new event registration page:
+//   1. Create the event in the admin panel
+//   2. Note the event ID from the URL (e.g., /events/32)
+//   3. Add the mapping here: 'slug-name': 32
+export const EVENT_SLUGS = {
+  'kolhapur-2026': 32, // TODO: Replace null with the actual event ID (e.g., 32)
+};

@@ -16,6 +16,7 @@ import Associations from './pages/Associations';
 import AssociationDetail from './pages/AssociationDetail';
 import AssociationMembers from './pages/AssociationMembers';
 import Settings from './pages/Settings';
+import EventRegistrationPage from './pages/EventRegistrationPage';
 
 function App() {
   return (
@@ -40,6 +41,9 @@ function App() {
           <Route path="/associations/:associationId" element={<ProtectedRoute><AssociationDetail /></ProtectedRoute>} />
           <Route path="/associations/:associationId/members" element={<ProtectedRoute><AssociationMembers /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          
+          {/* Public Event Registration Routes - Must be after all other routes */}
+          <Route path="/:slug" element={<EventRegistrationPage />} />
           
           {/* Catch all route */}
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -219,6 +219,78 @@ export const eventApi = {
       console.error('Error during check-in:', error);
       throw error;
     }
+  },
+
+  // Event Registration Payment Flow
+  // Initiate payment registration
+  initiatePayment: async (eventId, memberId = null) => {
+    try {
+      const authInstance = createAuthInstance();
+      const response = await authInstance.post(`/events/${eventId}/register-payment`, { memberId });
+      return response.data;
+    } catch (error) {
+      console.error('Error initiating payment:', error);
+      throw error;
+    }
+  },
+
+  // Confirm payment and complete registration
+  confirmPayment: async (eventId, paymentData, memberId = null) => {
+    try {
+      const authInstance = createAuthInstance();
+      const response = await authInstance.post(`/events/${eventId}/confirm-payment`, {
+        ...paymentData,
+        memberId
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error confirming payment:', error);
+      throw error;
+    }
+  },
+
+  // Check registration status
+  checkRegistrationStatus: async (eventId, memberId = null) => {
+    try {
+      const authInstance = createAuthInstance();
+      const params = memberId ? { memberId } : {};
+      const response = await authInstance.get(`/events/${eventId}/my-registration`, { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error checking registration status:', error);
+      throw error;
+    }
+  },
+
+  // Get my registrations
+  getMyRegistrations: async () => {
+    try {
+      const authInstance = createAuthInstance();
+      const response = await authInstance.get('/events/my/registrations');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching my registrations:', error);
+      throw error;
+    }
+  },
+
+  // Get event by ID (public access supported)
+  getEventPublic: async (id) => {
+    try {
+      // Try public access first
+      const publicInstance = createPublicInstance();
+      const response = await publicInstance.get(`/events/${id}`);
+      return response.data;
+    } catch (error) {
+      // Fallback to authenticated if needed
+      if (error.response?.status === 401) {
+        const authInstance = createAuthInstance();
+        const response = await authInstance.get(`/events/${id}`);
+        return response.data;
+      }
+      console.error('Error fetching event:', error);
+      throw error;
+    }
   }
 };
 
