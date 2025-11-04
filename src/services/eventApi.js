@@ -91,6 +91,13 @@ export const eventApi = {
       // Check if eventData is FormData (for image uploads)
       const isFormData = eventData instanceof FormData;
       
+      console.log('eventApi.updateEvent - Called with:', {
+        id,
+        isFormData,
+        eventDataType: typeof eventData,
+        hasImage: isFormData ? 'Yes (FormData)' : 'No (JSON)'
+      });
+      
       // Create instance - don't set Content-Type if FormData (browser sets it automatically)
       const instance = axios.create({
         baseURL: API_BASE_URL,
@@ -101,9 +108,38 @@ export const eventApi = {
       });
       
       const response = await instance.put(`/events/${id}`, eventData);
+      
+      console.log('eventApi.updateEvent - Full response:', response);
+      console.log('eventApi.updateEvent - Response data:', response.data);
+      console.log('eventApi.updateEvent - Response status:', response.status);
+      
+      if (response.data) {
+        const event = response.data.event || response.data;
+        console.log('eventApi.updateEvent - Event object:', event);
+        console.log('eventApi.updateEvent - Event.image:', event.image);
+        console.log('eventApi.updateEvent - Event.imageURL:', event.imageURL);
+        
+        if (isFormData) {
+          console.log('eventApi.updateEvent - This was a FormData update (with image)');
+          console.log('eventApi.updateEvent - Backend returned image field:', event.image);
+          console.log('eventApi.updateEvent - Backend returned imageURL field:', event.imageURL);
+          
+          // Try to construct what the full URL would be
+          if (event.imageURL) {
+            console.log('eventApi.updateEvent - imageURL is a full URL:', event.imageURL.startsWith('http'));
+          }
+          if (event.image) {
+            console.log('eventApi.updateEvent - image field value:', event.image);
+            console.log('eventApi.updateEvent - image is a full URL:', event.image.startsWith('http'));
+          }
+        }
+      }
+      
       return response.data;
     } catch (error) {
-      console.error('Error updating event:', error);
+      console.error('eventApi.updateEvent - Error:', error);
+      console.error('eventApi.updateEvent - Error response:', error.response);
+      console.error('eventApi.updateEvent - Error response data:', error.response?.data);
       throw error;
     }
   },
