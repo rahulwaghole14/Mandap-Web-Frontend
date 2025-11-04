@@ -67,7 +67,7 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://mandapam-ba
 //   3. Add the mapping here: 'slug-name': 32 (use lowercase)
 // Note: Slugs are matched case-insensitively, but use lowercase in this mapping
 export const EVENT_SLUGS = {
-  'kolhapur-2026': 32,
+  'kolhapur-2026': 33,
   // Add both lowercase and any common variations if needed
-  'Kolhapur-2026': 32, // Capital K variant for backward compatibility
+  'Kolhapur-2026': 33, // Capital K variant for backward compatibility
 };
