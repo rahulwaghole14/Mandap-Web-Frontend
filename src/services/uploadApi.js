@@ -56,16 +56,9 @@ const uploadToCloudinary = async (file, folder = 'mandap-events') => {
       {
         headers: {
           'Content-Type': 'multipart/form-data',
-          // Explicitly ensure Authorization is NOT included
+          // Explicitly set Authorization to undefined to prevent it from being sent
+          'Authorization': undefined,
         },
-        // Prevent inheriting global axios defaults
-        transformRequest: [(data, headers) => {
-          // Remove Authorization header if it somehow got added
-          if (headers && headers['Authorization']) {
-            delete headers['Authorization'];
-          }
-          return data;
-        }]
       }
     );
 
