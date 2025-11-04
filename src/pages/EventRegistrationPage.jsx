@@ -30,8 +30,11 @@ const EventRegistrationPage = () => {
   const [registering, setRegistering] = useState(false);
   const [error, setError] = useState(null);
   
-  // Map slug to event ID from constants
-  const eventId = EVENT_SLUGS[slug] || slug; // Try mapping first, fallback to slug if it's a direct ID
+  // Normalize slug to lowercase for case-insensitive matching
+  const normalizedSlug = slug?.toLowerCase();
+  
+  // Map slug to event ID from constants (case-insensitive)
+  const eventId = EVENT_SLUGS[normalizedSlug] || EVENT_SLUGS[slug] || slug; // Try normalized first, then original, then fallback to slug if it's a direct ID
   
   useEffect(() => {
     if (!eventId) {
