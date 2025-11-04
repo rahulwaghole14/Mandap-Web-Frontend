@@ -1,20 +1,12 @@
-# SPA routing support for Render/Netlify
-# Handle all routes and redirect to index.html
+# SPA routing support for Render
+# This file must be in the dist folder after build
+# Render will automatically use this for routing
 
-# Static assets - serve directly (must come first)
+# Serve static assets directly (optional - Render handles this automatically)
 /assets/* 200
-/favicon.ico 200
-/robots.txt 200
-/manifest.json 200
-/*.js 200
-/*.css 200
-/*.png 200
-/*.jpg 200
-/*.svg 200
-/*.ico 200
 
-# API routes (if any) - don't redirect these
+# API routes - don't redirect (if proxied through Render)
 /api/* 200
 
-# All other routes - redirect to index.html for SPA routing (must be last)
+# SPA fallback - all other routes go to index.html
 /*    /index.html   200

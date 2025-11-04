@@ -20,7 +20,9 @@ services:
       - path: /assets/*
         name: Cache-Control
         value: public, max-age=31536000, immutable
-      # SPA routing support
+      # Don't cache HTML files for SPA routing
       - path: /*
         name: Cache-Control
         value: no-cache, no-store, must-revalidate
+    # SPA routing - Render will automatically use _redirects file from dist folder
+    # The _redirects file should contain: /*    /index.html   200
