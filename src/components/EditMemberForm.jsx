@@ -94,6 +94,13 @@ const EditMemberForm = ({ member, onSuccess, onCancel }) => {
       setValue('associationName', member.associationName);
       setValue('birthDate', member.birthDate ? member.birthDate.split('T')[0] : '');
       
+      // Set existing profile image preview if available
+      if (member.profileImage || member.profileImageURL) {
+        const imageUrl = uploadApi.getImageUrl({ image: member.profileImage, imageURL: member.profileImageURL });
+        console.log('EditMemberForm - Setting profile image preview URL:', imageUrl);
+        setPreview(imageUrl);
+      }
+      
       // Set selectedDistrict state for cascading dropdowns
       if (member.district) {
         console.log('EditMemberForm - Setting selectedDistrict to:', member.district);
@@ -422,7 +429,7 @@ const EditMemberForm = ({ member, onSuccess, onCancel }) => {
             ) : (
               <div className="relative">
                 <img
-                  src={preview || member.profileImage}
+                  src={preview || (member.profileImage || member.profileImageURL ? uploadApi.getImageUrl({ image: member.profileImage, imageURL: member.profileImageURL }) : '')}
                   alt="Preview"
                   className="mx-auto h-24 w-24 object-cover rounded-lg"
                 />
