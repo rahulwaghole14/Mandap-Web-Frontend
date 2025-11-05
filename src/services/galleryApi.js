@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../constants';
+import { uploadApi } from './uploadApi';
 
 // Create axios instance with auth token
 const createAuthInstance = () => {
@@ -41,35 +42,63 @@ export const galleryApi = {
     try {
       const { captions = [], altTexts = [] } = options;
       
-      const formData = new FormData();
-      
-      // Add files
-      files.forEach(file => {
-        formData.append('images', file);
-      });
-      
-      // Add captions and alt texts if provided
-      if (captions.length > 0) {
-        formData.append('captions', JSON.stringify(captions));
-      }
-      if (altTexts.length > 0) {
-        formData.append('altTexts', JSON.stringify(altTexts));
-      }
-
-      const authInstance = createAuthInstance();
-      const response = await authInstance.post(`/gallery/${entityType}/${entityId}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
+      // First, upload all files to Cloudinary (or backend if Cloudinary is not configured)
+      console.log('GalleryApi - Uploading', files.length, 'images to Cloudinary');
+      const uploadPromises = files.map(async (file, index) => {
+        try {
+          // Validate file before upload
+          galleryApi.validateImageFile(file);
+          
+          // Upload to Cloudinary (or backend fallback)
+          const uploadResult = await uploadApi.uploadImage(file);
+          console.log(`GalleryApi - Image ${index + 1} uploaded:`, uploadResult);
+          
+          // Return Cloudinary URL (secure_url)
+          return uploadResult.url || uploadResult.image || uploadResult.filename;
+        } catch (error) {
+          console.error(`GalleryApi - Failed to upload image ${index + 1}:`, error);
+          throw new Error(`Failed to upload ${file.name}: ${error.message}`);
         }
       });
       
+      // Wait for all uploads to complete
+      const imageUrls = await Promise.all(uploadPromises);
+      console.log('GalleryApi - All images uploaded. URLs:', imageUrls);
+      
+      // Check if we have any URLs
+      if (!imageUrls || imageUrls.length === 0) {
+        throw new Error('No images provided. Send images array with Cloudinary URLs.');
+      }
+      
+      // Prepare payload with Cloudinary URLs
+      const payload = {
+        images: imageUrls, // Array of Cloudinary URLs
+        captions: captions.length > 0 ? captions : undefined,
+        altTexts: altTexts.length > 0 ? altTexts : undefined
+      };
+      
+      // Remove undefined fields
+      if (!payload.captions) delete payload.captions;
+      if (!payload.altTexts) delete payload.altTexts;
+      
+      console.log('GalleryApi - Sending payload to backend:', payload);
+      
+      // Send JSON payload with Cloudinary URLs to backend
+      const authInstance = createAuthInstance();
+      const response = await authInstance.post(`/gallery/${entityType}/${entityId}`, payload, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('GalleryApi - Backend response:', response.data);
       return response.data;
     } catch (error) {
       console.error('GalleryApi - Upload images error:', error);
       if (error.response?.data) {
         throw new Error(error.response.data.message || 'Failed to upload images');
       }
-      throw new Error('Network error while uploading images');
+      throw error; // Re-throw if it's already an Error with message
     }
   },
 
@@ -139,13 +168,10 @@ export const galleryApi = {
     }
   },
 
-  // Get image URL
+  // Get image URL - uses uploadApi for consistency
   getImageUrl: (filename) => {
-    if (!filename) return null;
-    if (filename.startsWith('http')) return filename;
-    // Remove /api from the base URL for image serving
-    const baseUrl = API_BASE_URL.replace('/api', '');
-    return `${baseUrl}/uploads/${filename}`;
+    // Use the same logic as uploadApi.getImageUrl for consistency
+    return uploadApi.getImageUrl(filename);
   },
 
   // Format file size
