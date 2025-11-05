@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { memberApi } from '../services/memberApi';
+import { uploadApi } from '../services/uploadApi';
 import toast from 'react-hot-toast';
 import { formatDateForAPI, getMaxDateForPicker, getMinDateForPicker, validateBirthDate } from '../utils/dateUtils';
 
@@ -92,59 +93,43 @@ const AddAssociationMemberForm = ({ association, onSuccess, onCancel }) => {
       let profileImage = null;
       let businessImageUrls = [];
       
-      // Upload profile image if provided
+      // Upload profile image if provided (using Cloudinary)
       if (image) {
-        const formData = new FormData();
-        formData.append('image', image);
-        
         try {
-          const uploadResponse = await fetch('https://mandapam-backend-97mi.onrender.com/api/upload/profile-image', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: formData
-          });
-          
-          if (uploadResponse.ok) {
-            const uploadResult = await uploadResponse.json();
-            profileImage = uploadResult.filename;
-          } else {
-            throw new Error('Failed to upload profile image');
-          }
+          console.log('AddAssociationMemberForm - Uploading profile image to Cloudinary');
+          const uploadResult = await uploadApi.uploadProfileImage(image);
+          console.log('AddAssociationMemberForm - Profile image upload result:', uploadResult);
+          // Get the Cloudinary URL (secure_url)
+          profileImage = uploadResult.url || uploadResult.image || uploadResult.filename;
+          console.log('AddAssociationMemberForm - Profile image URL:', profileImage);
         } catch (uploadError) {
-          console.error('Profile image upload error:', uploadError);
+          console.error('AddAssociationMemberForm - Profile image upload error:', uploadError);
           toast.error('Failed to upload profile image. Member will be created without profile image.');
         }
       }
       
-      // Upload business images if provided
+      // Upload business images if provided (using Cloudinary)
       if (businessImages.length > 0) {
         try {
-          const uploadPromises = businessImages.map(async (file) => {
-            const formData = new FormData();
-            formData.append('image', file);
-            
-            const uploadResponse = await fetch('https://mandapam-backend-97mi.onrender.com/api/upload/business-image', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-              },
-              body: formData
-            });
-            
-            if (uploadResponse.ok) {
-              const uploadResult = await uploadResponse.json();
-              return uploadResult.filename;
-            } else {
-              throw new Error(`Failed to upload business image: ${file.name}`);
+          console.log('AddAssociationMemberForm - Uploading', businessImages.length, 'business images to Cloudinary');
+          const uploadPromises = businessImages.map(async (file, index) => {
+            try {
+              // Use uploadImage for business images
+              const uploadResult = await uploadApi.uploadImage(file);
+              console.log(`AddAssociationMemberForm - Business image ${index + 1} upload result:`, uploadResult);
+              // Get the Cloudinary URL (secure_url)
+              return uploadResult.url || uploadResult.image || uploadResult.filename;
+            } catch (error) {
+              console.error(`AddAssociationMemberForm - Failed to upload business image ${index + 1}:`, error);
+              throw new Error(`Failed to upload ${file.name}: ${error.message}`);
             }
           });
           
           businessImageUrls = await Promise.all(uploadPromises);
+          console.log('AddAssociationMemberForm - All business images uploaded. URLs:', businessImageUrls);
         } catch (uploadError) {
-          console.error('Business images upload error:', uploadError);
-          toast.error('Failed to upload business images. Member will be created without business images.');
+          console.error('AddAssociationMemberForm - Business images upload error:', uploadError);
+          toast.error(uploadError.message || 'Failed to upload business images. Member will be created without business images.');
         }
       }
       

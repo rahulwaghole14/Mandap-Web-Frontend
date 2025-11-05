@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { memberApi } from '../services/memberApi';
+import { uploadApi } from '../services/uploadApi';
 import toast from 'react-hot-toast';
 import { formatDateForAPI, getMaxDateForPicker, getMinDateForPicker, validateBirthDate } from '../utils/dateUtils';
 
@@ -125,6 +126,24 @@ const EditMemberForm = ({ member, onSuccess, onCancel }) => {
       console.log('EditMemberForm - Form data:', data);
       console.log('EditMemberForm - District from form:', data.district);
       
+      let profileImage = member.profileImage; // Keep existing image by default
+      
+      // Upload new profile image to Cloudinary if provided
+      if (image) {
+        try {
+          console.log('EditMemberForm - Uploading new profile image to Cloudinary');
+          const uploadResult = await uploadApi.uploadProfileImage(image);
+          console.log('EditMemberForm - Profile image upload result:', uploadResult);
+          // Get the Cloudinary URL (secure_url)
+          profileImage = uploadResult.url || uploadResult.image || uploadResult.filename;
+          console.log('EditMemberForm - New profile image URL:', profileImage);
+        } catch (uploadError) {
+          console.error('EditMemberForm - Profile image upload error:', uploadError);
+          toast.error('Failed to upload profile image. Member will be updated without changing profile image.');
+          // Continue with existing image
+        }
+      }
+      
       // Transform form data to match backend schema
       const memberData = {
         name: data.name.trim(),
@@ -136,7 +155,7 @@ const EditMemberForm = ({ member, onSuccess, onCancel }) => {
         district: data.district,
         pincode: data.pincode,
         associationName: data.associationName,
-        profileImage: image?.name || member.profileImage,
+        ...(profileImage && { profileImage: profileImage }), // Only include if we have an image
         birthDate: data.birthDate ? formatDateForAPI(data.birthDate) : null
       };
 
@@ -146,6 +165,7 @@ const EditMemberForm = ({ member, onSuccess, onCancel }) => {
       const response = await memberApi.updateMember(member._id, memberData);
       console.log('EditMemberForm - Response from API:', response);
       onSuccess(response.member);
+      toast.success('Member updated successfully!');
     } catch (error) {
       console.error('Error updating member:', error);
       const errorMessage = error.response?.data?.message || 'Failed to update member';
