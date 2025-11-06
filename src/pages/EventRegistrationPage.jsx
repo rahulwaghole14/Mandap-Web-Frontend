@@ -202,7 +202,29 @@ const EventRegistrationPage = () => {
         return;
       }
 
-      // Step 1: Initiate registration and payment with FormData (to support photo upload)
+      // Step 1: Optimize photo if provided, then initiate registration and payment
+      let optimizedPhoto = photo;
+      if (photo) {
+        try {
+          // Optimize photo before upload (profile photo size: 800x800, max 1MB)
+          optimizedPhoto = await uploadApi.optimizeImage(photo, {
+            maxWidth: 800,
+            maxHeight: 800,
+            quality: 0.85,
+            maxSizeMB: 1,
+          });
+          console.log('EventRegistrationPage - Photo optimized:', {
+            originalSize: (photo.size / 1024 / 1024).toFixed(2) + ' MB',
+            optimizedSize: (optimizedPhoto.size / 1024 / 1024).toFixed(2) + ' MB',
+          });
+        } catch (optimizeError) {
+          console.error('EventRegistrationPage - Photo optimization error:', optimizeError);
+          toast.error('Failed to optimize photo. Using original file.');
+          // Continue with original photo if optimization fails
+        }
+      }
+
+      // Step 2: Initiate registration and payment with FormData (to support photo upload)
       const formDataToSend = new FormData();
       formDataToSend.append('name', formData.name);
       formDataToSend.append('phone', formData.phone);
@@ -212,9 +234,9 @@ const EventRegistrationPage = () => {
       formDataToSend.append('city', formData.city);
       formDataToSend.append('associationId', formData.associationId);
       
-      // Add photo if selected
-      if (photo) {
-        formDataToSend.append('photo', photo);
+      // Add optimized photo if available
+      if (optimizedPhoto) {
+        formDataToSend.append('photo', optimizedPhoto);
       }
 
       const paymentData = await eventApi.initiatePublicRegistration(resolvedEventId, formDataToSend);
@@ -319,10 +341,10 @@ const EventRegistrationPage = () => {
       return;
     }
     
-    // Validate file size (5MB = 5 * 1024 * 1024 bytes)
-    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-    if (file.size > maxSize) {
-      toast.error('File size exceeds 5MB limit. Please choose a smaller image.');
+    // Allow larger files (up to 30MB) - they will be optimized before upload
+    const maxSizeBeforeOptimization = 30 * 1024 * 1024; // 30MB
+    if (file.size > maxSizeBeforeOptimization) {
+      toast.error('Image is too large. Please choose an image smaller than 30MB.');
       e.target.value = ''; // Clear the input
       return;
     }
@@ -812,7 +834,7 @@ const EventRegistrationPage = () => {
                                />
                             </label>
                           </div>
-                          <p className="text-xs text-gray-500">Max 5MB - JPG, PNG, GIF, WEBP</p>
+                          <p className="text-xs text-gray-500">Max 30MB - JPG, PNG, GIF, WEBP (will be automatically optimized)</p>
                         </>
                       ) : (
                         <div className="relative inline-block">

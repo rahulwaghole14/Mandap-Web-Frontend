@@ -84,10 +84,20 @@ const EventForm = () => {
   const onChangeImage = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be < 5MB');
+    
+    // Allow larger files (up to 30MB) - they will be optimized before upload
+    const maxSizeBeforeOptimization = 30 * 1024 * 1024; // 30MB
+    if (file.size > maxSizeBeforeOptimization) {
+      toast.error('Image is too large. Please choose an image smaller than 30MB.');
       return;
     }
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select a valid image file');
+      return;
+    }
+    
     setImageFile(file);
     try {
       const b64 = await uploadApi.convertToBase64(file);
@@ -121,14 +131,26 @@ const EventForm = () => {
       // For both create and edit: Upload image to Cloudinary first if a new image is selected
       let imageFilename = null;
       if (imageFile) {
-        console.log('EventForm - Uploading image to Cloudinary for', isEdit ? 'edit' : 'create');
-        const up = await uploadApi.uploadImage(imageFile);
-        console.log('EventForm - Upload response:', up);
-        // Send full Cloudinary URL to backend
-        imageFilename = up.url || up.image || up.filename || null;
-        console.log('EventForm - Extracted imageFilename (full URL):', imageFilename);
-        console.log('EventForm - Cloudinary secure_url:', up.url);
-        console.log('EventForm - Cloudinary public_id:', up.public_id);
+        try {
+          console.log('EventForm - Uploading image to Cloudinary for', isEdit ? 'edit' : 'create');
+          // uploadImage will automatically optimize the image before uploading
+          const up = await uploadApi.uploadImage(imageFile, {
+            maxWidth: 1920,
+            maxHeight: 1920,
+            quality: 0.85,
+            maxSizeMB: 2, // Target size after optimization
+          });
+          console.log('EventForm - Upload response:', up);
+          // Send full Cloudinary URL to backend
+          imageFilename = up.url || up.image || up.filename || null;
+          console.log('EventForm - Extracted imageFilename (full URL):', imageFilename);
+          console.log('EventForm - Cloudinary secure_url:', up.url);
+          console.log('EventForm - Cloudinary public_id:', up.public_id);
+        } catch (uploadError) {
+          console.error('EventForm - Image upload/optimization error:', uploadError);
+          toast.error(uploadError.message || 'Failed to upload image. Please try again.');
+          throw uploadError; // Re-throw to prevent form submission
+        }
       }
 
       // Normalize payload for backend - same structure for both create and edit
@@ -391,7 +413,7 @@ const EventForm = () => {
                           <input type="file" className="sr-only" accept="image/*" onChange={onChangeImage} />
                         </label>
                       </div>
-                      <p className="text-xs text-gray-500">PNG, JPG up to 5MB</p>
+                      <p className="text-xs text-gray-500">PNG, JPG up to 30MB (will be automatically optimized)</p>
                     </>
                   ) : (
                     <div className="relative inline-block">

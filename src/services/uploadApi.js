@@ -234,6 +234,13 @@ export const uploadApi = {
         maxSizeMB: options.maxSizeMB || 2,
       });
       
+      // Validate optimized file size (should be under target, but double-check)
+      const finalMaxSizeMB = options.maxSizeMB || 2;
+      if (optimizedFile.size > finalMaxSizeMB * 1024 * 1024) {
+        console.warn('UploadApi - Optimized file still exceeds target size:', (optimizedFile.size / 1024 / 1024).toFixed(2) + ' MB');
+        // Still proceed, but log a warning
+      }
+      
       if (USE_CLOUDINARY) {
         return await uploadToCloudinary(optimizedFile, 'mandap-events');
       } else {
@@ -421,5 +428,8 @@ export const uploadApi = {
       reader.onload = () => resolve(reader.result);
       reader.onerror = error => reject(error);
     });
-  }
+  },
+
+  // Export optimizeImage function for direct use (e.g., in registration forms)
+  optimizeImage: optimizeImage
 };
