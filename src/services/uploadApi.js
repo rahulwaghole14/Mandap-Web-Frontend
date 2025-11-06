@@ -104,6 +104,109 @@ const uploadToCloudinary = async (file, folder = 'mandap-events') => {
   }
 };
 
+// Image optimization: resize and compress before upload
+const optimizeImage = (file, options = {}) => {
+  return new Promise((resolve, reject) => {
+    const {
+      maxWidth = 1920,
+      maxHeight = 1920,
+      quality = 0.85, // 85% quality for JPEG
+      maxSizeMB = 2, // Maximum file size in MB after optimization
+    } = options;
+
+    // If file is not an image, return as-is
+    if (!file.type.startsWith('image/')) {
+      resolve(file);
+      return;
+    }
+
+    const img = new Image();
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    img.onload = () => {
+      // Store original dimensions before any operations
+      const originalWidth = img.width;
+      const originalHeight = img.height;
+      
+      // Calculate new dimensions maintaining aspect ratio
+      let width = originalWidth;
+      let height = originalHeight;
+      const needsResize = width > maxWidth || height > maxHeight;
+      
+      if (needsResize) {
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        if (height > maxHeight) {
+          width = (width * maxHeight) / height;
+          height = maxHeight;
+        }
+      }
+
+      // If dimensions are within limits and file size is acceptable, return as-is
+      if (!needsResize && file.size <= maxSizeMB * 1024 * 1024) {
+        URL.revokeObjectURL(img.src);
+        resolve(file);
+        return;
+      }
+
+      // Resize if needed
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Clean up object URL
+      URL.revokeObjectURL(img.src);
+
+      // Try different quality levels if file is still too large
+      const tryCompress = (currentQuality) => {
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('Image optimization failed'));
+              return;
+            }
+
+            const optimizedFile = new File([blob], file.name, {
+              type: file.type,
+              lastModified: Date.now(),
+            });
+
+            // If still too large and quality can be reduced, try again
+            if (optimizedFile.size > maxSizeMB * 1024 * 1024 && currentQuality > 0.5) {
+              tryCompress(currentQuality - 0.1);
+            } else {
+              console.log('Image optimized:', {
+                originalSize: (file.size / 1024 / 1024).toFixed(2) + ' MB',
+                optimizedSize: (optimizedFile.size / 1024 / 1024).toFixed(2) + ' MB',
+                originalDimensions: `${originalWidth}x${originalHeight}`,
+                optimizedDimensions: `${width}x${height}`,
+                finalQuality: currentQuality,
+                compressionRatio: ((1 - optimizedFile.size / file.size) * 100).toFixed(1) + '%',
+              });
+              resolve(optimizedFile);
+            }
+          },
+          file.type,
+          currentQuality
+        );
+      };
+
+      tryCompress(quality);
+    };
+
+    img.onerror = () => {
+      console.warn('Failed to load image for optimization, using original file');
+      URL.revokeObjectURL(img.src);
+      resolve(file);
+    };
+
+    img.src = URL.createObjectURL(file);
+  });
+};
+
 // Delete from Cloudinary (requires backend API for security with API secret)
 const deleteFromCloudinary = async (publicId) => {
   // Deletion requires API secret, so we'll call backend API
@@ -119,16 +222,24 @@ const deleteFromCloudinary = async (publicId) => {
 
 export const uploadApi = {
   // Upload image file (for events) - uses Cloudinary if configured, otherwise backend API
-  uploadImage: async (file) => {
+  uploadImage: async (file, options = {}) => {
     try {
-      console.log('UploadApi - Uploading image:', file.name);
+      console.log('UploadApi - Uploading image:', file.name, 'Original size:', (file.size / 1024 / 1024).toFixed(2) + ' MB');
+      
+      // Optimize image before upload
+      const optimizedFile = await optimizeImage(file, {
+        maxWidth: options.maxWidth || 1920,
+        maxHeight: options.maxHeight || 1920,
+        quality: options.quality || 0.85,
+        maxSizeMB: options.maxSizeMB || 2,
+      });
       
       if (USE_CLOUDINARY) {
-        return await uploadToCloudinary(file, 'mandap-events');
+        return await uploadToCloudinary(optimizedFile, 'mandap-events');
       } else {
         // Fallback to backend API upload
         const formData = new FormData();
-        formData.append('image', file);
+        formData.append('image', optimizedFile);
         
         const authInstance = createAuthInstance();
         const response = await authInstance.post('/upload/event-image', formData, {
@@ -150,16 +261,24 @@ export const uploadApi = {
   },
 
   // Upload profile image file
-  uploadProfileImage: async (file) => {
+  uploadProfileImage: async (file, options = {}) => {
     try {
-      console.log('UploadApi - Uploading profile image:', file.name);
+      console.log('UploadApi - Uploading profile image:', file.name, 'Original size:', (file.size / 1024 / 1024).toFixed(2) + ' MB');
+      
+      // Optimize image before upload (smaller dimensions for profile images)
+      const optimizedFile = await optimizeImage(file, {
+        maxWidth: options.maxWidth || 800,
+        maxHeight: options.maxHeight || 800,
+        quality: options.quality || 0.85,
+        maxSizeMB: options.maxSizeMB || 1,
+      });
       
       if (USE_CLOUDINARY) {
-        return await uploadToCloudinary(file, 'mandap-profiles');
+        return await uploadToCloudinary(optimizedFile, 'mandap-profiles');
       } else {
         // Fallback to backend API upload
         const formData = new FormData();
-        formData.append('image', file);
+        formData.append('image', optimizedFile);
         
         const authInstance = createAuthInstance();
         const response = await authInstance.post('/upload/profile-image', formData, {
