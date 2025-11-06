@@ -155,7 +155,16 @@ const EventRegistrationPage = () => {
       setCheckingStatus(true);
       const data = await eventApi.checkPublicRegistrationStatus(resolvedEventId, phone);
       if (data.isRegistered) {
-        setRegistration(data.registration);
+        // Merge root-level qrDataURL into registration object if present
+        const registrationWithQR = {
+          ...data.registration,
+          qrDataURL: data.qrDataURL || data.registration?.qrDataURL,
+          qrCode: data.qrCode || data.registration?.qrCode,
+          qrCodeUrl: data.qrCodeUrl || data.registration?.qrCodeUrl,
+          qrCodeDataURL: data.qrCodeDataURL || data.registration?.qrCodeDataURL,
+          qrToken: data.qrToken || data.registration?.qrToken,
+        };
+        setRegistration(registrationWithQR);
         toast.success('You are already registered for this event!');
       } else {
         // Not registered, clear any previous registration
@@ -344,13 +353,22 @@ const EventRegistrationPage = () => {
          console.log('EventRegistrationPage - Free event registration response:', paymentData);
          console.log('EventRegistrationPage - Registration object:', paymentData.registration);
          console.log('EventRegistrationPage - QR code fields:', {
-           qrDataURL: paymentData.registration?.qrDataURL,
-           qrCode: paymentData.registration?.qrCode,
-           qrCodeUrl: paymentData.registration?.qrCodeUrl,
-           qrCodeDataURL: paymentData.registration?.qrCodeDataURL,
-           qrToken: paymentData.registration?.qrToken,
+           qrDataURL: paymentData.qrDataURL || paymentData.registration?.qrDataURL,
+           qrCode: paymentData.qrCode || paymentData.registration?.qrCode,
+           qrCodeUrl: paymentData.qrCodeUrl || paymentData.registration?.qrCodeUrl,
+           qrCodeDataURL: paymentData.qrCodeDataURL || paymentData.registration?.qrCodeDataURL,
+           qrToken: paymentData.qrToken || paymentData.registration?.qrToken,
          });
-         setRegistration(paymentData.registration);
+         // Merge root-level qrDataURL into registration object
+         const registrationWithQR = {
+           ...paymentData.registration,
+           qrDataURL: paymentData.qrDataURL || paymentData.registration?.qrDataURL,
+           qrCode: paymentData.qrCode || paymentData.registration?.qrCode,
+           qrCodeUrl: paymentData.qrCodeUrl || paymentData.registration?.qrCodeUrl,
+           qrCodeDataURL: paymentData.qrCodeDataURL || paymentData.registration?.qrCodeDataURL,
+           qrToken: paymentData.qrToken || paymentData.registration?.qrToken,
+         };
+         setRegistration(registrationWithQR);
          // Clear photo after successful registration
          setPhoto(null);
          setPhotoPreview(null);
@@ -380,13 +398,22 @@ const EventRegistrationPage = () => {
             console.log('EventRegistrationPage - Payment confirmation response:', confirmData);
             console.log('EventRegistrationPage - Registration object:', confirmData.registration);
             console.log('EventRegistrationPage - QR code fields:', {
-              qrDataURL: confirmData.registration?.qrDataURL,
-              qrCode: confirmData.registration?.qrCode,
-              qrCodeUrl: confirmData.registration?.qrCodeUrl,
-              qrCodeDataURL: confirmData.registration?.qrCodeDataURL,
-              qrToken: confirmData.registration?.qrToken,
+              qrDataURL: confirmData.qrDataURL || confirmData.registration?.qrDataURL,
+              qrCode: confirmData.qrCode || confirmData.registration?.qrCode,
+              qrCodeUrl: confirmData.qrCodeUrl || confirmData.registration?.qrCodeUrl,
+              qrCodeDataURL: confirmData.qrCodeDataURL || confirmData.registration?.qrCodeDataURL,
+              qrToken: confirmData.qrToken || confirmData.registration?.qrToken,
             });
-            setRegistration(confirmData.registration);
+            // Merge root-level qrDataURL into registration object
+            const registrationWithQR = {
+              ...confirmData.registration,
+              qrDataURL: confirmData.qrDataURL || confirmData.registration?.qrDataURL,
+              qrCode: confirmData.qrCode || confirmData.registration?.qrCode,
+              qrCodeUrl: confirmData.qrCodeUrl || confirmData.registration?.qrCodeUrl,
+              qrCodeDataURL: confirmData.qrCodeDataURL || confirmData.registration?.qrCodeDataURL,
+              qrToken: confirmData.qrToken || confirmData.registration?.qrToken,
+            };
+            setRegistration(registrationWithQR);
             // Clear photo after successful registration
             setPhoto(null);
             setPhotoPreview(null);
