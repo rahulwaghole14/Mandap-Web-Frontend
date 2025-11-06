@@ -373,16 +373,54 @@ export const eventApi = {
   // Initiate public registration and payment
   initiatePublicRegistration: async (eventId, registrationData) => {
     try {
-      // Create instance without Content-Type header if FormData (browser will set it with boundary)
-      const isFormData = registrationData instanceof FormData;
+      // Always send as JSON (photo should be uploaded to Cloudinary first and URL included)
+      console.log('eventApi.initiatePublicRegistration - Called with:', {
+        eventId,
+        registrationDataType: typeof registrationData,
+        isFormData: registrationData instanceof FormData,
+        isObject: typeof registrationData === 'object' && registrationData !== null
+      });
+      
+      // Log registration data
+      if (registrationData instanceof FormData) {
+        console.log('eventApi.initiatePublicRegistration - WARNING: FormData received, but backend expects JSON');
+        console.log('eventApi.initiatePublicRegistration - FormData contents:');
+        for (const [key, value] of registrationData.entries()) {
+          if (value instanceof File) {
+            console.log(`  ${key}: [File] ${value.name} (${value.size} bytes, type: ${value.type})`);
+          } else {
+            console.log(`  ${key}: "${value}" (type: ${typeof value})`);
+          }
+        }
+        throw new Error('FormData is not supported. Please upload photo to Cloudinary first and send URL in JSON payload.');
+      } else {
+        console.log('eventApi.initiatePublicRegistration - JSON payload:', JSON.stringify(registrationData, null, 2));
+      }
+      
+      // Create instance with JSON Content-Type
       const publicInstance = axios.create({
         baseURL: API_BASE_URL,
-        headers: isFormData ? {} : { 'Content-Type': 'application/json' }
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
+      
+      console.log('eventApi.initiatePublicRegistration - Making POST request to:', `/public/events/${eventId}/register-payment`);
+      console.log('eventApi.initiatePublicRegistration - Request headers:', publicInstance.defaults.headers);
       const response = await publicInstance.post(`/public/events/${eventId}/register-payment`, registrationData);
+      console.log('eventApi.initiatePublicRegistration - Response received:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error initiating registration:', error);
+      console.error('eventApi.initiatePublicRegistration - Error occurred:');
+      console.error('  Error message:', error.message);
+      console.error('  Error response status:', error.response?.status);
+      console.error('  Error response data:', error.response?.data);
+      console.error('  Error response headers:', error.response?.headers);
+      
+      if (error.response?.data?.errors) {
+        console.error('  Validation errors:', error.response.data.errors);
+      }
+      
       throw error;
     }
   },

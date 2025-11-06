@@ -44,8 +44,8 @@ const EventRegistrationPage = () => {
   const { slug } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { register, handleSubmit, formState: { errors }, watch, setValue, trigger } = useForm({
-    mode: 'onChange',
+  const { register, handleSubmit, formState: { errors }, watch, setValue, trigger, getValues } = useForm({
+    mode: 'onSubmit',
     reValidateMode: 'onChange'
   });
   const [event, setEvent] = useState(null);
@@ -192,6 +192,13 @@ const EventRegistrationPage = () => {
       setRegistering(true);
       setError(null);
 
+      console.log('EventRegistrationPage - onSubmitRegistration called');
+      console.log('EventRegistrationPage - formData from handleSubmit:', formData);
+      
+      // Also get values directly from form to ensure we have the latest
+      const currentValues = getValues();
+      console.log('EventRegistrationPage - Current form values from getValues():', currentValues);
+
       if (!resolvedEventId) {
         toast.error('Event ID not resolved. Please refresh the page.');
         setRegistering(false);
@@ -205,55 +212,80 @@ const EventRegistrationPage = () => {
         return;
       }
 
+      // Use formData if available, otherwise fallback to currentValues
+      const rawData = formData || currentValues;
+      
       // Validate and clean form data before submission
       const cleanedData = {
-        name: formData.name?.trim() || '',
-        phone: formData.phone?.replace(/\D/g, '') || '', // Remove all non-digits
-        email: formData.email?.trim() || '',
-        businessName: formData.businessName?.trim() || '',
-        businessType: formData.businessType?.trim() || '',
-        city: formData.city?.trim() || '',
-        associationId: formData.associationId?.trim() || '',
+        name: (rawData.name || '').trim(),
+        phone: (rawData.phone || '').replace(/\D/g, ''), // Remove all non-digits
+        email: (rawData.email || '').trim(),
+        businessName: (rawData.businessName || '').trim(),
+        businessType: (rawData.businessType || '').trim(),
+        city: (rawData.city || '').trim(),
+        associationId: (rawData.associationId || '').toString().trim(),
       };
+      
+      console.log('EventRegistrationPage - Cleaned data:', cleanedData);
 
-      // Client-side validation
+      // Client-side validation with detailed logging
       const validationErrors = [];
+      
+      console.log('EventRegistrationPage - Validating cleaned data:');
+      console.log('  name:', cleanedData.name, 'length:', cleanedData.name?.length);
+      console.log('  phone:', cleanedData.phone, 'length:', cleanedData.phone?.length);
+      console.log('  email:', cleanedData.email);
+      console.log('  businessName:', cleanedData.businessName, 'length:', cleanedData.businessName?.length);
+      console.log('  businessType:', cleanedData.businessType);
+      console.log('  city:', cleanedData.city, 'length:', cleanedData.city?.length);
+      console.log('  associationId:', cleanedData.associationId, 'type:', typeof cleanedData.associationId);
+      
       if (!cleanedData.name || cleanedData.name.length < 2) {
         validationErrors.push('Name is required and must be at least 2 characters');
+        console.log('  ❌ Name validation failed');
       }
       if (!cleanedData.phone || cleanedData.phone.length !== 10) {
         validationErrors.push('Phone number must be exactly 10 digits');
+        console.log('  ❌ Phone validation failed');
       }
       if (!cleanedData.email || !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(cleanedData.email)) {
         validationErrors.push('Valid email is required');
+        console.log('  ❌ Email validation failed');
       }
       if (!cleanedData.businessName || cleanedData.businessName.length < 2) {
         validationErrors.push('Business name is required and must be at least 2 characters');
+        console.log('  ❌ Business name validation failed');
       }
       if (!cleanedData.businessType) {
         validationErrors.push('Business type is required');
+        console.log('  ❌ Business type validation failed');
       }
       if (!cleanedData.city || cleanedData.city.length < 2) {
         validationErrors.push('City is required and must be at least 2 characters');
+        console.log('  ❌ City validation failed');
       }
-      if (!cleanedData.associationId) {
+      if (!cleanedData.associationId || cleanedData.associationId === '' || cleanedData.associationId === '0') {
         validationErrors.push('Association is required');
+        console.log('  ❌ Association validation failed');
       }
 
       if (validationErrors.length > 0) {
+        console.log('EventRegistrationPage - Client-side validation failed:', validationErrors);
         const errorMsg = validationErrors.join(', ');
         setError(errorMsg);
         toast.error(errorMsg);
         setRegistering(false);
         return;
       }
+      
+      console.log('EventRegistrationPage - ✅ All client-side validations passed');
 
-      // Step 1: Optimize photo if provided, then initiate registration and payment
-      let optimizedPhoto = photo;
+      // Step 1: Upload photo to Cloudinary first if provided
+      let photoUrl = null;
       if (photo) {
         try {
           // Optimize photo before upload (profile photo size: 800x800, max 1MB)
-          optimizedPhoto = await uploadApi.optimizeImage(photo, {
+          const optimizedPhoto = await uploadApi.optimizeImage(photo, {
             maxWidth: 800,
             maxHeight: 800,
             quality: 0.85,
@@ -263,40 +295,49 @@ const EventRegistrationPage = () => {
             originalSize: (photo.size / 1024 / 1024).toFixed(2) + ' MB',
             optimizedSize: (optimizedPhoto.size / 1024 / 1024).toFixed(2) + ' MB',
           });
-        } catch (optimizeError) {
-          console.error('EventRegistrationPage - Photo optimization error:', optimizeError);
-          toast.error('Failed to optimize photo. Using original file.');
-          // Continue with original photo if optimization fails
+          
+          // Upload optimized photo to Cloudinary
+          console.log('EventRegistrationPage - Uploading photo to Cloudinary...');
+          const uploadResult = await uploadApi.uploadProfileImage(optimizedPhoto);
+          photoUrl = uploadResult.url || uploadResult.image || uploadResult.filename || null;
+          console.log('EventRegistrationPage - Photo uploaded to Cloudinary:', photoUrl);
+        } catch (uploadError) {
+          console.error('EventRegistrationPage - Photo upload error:', uploadError);
+          toast.error('Failed to upload photo. Please try again.');
+          setRegistering(false);
+          return;
         }
       }
 
-      // Step 2: Initiate registration and payment with FormData (to support photo upload)
-      const formDataToSend = new FormData();
-      formDataToSend.append('name', cleanedData.name);
-      formDataToSend.append('phone', cleanedData.phone);
-      formDataToSend.append('email', cleanedData.email);
-      formDataToSend.append('businessName', cleanedData.businessName);
-      formDataToSend.append('businessType', cleanedData.businessType);
-      formDataToSend.append('city', cleanedData.city);
-      formDataToSend.append('associationId', cleanedData.associationId);
-      
-      console.log('EventRegistrationPage - Submitting form data:', {
+      // Step 2: Prepare JSON payload for registration
+      const registrationPayload = {
         name: cleanedData.name,
         phone: cleanedData.phone,
         email: cleanedData.email,
         businessName: cleanedData.businessName,
         businessType: cleanedData.businessType,
         city: cleanedData.city,
-        associationId: cleanedData.associationId,
-        hasPhoto: !!optimizedPhoto
-      });
+        associationId: cleanedData.associationId ? parseInt(cleanedData.associationId, 10) : null,
+      };
       
-      // Add optimized photo if available
-      if (optimizedPhoto) {
-        formDataToSend.append('photo', optimizedPhoto);
+      // Add photo URL if available
+      if (photoUrl) {
+        registrationPayload.photo = photoUrl;
       }
+      
+      console.log('EventRegistrationPage - JSON payload being sent:');
+      console.log('  name:', registrationPayload.name);
+      console.log('  phone:', registrationPayload.phone);
+      console.log('  email:', registrationPayload.email);
+      console.log('  businessName:', registrationPayload.businessName);
+      console.log('  businessType:', registrationPayload.businessType);
+      console.log('  city:', registrationPayload.city);
+      console.log('  associationId:', registrationPayload.associationId, '(type:', typeof registrationPayload.associationId, ')');
+      console.log('  photo:', registrationPayload.photo || 'none');
 
-      const paymentData = await eventApi.initiatePublicRegistration(resolvedEventId, formDataToSend);
+      console.log('EventRegistrationPage - Calling initiatePublicRegistration with eventId:', resolvedEventId);
+      const paymentData = await eventApi.initiatePublicRegistration(resolvedEventId, registrationPayload);
+      console.log('EventRegistrationPage - Registration response:', paymentData);
 
              // Free event - registration complete
        if (paymentData.isFree) {
@@ -361,16 +402,32 @@ const EventRegistrationPage = () => {
       });
 
     } catch (err) {
-      console.error('Registration error:', err);
-      const errorMsg = err.response?.data?.message || err.message || 'Registration failed';
-      if (err.response?.data?.errors) {
-        const errorMessages = err.response.data.errors.map(e => e.msg || e.message).join(', ');
-        setError(errorMessages);
-        toast.error(errorMessages);
-      } else {
-        setError(errorMsg);
-        toast.error(errorMsg);
+      console.error('EventRegistrationPage - Registration error:', err);
+      console.error('EventRegistrationPage - Error response:', err.response);
+      console.error('EventRegistrationPage - Error response data:', err.response?.data);
+      console.error('EventRegistrationPage - Error response status:', err.response?.status);
+      
+      let errorMsg = 'Registration failed';
+      
+      // Handle backend validation errors
+      if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+        const errorMessages = err.response.data.errors.map(e => {
+          // Handle different error formats
+          if (typeof e === 'string') return e;
+          return e.msg || e.message || JSON.stringify(e);
+        }).join(', ');
+        errorMsg = errorMessages;
+        console.error('EventRegistrationPage - Backend validation errors:', errorMessages);
+      } else if (err.response?.data?.message) {
+        errorMsg = err.response.data.message;
+        console.error('EventRegistrationPage - Backend error message:', errorMsg);
+      } else if (err.message) {
+        errorMsg = err.message;
+        console.error('EventRegistrationPage - Error message:', errorMsg);
       }
+      
+      setError(errorMsg);
+      toast.error(errorMsg);
       setRegistering(false);
     }
   };
