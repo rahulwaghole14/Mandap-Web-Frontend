@@ -18,7 +18,10 @@ const EventForm = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [loadingEvent, setLoadingEvent] = useState(isEdit);
 
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm();
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm({
+    mode: 'onSubmit', // Validate on submit (default)
+    reValidateMode: 'onChange' // After first submit, validate on change
+  });
 
   useEffect(() => {
     if (isEdit) {
@@ -101,6 +104,18 @@ const EventForm = () => {
 
   const onSubmit = async (values) => {
     try {
+      console.log('EventForm - Form submitted with values:', values);
+      
+      // Additional validation: Check if end date is after start date
+      if (values.startDateTime && values.endDateTime) {
+        const startDate = new Date(values.startDateTime);
+        const endDate = new Date(values.endDateTime);
+        if (endDate <= startDate) {
+          toast.error('End date/time must be after start date/time');
+          return;
+        }
+      }
+
       setUploading(true);
       
       // For both create and edit: Upload image to Cloudinary first if a new image is selected
@@ -118,15 +133,15 @@ const EventForm = () => {
 
       // Normalize payload for backend - same structure for both create and edit
       const payload = {
-        title: values.name, // Backend expects 'title' field
-        description: values.description,
+        title: values.name?.trim(), // Backend expects 'title' field
+        description: values.description?.trim(),
         startDateTime: values.startDateTime,
         endDateTime: values.endDateTime,
-        address: values.address,
-        city: values.city,
-        state: values.state,
-        district: values.district,
-        pincode: values.pincode,
+        address: values.address?.trim(),
+        city: values.city?.trim(),
+        state: values.state?.trim(),
+        district: values.district?.trim(),
+        pincode: values.pincode?.trim(),
         registrationFee: values.fee ? Number(values.fee) : 0,
       };
       
@@ -136,24 +151,21 @@ const EventForm = () => {
         console.log('EventForm - Payload with image:', payload);
       }
 
+      console.log('EventForm - Final payload:', payload);
+
       if (isEdit) {
         console.log('EventForm - Edit event: Sending JSON payload');
         console.log('EventForm - Event ID:', eventId);
-        console.log('EventForm - Payload:', payload);
         const updateResponse = await eventApi.updateEvent(eventId, payload);
         console.log('EventForm - Update response:', updateResponse);
-        console.log('EventForm - Event image after update:', updateResponse.event?.image || updateResponse.image);
-        console.log('EventForm - Event imageURL after update:', updateResponse.event?.imageURL || updateResponse.imageURL);
-        toast.success('Event updated');
+        toast.success('Event updated successfully');
         navigate(`/events/${eventId}`);
       } else {
         console.log('EventForm - Create event: Sending JSON payload');
-        console.log('EventForm - Payload:', payload);
         const res = await eventApi.createEvent(payload);
         console.log('EventForm - Create response:', res);
-        console.log('EventForm - Event image after create:', res.event?.image || res.image);
         const newId = res.event?.id || res.id;
-        toast.success('Event created');
+        toast.success('Event created successfully');
         if (newId) {
           navigate(`/events/${newId}`);
         } else {
@@ -161,8 +173,10 @@ const EventForm = () => {
         }
       }
     } catch (err) {
-      console.error(err);
-      toast.error(err.response?.data?.message || 'Failed to save event');
+      console.error('EventForm - Error:', err);
+      console.error('EventForm - Error response:', err.response);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to save event';
+      toast.error(errorMessage);
     } finally {
       setUploading(false);
     }
@@ -188,7 +202,14 @@ const EventForm = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
               <input
                 type="text"
-                {...register('name', { required: 'Name is required' })}
+                {...register('name', { 
+                  required: 'Name is required',
+                  validate: (value) => {
+                    if (!value || !value.trim()) return 'Name is required';
+                    if (value.trim().length < 3) return 'Name must be at least 3 characters';
+                    return true;
+                  }
+                })}
                 className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
                 placeholder="Event name"
               />
@@ -199,7 +220,14 @@ const EventForm = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
               <textarea
                 rows={4}
-                {...register('description', { required: 'Description is required' })}
+                {...register('description', { 
+                  required: 'Description is required',
+                  validate: (value) => {
+                    if (!value || !value.trim()) return 'Description is required';
+                    if (value.trim().length < 10) return 'Description must be at least 10 characters';
+                    return true;
+                  }
+                })}
                 className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.description ? 'border-red-500' : 'border-gray-300'}`}
                 placeholder="Describe the event"
               />
@@ -211,7 +239,15 @@ const EventForm = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Start date/time *</label>
                 <input
                   type="datetime-local"
-                  {...register('startDateTime', { required: 'Start date/time is required' })}
+                  {...register('startDateTime', { 
+                    required: 'Start date/time is required',
+                    validate: (value) => {
+                      if (!value) return 'Start date/time is required';
+                      const date = new Date(value);
+                      if (isNaN(date.getTime())) return 'Invalid date/time';
+                      return true;
+                    }
+                  })}
                   className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.startDateTime ? 'border-red-500' : 'border-gray-300'}`}
                 />
                 {errors.startDateTime && <p className="text-red-500 text-sm mt-1">{errors.startDateTime.message}</p>}
@@ -220,7 +256,15 @@ const EventForm = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">End date/time *</label>
                 <input
                   type="datetime-local"
-                  {...register('endDateTime', { required: 'End date/time is required' })}
+                  {...register('endDateTime', { 
+                    required: 'End date/time is required',
+                    validate: (value) => {
+                      if (!value) return 'End date/time is required';
+                      const date = new Date(value);
+                      if (isNaN(date.getTime())) return 'Invalid date/time';
+                      return true;
+                    }
+                  })}
                   className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.endDateTime ? 'border-red-500' : 'border-gray-300'}`}
                 />
                 {errors.endDateTime && <p className="text-red-500 text-sm mt-1">{errors.endDateTime.message}</p>}
@@ -231,7 +275,14 @@ const EventForm = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Address *</label>
               <input
                 type="text"
-                {...register('address', { required: 'Address is required' })}
+                {...register('address', { 
+                  required: 'Address is required',
+                  validate: (value) => {
+                    if (!value || !value.trim()) return 'Address is required';
+                    if (value.trim().length < 5) return 'Address must be at least 5 characters';
+                    return true;
+                  }
+                })}
                 className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.address ? 'border-red-500' : 'border-gray-300'}`}
                 placeholder="Street address"
               />
@@ -243,7 +294,14 @@ const EventForm = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">City *</label>
                 <input
                   type="text"
-                  {...register('city', { required: 'City is required' })}
+                  {...register('city', { 
+                    required: 'City is required',
+                    validate: (value) => {
+                      if (!value || !value.trim()) return 'City is required';
+                      if (value.trim().length < 2) return 'City must be at least 2 characters';
+                      return true;
+                    }
+                  })}
                   className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.city ? 'border-red-500' : 'border-gray-300'}`}
                   placeholder="City"
                 />
@@ -253,7 +311,14 @@ const EventForm = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">State *</label>
                 <input
                   type="text"
-                  {...register('state', { required: 'State is required' })}
+                  {...register('state', { 
+                    required: 'State is required',
+                    validate: (value) => {
+                      if (!value || !value.trim()) return 'State is required';
+                      if (value.trim().length < 2) return 'State must be at least 2 characters';
+                      return true;
+                    }
+                  })}
                   className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.state ? 'border-red-500' : 'border-gray-300'}`}
                   placeholder="State"
                 />
@@ -279,9 +344,21 @@ const EventForm = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Pincode *</label>
                 <input
                   type="text"
-                  {...register('pincode', { required: 'Pincode is required', pattern: { value: /^[0-9]{6}$/, message: 'Enter 6-digit pincode' } })}
+                  {...register('pincode', { 
+                    required: 'Pincode is required', 
+                    pattern: { 
+                      value: /^[0-9]{6}$/, 
+                      message: 'Pincode must be exactly 6 digits' 
+                    },
+                    validate: (value) => {
+                      if (!value) return 'Pincode is required';
+                      if (!/^[0-9]{6}$/.test(value.trim())) return 'Pincode must be exactly 6 digits';
+                      return true;
+                    }
+                  })}
                   className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.pincode ? 'border-red-500' : 'border-gray-300'}`}
                   placeholder="6-digit pincode"
+                  maxLength={6}
                 />
                 {errors.pincode && <p className="text-red-500 text-sm mt-1">{errors.pincode.message}</p>}
               </div>
