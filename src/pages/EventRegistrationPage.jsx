@@ -44,7 +44,10 @@ const EventRegistrationPage = () => {
   const { slug } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm();
+  const { register, handleSubmit, formState: { errors }, watch, setValue, trigger } = useForm({
+    mode: 'onChange',
+    reValidateMode: 'onChange'
+  });
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [checkingStatus, setCheckingStatus] = useState(false);
@@ -202,6 +205,49 @@ const EventRegistrationPage = () => {
         return;
       }
 
+      // Validate and clean form data before submission
+      const cleanedData = {
+        name: formData.name?.trim() || '',
+        phone: formData.phone?.replace(/\D/g, '') || '', // Remove all non-digits
+        email: formData.email?.trim() || '',
+        businessName: formData.businessName?.trim() || '',
+        businessType: formData.businessType?.trim() || '',
+        city: formData.city?.trim() || '',
+        associationId: formData.associationId?.trim() || '',
+      };
+
+      // Client-side validation
+      const validationErrors = [];
+      if (!cleanedData.name || cleanedData.name.length < 2) {
+        validationErrors.push('Name is required and must be at least 2 characters');
+      }
+      if (!cleanedData.phone || cleanedData.phone.length !== 10) {
+        validationErrors.push('Phone number must be exactly 10 digits');
+      }
+      if (!cleanedData.email || !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(cleanedData.email)) {
+        validationErrors.push('Valid email is required');
+      }
+      if (!cleanedData.businessName || cleanedData.businessName.length < 2) {
+        validationErrors.push('Business name is required and must be at least 2 characters');
+      }
+      if (!cleanedData.businessType) {
+        validationErrors.push('Business type is required');
+      }
+      if (!cleanedData.city || cleanedData.city.length < 2) {
+        validationErrors.push('City is required and must be at least 2 characters');
+      }
+      if (!cleanedData.associationId) {
+        validationErrors.push('Association is required');
+      }
+
+      if (validationErrors.length > 0) {
+        const errorMsg = validationErrors.join(', ');
+        setError(errorMsg);
+        toast.error(errorMsg);
+        setRegistering(false);
+        return;
+      }
+
       // Step 1: Optimize photo if provided, then initiate registration and payment
       let optimizedPhoto = photo;
       if (photo) {
@@ -226,13 +272,24 @@ const EventRegistrationPage = () => {
 
       // Step 2: Initiate registration and payment with FormData (to support photo upload)
       const formDataToSend = new FormData();
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('phone', formData.phone);
-      formDataToSend.append('email', formData.email);
-      formDataToSend.append('businessName', formData.businessName);
-      formDataToSend.append('businessType', formData.businessType);
-      formDataToSend.append('city', formData.city);
-      formDataToSend.append('associationId', formData.associationId);
+      formDataToSend.append('name', cleanedData.name);
+      formDataToSend.append('phone', cleanedData.phone);
+      formDataToSend.append('email', cleanedData.email);
+      formDataToSend.append('businessName', cleanedData.businessName);
+      formDataToSend.append('businessType', cleanedData.businessType);
+      formDataToSend.append('city', cleanedData.city);
+      formDataToSend.append('associationId', cleanedData.associationId);
+      
+      console.log('EventRegistrationPage - Submitting form data:', {
+        name: cleanedData.name,
+        phone: cleanedData.phone,
+        email: cleanedData.email,
+        businessName: cleanedData.businessName,
+        businessType: cleanedData.businessType,
+        city: cleanedData.city,
+        associationId: cleanedData.associationId,
+        hasPhoto: !!optimizedPhoto
+      });
       
       // Add optimized photo if available
       if (optimizedPhoto) {
@@ -321,7 +378,7 @@ const EventRegistrationPage = () => {
   const handlePhoneCheck = (e) => {
     const phone = e.target.value.replace(/\D/g, ''); // Remove non-digits
     // Update the form value with cleaned phone number
-    setValue('phone', phone, { shouldValidate: true });
+    setValue('phone', phone, { shouldValidate: true, shouldDirty: true });
     
     // Check registration status when phone is 10 digits
     if (phone.length === 10) {
@@ -638,7 +695,11 @@ const EventRegistrationPage = () => {
                </div>
              )}
 
-            <form onSubmit={handleSubmit(onSubmitRegistration)} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmitRegistration, (errors) => {
+              console.log('Form validation errors:', errors);
+              // Trigger validation for all fields to show errors
+              trigger();
+            })} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -650,7 +711,12 @@ const EventRegistrationPage = () => {
                     {...register('name', { 
                       required: 'Name is required',
                       minLength: { value: 2, message: 'Name must be at least 2 characters' },
-                      maxLength: { value: 100, message: 'Name must be less than 100 characters' }
+                      maxLength: { value: 100, message: 'Name must be less than 100 characters' },
+                      validate: (value) => {
+                        const trimmed = value?.trim();
+                        if (!trimmed || trimmed.length < 2) return 'Name is required and must be at least 2 characters';
+                        return true;
+                      }
                     })}
                     className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                       errors.name ? 'border-red-500' : 'border-gray-300'
@@ -667,23 +733,28 @@ const EventRegistrationPage = () => {
                      <Phone className="h-4 w-4 inline mr-1" />
                      Phone Number *
                    </label>
-                   <input
-                     type="tel"
-                     {...register('phone', { 
-                       required: 'Phone number is required',
-                       pattern: {
-                         value: /^[0-9]{10}$/,
-                         message: 'Phone must be 10 digits'
-                       },
-                       onChange: handlePhoneCheck
-                     })}
-                     maxLength={10}
-                     className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
-                       errors.phone ? 'border-red-500' : 'border-gray-300'
-                     }`}
-                     placeholder="9876543210"
-                     onBlur={handlePhoneCheck}
-                   />
+                  <input
+                    type="tel"
+                    {...register('phone', { 
+                      required: 'Phone number is required',
+                      pattern: {
+                        value: /^[0-9]{10}$/,
+                        message: 'Phone must be exactly 10 digits'
+                      },
+                      validate: (value) => {
+                        const cleaned = value?.replace(/\D/g, '');
+                        if (!cleaned || cleaned.length !== 10) return 'Phone must be exactly 10 digits';
+                        return true;
+                      },
+                      onChange: handlePhoneCheck
+                    })}
+                    maxLength={10}
+                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                      errors.phone ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    placeholder="9876543210"
+                    onBlur={handlePhoneCheck}
+                  />
                    {errors.phone && (
                      <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
                    )}
@@ -704,6 +775,12 @@ const EventRegistrationPage = () => {
                       pattern: {
                         value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
                         message: 'Invalid email address'
+                      },
+                      validate: (value) => {
+                        const trimmed = value?.trim();
+                        if (!trimmed) return 'Email is required';
+                        if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(trimmed)) return 'Invalid email address';
+                        return true;
                       }
                     })}
                     className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
@@ -726,7 +803,12 @@ const EventRegistrationPage = () => {
                     {...register('businessName', { 
                       required: 'Business name is required',
                       minLength: { value: 2, message: 'Business name must be at least 2 characters' },
-                      maxLength: { value: 200, message: 'Business name must be less than 200 characters' }
+                      maxLength: { value: 200, message: 'Business name must be less than 200 characters' },
+                      validate: (value) => {
+                        const trimmed = value?.trim();
+                        if (!trimmed || trimmed.length < 2) return 'Business name is required and must be at least 2 characters';
+                        return true;
+                      }
                     })}
                     className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                       errors.businessName ? 'border-red-500' : 'border-gray-300'
@@ -743,7 +825,13 @@ const EventRegistrationPage = () => {
                     Business Type *
                   </label>
                   <select
-                    {...register('businessType', { required: 'Business type is required' })}
+                    {...register('businessType', { 
+                      required: 'Business type is required',
+                      validate: (value) => {
+                        if (!value || value.trim() === '') return 'Business type is required';
+                        return true;
+                      }
+                    })}
                     className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                       errors.businessType ? 'border-red-500' : 'border-gray-300'
                     }`}
@@ -765,7 +853,14 @@ const EventRegistrationPage = () => {
                   </label>
                   <input
                     type="text"
-                    {...register('city', { required: 'City is required' })}
+                    {...register('city', { 
+                      required: 'City is required',
+                      validate: (value) => {
+                        const trimmed = value?.trim();
+                        if (!trimmed || trimmed.length < 2) return 'City is required and must be at least 2 characters';
+                        return true;
+                      }
+                    })}
                     className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                       errors.city ? 'border-red-500' : 'border-gray-300'
                     }`}
@@ -787,7 +882,13 @@ const EventRegistrationPage = () => {
                     </div>
                   ) : (
                     <select
-                      {...register('associationId', { required: 'Association is required' })}
+                      {...register('associationId', { 
+                        required: 'Association is required',
+                        validate: (value) => {
+                          if (!value || value.trim() === '' || value === '0') return 'Association is required';
+                          return true;
+                        }
+                      })}
                       className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                         errors.associationId ? 'border-red-500' : 'border-gray-300'
                       }`}
@@ -801,7 +902,7 @@ const EventRegistrationPage = () => {
                             : 'Select association'}
                       </option>
                       {associations.map(assoc => (
-                        <option key={assoc.id} value={assoc.id}>{assoc.name}</option>
+                        <option key={assoc.id} value={String(assoc.id)}>{assoc.name}</option>
                       ))}
                     </select>
                   )}
