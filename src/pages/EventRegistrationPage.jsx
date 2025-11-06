@@ -341,6 +341,15 @@ const EventRegistrationPage = () => {
 
              // Free event - registration complete
        if (paymentData.isFree) {
+         console.log('EventRegistrationPage - Free event registration response:', paymentData);
+         console.log('EventRegistrationPage - Registration object:', paymentData.registration);
+         console.log('EventRegistrationPage - QR code fields:', {
+           qrDataURL: paymentData.registration?.qrDataURL,
+           qrCode: paymentData.registration?.qrCode,
+           qrCodeUrl: paymentData.registration?.qrCodeUrl,
+           qrCodeDataURL: paymentData.registration?.qrCodeDataURL,
+           qrToken: paymentData.registration?.qrToken,
+         });
          setRegistration(paymentData.registration);
          // Clear photo after successful registration
          setPhoto(null);
@@ -368,11 +377,20 @@ const EventRegistrationPage = () => {
               }
             );
 
-                                                   setRegistration(confirmData.registration);
-             // Clear photo after successful registration
-             setPhoto(null);
-             setPhotoPreview(null);
-             toast.success('Registration successful!');
+            console.log('EventRegistrationPage - Payment confirmation response:', confirmData);
+            console.log('EventRegistrationPage - Registration object:', confirmData.registration);
+            console.log('EventRegistrationPage - QR code fields:', {
+              qrDataURL: confirmData.registration?.qrDataURL,
+              qrCode: confirmData.registration?.qrCode,
+              qrCodeUrl: confirmData.registration?.qrCodeUrl,
+              qrCodeDataURL: confirmData.registration?.qrCodeDataURL,
+              qrToken: confirmData.registration?.qrToken,
+            });
+            setRegistration(confirmData.registration);
+            // Clear photo after successful registration
+            setPhoto(null);
+            setPhotoPreview(null);
+            toast.success('Registration successful!');
           } catch (err) {
             console.error('Payment confirmation error:', err);
             toast.error(err.response?.data?.message || 'Payment confirmation failed');
@@ -492,14 +510,28 @@ const EventRegistrationPage = () => {
   };
 
   const downloadQRCode = () => {
-    if (!registration?.qrDataURL || !resolvedEventId) return;
+    if (!registration || !resolvedEventId) return;
     
-    const link = document.createElement('a');
-    link.href = registration.qrDataURL;
-    link.download = `event-${resolvedEventId}-qr-code.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Try multiple possible QR code field names
+    const qrUrl = registration.qrDataURL || registration.qrCode || registration.qrCodeUrl || registration.qrCodeDataURL;
+    
+    if (qrUrl) {
+      const link = document.createElement('a');
+      link.href = qrUrl;
+      link.download = `event-${resolvedEventId}-qr-code.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else if (registration.qrToken || registration.id) {
+      // Generate QR code from token/ID if no image URL is provided
+      const qrData = registration.qrToken || registration.id;
+      const link = document.createElement('a');
+      link.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(qrData)}`;
+      link.download = `event-${resolvedEventId}-qr-code.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const imgUrl = useMemo(() => {
@@ -704,7 +736,8 @@ const EventRegistrationPage = () => {
                 </div>
               </div>
 
-              {registration.qrDataURL && (
+              {/* QR Code Section - Check multiple possible field names */}
+              {(registration.qrDataURL || registration.qrCode || registration.qrCodeUrl || registration.qrCodeDataURL || registration.qrToken) && (
                 <div className="border-t border-gray-200 pt-6">
                   <div className="text-center">
                     <div className="text-lg font-semibold text-gray-900 mb-4">
@@ -712,13 +745,35 @@ const EventRegistrationPage = () => {
                     </div>
                     <div className="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
                       <img 
-                        src={registration.qrDataURL} 
+                        src={registration.qrDataURL || registration.qrCode || registration.qrCodeUrl || registration.qrCodeDataURL || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(registration.qrToken || registration.id || '')}`} 
                         alt="Event QR Code" 
                         className="w-48 h-48"
+                        onError={(e) => {
+                          console.error('QR code image failed to load');
+                          // If image fails, try generating QR code from token/ID
+                          if (registration.qrToken || registration.id) {
+                            const qrData = registration.qrToken || registration.id;
+                            e.target.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`;
+                          }
+                        }}
                       />
                     </div>
                     <button
-                      onClick={downloadQRCode}
+                      onClick={() => {
+                        const qrUrl = registration.qrDataURL || registration.qrCode || registration.qrCodeUrl || registration.qrCodeDataURL;
+                        if (qrUrl) {
+                          downloadQRCode();
+                        } else if (registration.qrToken || registration.id) {
+                          // Generate QR code URL for download
+                          const qrData = registration.qrToken || registration.id;
+                          const link = document.createElement('a');
+                          link.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(qrData)}`;
+                          link.download = `event-${resolvedEventId}-qr-code.png`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }
+                      }}
                       className="mt-4 flex items-center justify-center mx-auto px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
                     >
                       <Download className="h-4 w-4 mr-2" />
@@ -726,7 +781,19 @@ const EventRegistrationPage = () => {
                     </button>
                   </div>
                 </div>
-                             )}
+              )}
+              
+              {/* Debug info - remove in production */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <details className="text-xs text-gray-500">
+                    <summary className="cursor-pointer">Debug: Registration Data</summary>
+                    <pre className="mt-2 p-2 bg-gray-100 rounded overflow-auto max-h-40">
+                      {JSON.stringify(registration, null, 2)}
+                    </pre>
+                  </details>
+                </div>
+              )}
              </div>
            </div>
          ) : (
