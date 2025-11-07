@@ -129,6 +129,8 @@ const EventRegistrations = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState(null);
   const [memberCache, setMemberCache] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -215,6 +217,25 @@ const EventRegistrations = () => {
       return statusOk && paymentOk && searchOk;
     });
   }, [registrations, memberCache, searchTerm, statusFilter, paymentFilter]);
+
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(filteredRegistrations.length / pageSize));
+  }, [filteredRegistrations.length]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, paymentFilter, selectedEventId]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedRegistrations = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredRegistrations.slice(start, start + pageSize);
+  }, [filteredRegistrations, currentPage]);
 
   const metrics = useMemo(() => {
     const total = registrations.length;
@@ -491,7 +512,7 @@ const EventRegistrations = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredRegistrations.map((registration) => {
+                  {paginatedRegistrations.map((registration) => {
                     const cachedMember = memberCache[registration.memberId];
                     const photoUrl = resolvePhotoUrl(registration, cachedMember);
                     const verified = isVerified(registration);
@@ -583,6 +604,55 @@ const EventRegistrations = () => {
             </div>
           )}
         </div>
+
+        {filteredRegistrations.length > 0 && (
+          <div className="bg-white rounded-lg shadow mt-4 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="text-sm text-gray-600">
+              Showing <span className="font-semibold">{paginatedRegistrations.length}</span> of <span className="font-semibold">{filteredRegistrations.length}</span> registrations
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className={`px-3 py-1 rounded border text-sm transition-colors ${
+                  currentPage === 1
+                    ? 'text-gray-400 border-gray-200 cursor-not-allowed'
+                    : 'text-gray-700 border-gray-300 hover:bg-gray-100'
+                }`}
+              >
+                Previous
+              </button>
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: totalPages }, (_, index) => index + 1)
+                  .slice(Math.max(0, currentPage - 3), currentPage + 2)
+                  .map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-1 rounded border text-sm transition-colors ${
+                        currentPage === page
+                          ? 'bg-primary-600 text-white border-primary-600'
+                          : 'text-gray-700 border-gray-300 hover:bg-gray-100'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+              </div>
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className={`px-3 py-1 rounded border text-sm transition-colors ${
+                  currentPage === totalPages
+                    ? 'text-gray-400 border-gray-200 cursor-not-allowed'
+                    : 'text-gray-700 border-gray-300 hover:bg-gray-100'
+                }`}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
 
         <Modal title="Registration Details" isOpen={detailModalOpen} onClose={closeDetail} size="max-w-3xl">
           {detailLoading ? (
