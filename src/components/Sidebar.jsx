@@ -11,7 +11,8 @@ import {
   MapPin, 
   LogOut, 
   User,
-  Settings
+  Settings,
+  ListChecks
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -29,10 +30,11 @@ const Sidebar = () => {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: null, show: true },
     { name: 'Vendors', href: '/vendors', icon: Users, permission: 'vendors:read', show: true },
-    { name: 'Events', href: '/events', icon: Calendar, permission: 'events:read', show: true },
+    { name: 'Events', href: '/events', icon: Calendar, permission: 'events:read', show: !hasRole('manager') },
+    { name: 'Event Registrations', href: '/event-registrations', icon: ListChecks, permission: null, show: hasRole('manager') },
     { name: 'NBOD', href: '/bod', icon: Award, permission: 'bod:read', show: true },
     { name: 'Members', href: '/members', icon: Building, permission: 'members:read', show: true },
-    { name: 'Associations', href: '/associations', icon: MapPin, permission: null, show: true },
+    { name: 'Associations', href: '/associations', icon: MapPin, permission: null, show: !hasRole('manager') },
   ];
 
   const isActive = (href) => {
@@ -91,8 +93,8 @@ const Sidebar = () => {
         {navigation.map((item) => {
           // Check if user should see this navigation item
           const shouldShow = shouldShowNavigationItem(item);
-          
-          if (!shouldShow) {
+
+          if (item.show === false || !shouldShow) {
             return null;
           }
           

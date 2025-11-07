@@ -159,13 +159,21 @@ export const AuthProvider = ({ children }) => {
     if (!user) {
       return false;
     }
-    
+
     // Admin has access to everything
     if (user.role === 'admin') {
       return true;
     }
-    
-    // Sub-admin permissions
+
+    if (user.role === 'manager') {
+      const managerPermissions = [
+        'events:read',
+        'registrations:read',
+        'registrations:verify'
+      ];
+      return managerPermissions.includes(permission);
+    }
+
     if (user.role === 'sub-admin') {
       const subAdminPermissions = [
         'vendors:read',
@@ -179,7 +187,7 @@ export const AuthProvider = ({ children }) => {
       ];
       return subAdminPermissions.includes(permission);
     }
-    
+
     return false;
   };
 

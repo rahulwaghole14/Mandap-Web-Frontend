@@ -17,6 +17,7 @@ import AssociationDetail from './pages/AssociationDetail';
 import AssociationMembers from './pages/AssociationMembers';
 import Settings from './pages/Settings';
 import EventRegistrationPage from './pages/EventRegistrationPage';
+import EventRegistrations from './pages/EventRegistrations';
 
 function App() {
   return (
@@ -39,6 +40,7 @@ function App() {
           <Route path="/events/new" element={<ProtectedRoute><EventForm /></ProtectedRoute>} />
           <Route path="/events/:eventId" element={<ProtectedRoute><EventDetails /></ProtectedRoute>} />
           <Route path="/events/:eventId/edit" element={<ProtectedRoute><EventForm /></ProtectedRoute>} />
+          <Route path="/event-registrations" element={<ProtectedRoute requiredRoles={['manager']} requiredPermission="registrations:read"><EventRegistrations /></ProtectedRoute>} />
           <Route path="/members" element={<ProtectedRoute><Members /></ProtectedRoute>} />
           <Route path="/associations" element={<ProtectedRoute><Associations /></ProtectedRoute>} />
           <Route path="/associations/:associationId" element={<ProtectedRoute><AssociationDetail /></ProtectedRoute>} />
