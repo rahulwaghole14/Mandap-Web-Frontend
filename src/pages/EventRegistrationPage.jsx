@@ -60,6 +60,7 @@ const EventRegistrationPage = () => {
   const [memberId, setMemberId] = useState(null);
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoError, setPhotoError] = useState('');
   
   // Get slug from params or extract from pathname if params is undefined
   const actualSlug = slug || location.pathname.replace(/^\//, '').split('/')[0];
@@ -257,8 +258,8 @@ const EventRegistrationPage = () => {
         validationErrors.push('Phone number must be exactly 10 digits');
         console.log('  ❌ Phone validation failed');
       }
-      if (!cleanedData.email || !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(cleanedData.email)) {
-        validationErrors.push('Valid email is required');
+      if (cleanedData.email && !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(cleanedData.email)) {
+        validationErrors.push('Email must be valid if provided');
         console.log('  ❌ Email validation failed');
       }
       if (!cleanedData.businessName || cleanedData.businessName.length < 2) {
@@ -288,6 +289,16 @@ const EventRegistrationPage = () => {
       }
       
       console.log('EventRegistrationPage - ✅ All client-side validations passed');
+
+      if (!photo) {
+        const message = 'Profile photo is required';
+        setPhotoError(message);
+        toast.error(message);
+        setRegistering(false);
+        return;
+      }
+
+      setPhotoError('');
 
       // Step 1: Upload photo to Cloudinary first if provided
       let photoUrl = null;
@@ -322,7 +333,7 @@ const EventRegistrationPage = () => {
       const registrationPayload = {
         name: cleanedData.name,
         phone: cleanedData.phone,
-        email: cleanedData.email,
+        email: cleanedData.email || null,
         businessName: cleanedData.businessName,
         businessType: cleanedData.businessType,
         city: cleanedData.city,
@@ -517,6 +528,7 @@ const EventRegistrationPage = () => {
     }
     
     setPhoto(file);
+    setPhotoError('');
     
     // Create preview
     const reader = new FileReader();
@@ -529,6 +541,7 @@ const EventRegistrationPage = () => {
   const removePhoto = () => {
     setPhoto(null);
     setPhotoPreview(null);
+    setPhotoError('Profile photo is required');
     // Clear the file input
     const fileInput = document.getElementById('photo');
     if (fileInput) {
@@ -917,19 +930,14 @@ const EventRegistrationPage = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Mail className="h-4 w-4 inline mr-1" />
-                    Email *
+                    Email (Optional)
                   </label>
                   <input
                     type="email"
                     {...register('email', { 
-                      required: 'Email is required',
-                      pattern: {
-                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                        message: 'Invalid email address'
-                      },
                       validate: (value) => {
                         const trimmed = value?.trim();
-                        if (!trimmed) return 'Email is required';
+                        if (!trimmed) return true;
                         if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(trimmed)) return 'Invalid email address';
                         return true;
                       }
@@ -1066,26 +1074,33 @@ const EventRegistrationPage = () => {
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Camera className="h-4 w-4 inline mr-1" />
-                    Profile Photo (Optional)
+                    Profile Photo *
                   </label>
-                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-primary-400 transition-colors">
+                  <div
+                    className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-lg transition-colors ${
+                      photoError ? 'border-red-500 hover:border-red-600' : 'border-gray-300 hover:border-primary-400'
+                    }`}
+                  >
                     <div className="space-y-1 text-center w-full">
                       {!photoPreview ? (
                         <>
-                          <Camera className="mx-auto h-10 w-10 text-gray-400" />
-                          <div className="flex text-sm text-gray-600 justify-center">
-                            <label className="relative cursor-pointer bg-white rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none">
-                              <span>Capture Photo from Camera</span>
-                                                             <input
-                                 id="photo"
-                                 type="file"
-                                 className="sr-only"
-                                 accept="image/*"
-                                 capture="user"
-                                 onChange={handlePhotoChange}
-                               />
-                            </label>
-                          </div>
+                          <label
+                            htmlFor="photo"
+                            className="cursor-pointer flex flex-col items-center space-y-2 text-gray-600 hover:text-primary-600 focus-within:outline-none"
+                          >
+                            <Camera className="h-10 w-10" />
+                            <span className="bg-white rounded-md font-medium">
+                              Capture Photo from Camera
+                            </span>
+                          </label>
+                          <input
+                            id="photo"
+                            type="file"
+                            className="sr-only"
+                            accept="image/*"
+                            capture="user"
+                            onChange={handlePhotoChange}
+                          />
                           <p className="text-xs text-gray-500">Max 30MB - JPG, PNG, GIF, WEBP (will be automatically optimized)</p>
                         </>
                       ) : (
@@ -1106,6 +1121,9 @@ const EventRegistrationPage = () => {
                       )}
                     </div>
                   </div>
+                  {photoError && (
+                    <p className="text-red-500 text-sm mt-2">{photoError}</p>
+                  )}
                 </div>
               </div>
 
