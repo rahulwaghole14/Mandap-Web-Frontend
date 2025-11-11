@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, Upload, FileText, Download, AlertCircle, CheckCircle } from 'lucide-react';
 import { memberImportApi } from '../services/memberImportApi';
 import toast from 'react-hot-toast';
@@ -10,6 +10,26 @@ const CSVImportModal = ({ isOpen, onClose, onImportSuccess }) => {
   const [validationErrors, setValidationErrors] = useState([]);
   const [step, setStep] = useState(1); // 1: File Selection, 2: Preview, 3: Import
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (validationErrors.length === 0) return;
+
+    console.group('CSV Import - Validation Issues');
+    validationErrors.forEach((error) => {
+      if (error.type === 'row') {
+        console.warn(
+          `Row ${error.row}:`,
+          {
+            data: error.data,
+            messages: error.errors
+          }
+        );
+      } else {
+        console.warn(error.message || error);
+      }
+    });
+    console.groupEnd();
+  }, [validationErrors]);
 
   const handleFileSelect = (event) => {
     const selectedFile = event.target.files[0];
