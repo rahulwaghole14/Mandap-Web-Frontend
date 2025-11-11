@@ -28,7 +28,7 @@ const Sidebar = () => {
   };
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: null, show: true },
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: null, show: !hasRole('manager') },
     { name: 'Vendors', href: '/vendors', icon: Users, permission: 'vendors:read', show: true },
     { name: 'Events', href: '/events', icon: Calendar, permission: 'events:read', show: !hasRole('manager') },
     { name: 'Event Registrations', href: '/event-registrations', icon: ListChecks, permission: null, show: hasRole('manager') },
