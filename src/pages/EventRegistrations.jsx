@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import Modal from '../components/Modal';
 import { eventApi } from '../services/eventApi';
@@ -129,6 +129,11 @@ const EventRegistrations = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState(null);
   const [memberCache, setMemberCache] = useState({});
+  const memberCacheRef = useRef({});
+
+  useEffect(() => {
+    memberCacheRef.current = memberCache;
+  }, [memberCache]);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
@@ -158,6 +163,56 @@ const EventRegistrations = () => {
     fetchEvents();
   }, [fetchEvents]);
 
+  const extractMemberFromRegistration = (registration) =>
+    registration?.member ||
+    registration?.memberDetails ||
+    registration?.memberData ||
+    registration?.memberProfile ||
+    null;
+
+  const normalizeMemberData = (member, registration) => {
+    if (!member) return null;
+    const normalized = { ...member };
+
+    if (!normalized.email) {
+      normalized.email =
+        normalized.contactEmail ||
+        registration?.email ||
+        registration?.memberEmail ||
+        null;
+    }
+
+    if (!normalized.businessName) {
+      normalized.businessName =
+        registration?.businessName ||
+        normalized.companyName ||
+        null;
+    }
+
+    if (!normalized.businessType) {
+      normalized.businessType =
+        registration?.businessType ||
+        normalized.category ||
+        null;
+    }
+
+    if (!normalized.city) {
+      normalized.city = registration?.city || null;
+    }
+
+    if (!normalized.profileImageURL) {
+      normalized.profileImageURL =
+        member?.profilePhotoUrl ||
+        member?.photo ||
+        member?.image ||
+        registration?.photo ||
+        registration?.photoUrl ||
+        null;
+    }
+
+    return normalized;
+  };
+
   const fetchRegistrations = useCallback(async (eventId) => {
     if (!eventId) {
       setRegistrations([]);
@@ -167,7 +222,122 @@ const EventRegistrations = () => {
     try {
       setLoadingRegistrations(true);
       const response = await eventApi.getEventRegistrations(eventId);
-      setRegistrations(response.registrations || []);
+      const registrationsData = response.registrations || [];
+
+      const registrationMapByMemberId = {};
+      const directMemberCache = {};
+
+      registrationsData.forEach((registration) => {
+        const memberCandidate = extractMemberFromRegistration(registration);
+        const candidateId = memberCandidate?.id;
+        const memberId =
+          candidateId !== undefined && candidateId !== null
+            ? candidateId
+            : registration.memberId;
+
+        if (registration.memberId !== undefined && registration.memberId !== null) {
+          registrationMapByMemberId[String(registration.memberId)] = registration;
+        }
+
+        if (memberCandidate && memberId !== undefined && memberId !== null) {
+          directMemberCache[memberId] =
+            normalizeMemberData(memberCandidate, registration) || memberCandidate;
+        }
+      });
+
+      const missingMemberIds = Array.from(
+        new Set(
+          registrationsData
+            .map((registration) => registration.memberId)
+            .filter(
+              (memberId) =>
+                memberId &&
+                !directMemberCache[memberId] &&
+                !memberCacheRef.current[memberId]
+            )
+        )
+      );
+
+      const fetchedMembers = {};
+      if (missingMemberIds.length > 0) {
+        const results = await Promise.allSettled(
+          missingMemberIds.map((memberId) => memberApi.getMember(memberId))
+        );
+
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            const rawMember = result.value.member || result.value;
+            if (rawMember) {
+              const targetMemberId = missingMemberIds[index];
+              const relatedRegistration =
+                registrationMapByMemberId[String(targetMemberId)];
+              fetchedMembers[targetMemberId] =
+                normalizeMemberData(rawMember, relatedRegistration) || rawMember;
+            }
+          } else {
+            console.error('EventRegistrations - member preload error', result.reason);
+          }
+        });
+      }
+
+      const mergedMemberCache = {
+        ...memberCacheRef.current,
+        ...directMemberCache,
+        ...fetchedMembers
+      };
+
+      memberCacheRef.current = mergedMemberCache;
+      setMemberCache(mergedMemberCache);
+
+      const enrichedRegistrations = registrationsData.map((registration) => {
+        const memberData =
+          mergedMemberCache[registration.memberId] ||
+          extractMemberFromRegistration(registration) ||
+          null;
+
+        const email =
+          registration.email ||
+          registration.memberEmail ||
+          memberData?.email ||
+          memberData?.contactEmail ||
+          null;
+
+        const businessName =
+          registration.businessName ||
+          memberData?.businessName ||
+          memberData?.companyName ||
+          null;
+
+        const businessType =
+          registration.businessType ||
+          memberData?.businessType ||
+          memberData?.category ||
+          null;
+
+        const city = registration.city || memberData?.city || null;
+
+        const photo =
+          registration.photo ||
+          registration.photoUrl ||
+          registration.profileImageURL ||
+          memberData?.profileImageURL ||
+          memberData?.photo ||
+          memberData?.image ||
+          null;
+
+        return {
+          ...registration,
+          member: memberData,
+          memberName: registration.memberName || memberData?.name || registration.name,
+          email,
+          businessName,
+          businessType,
+          city,
+          photo
+        };
+      });
+
+      setRegistrations(enrichedRegistrations);
     } catch (error) {
       console.error('EventRegistrations - fetchRegistrations error', error);
       toast.error('Failed to load registrations');
@@ -204,10 +374,14 @@ const EventRegistrations = () => {
 
       const text = [
         registration.name,
+        registration.memberName,
         cachedMember?.name,
         registration.phone,
         cachedMember?.phone,
-        cachedMember?.businessName
+        registration.businessName,
+        cachedMember?.businessName,
+        registration.email,
+        cachedMember?.email
       ]
         .filter(Boolean)
         .join(' ')
@@ -552,8 +726,8 @@ const EventRegistrations = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">{cachedMember?.businessName || 'Business info not loaded'}</div>
-                          <div className="text-sm text-gray-500 capitalize">{cachedMember?.businessType || 'Open detail to view business type'}</div>
+                          <div className="text-sm text-gray-900">{registration.businessName || cachedMember?.businessName || 'Business info not available'}</div>
+                          <div className="text-sm text-gray-500 capitalize">{registration.businessType || cachedMember?.businessType || 'Business type not available'}</div>
                         </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBadgeClass(paymentColors, registration.paymentStatus)}`}>
