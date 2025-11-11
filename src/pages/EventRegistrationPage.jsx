@@ -31,7 +31,7 @@ const BUSINESS_TYPES = [
   { value: 'catering', label: 'Catering' },
   { value: 'sound', label: 'Sound' },
   { value: 'mandap', label: 'Mandap' },
-  { value: 'madap', label: 'Madap' },
+  { value: 'madap', label: 'Event Planner' },
   { value: 'light', label: 'Light' },
   { value: 'decorator', label: 'Decorator' },
   { value: 'photography', label: 'Photography' },
@@ -61,6 +61,7 @@ const EventRegistrationPage = () => {
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [photoError, setPhotoError] = useState('');
+  const registrationDisplayName = registration?.memberName || registration?.member?.name || registration?.name || '';
   
   // Get slug from params or extract from pathname if params is undefined
   const actualSlug = slug || location.pathname.replace(/^\//, '').split('/')[0];
@@ -164,6 +165,7 @@ const EventRegistrationPage = () => {
           qrCodeUrl: data.qrCodeUrl || data.registration?.qrCodeUrl,
           qrCodeDataURL: data.qrCodeDataURL || data.registration?.qrCodeDataURL,
           qrToken: data.qrToken || data.registration?.qrToken,
+          memberName: data.memberName || data.registration?.memberName || data.registration?.member?.name || data.registration?.name,
         };
         setRegistration(registrationWithQR);
         toast.success('You are already registered for this event!');
@@ -378,6 +380,7 @@ const EventRegistrationPage = () => {
            qrCodeUrl: paymentData.qrCodeUrl || paymentData.registration?.qrCodeUrl,
            qrCodeDataURL: paymentData.qrCodeDataURL || paymentData.registration?.qrCodeDataURL,
            qrToken: paymentData.qrToken || paymentData.registration?.qrToken,
+          memberName: paymentData.memberName || paymentData.registration?.memberName || paymentData.registration?.member?.name || paymentData.registration?.name || registrationPayload.name,
          };
          setRegistration(registrationWithQR);
          // Clear photo after successful registration
@@ -423,6 +426,7 @@ const EventRegistrationPage = () => {
               qrCodeUrl: confirmData.qrCodeUrl || confirmData.registration?.qrCodeUrl,
               qrCodeDataURL: confirmData.qrCodeDataURL || confirmData.registration?.qrCodeDataURL,
               qrToken: confirmData.qrToken || confirmData.registration?.qrToken,
+              memberName: confirmData.memberName || confirmData.registration?.memberName || confirmData.registration?.member?.name || confirmData.registration?.name || registrationPayload.name,
             };
             setRegistration(registrationWithQR);
             // Clear photo after successful registration
@@ -722,17 +726,28 @@ const EventRegistrationPage = () => {
 
                  {/* Registration Section */}
          {registration ? (
-          // Already Registered
-          <div className="bg-white rounded-lg shadow-lg p-6 md:p-8">
-            <div className="flex items-start mb-6">
-              <CheckCircle className="h-8 w-8 text-green-500 mr-4 mt-1" />
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Registration Confirmed!</h2>
-                <p className="text-gray-600">
-                  You are successfully registered for this event. Please save your QR code for event entry.
-                </p>
-              </div>
-            </div>
+         // Already Registered
+         <div className="bg-white rounded-lg shadow-lg p-6 md:p-8">
+           <div className="flex flex-col items-center text-center mb-6">
+             <MandapamLogo className="h-16 w-auto mb-4" />
+             <span className="inline-block px-4 py-1 bg-primary-50 text-primary-700 font-semibold uppercase tracking-wide rounded-full mb-4">
+               Visitor Pass
+             </span>
+             <div className="flex items-start">
+               <CheckCircle className="h-8 w-8 text-green-500 mr-4 mt-1" />
+               <div className="text-left">
+                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Registration Confirmed!</h2>
+                 <p className="text-gray-600">
+                   You are successfully registered for this event. Please save your QR code for event entry.
+                 </p>
+                 {registrationDisplayName && (
+                   <p className="mt-3 text-lg font-semibold text-gray-900">
+                     {registrationDisplayName}
+                   </p>
+                 )}
+               </div>
+             </div>
+           </div>
 
             <div className="border-t border-gray-200 pt-6">
               {/* Display uploaded photo if available */}

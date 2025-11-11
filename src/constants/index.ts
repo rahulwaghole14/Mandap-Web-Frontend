@@ -57,7 +57,7 @@ export const LANGUAGES = [
   { code: 'hi', name: 'Hindi' },
 ];
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://mandapam-backend-97mi.onrender.com/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Event slug to event ID mapping for public registration pages
 // Example: Access /kolhapur-2026 or /Kolhapur-2026 will map to the event with ID 32
