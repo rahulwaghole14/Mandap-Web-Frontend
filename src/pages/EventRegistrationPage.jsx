@@ -270,13 +270,13 @@ const EventRegistrationPage = () => {
         validationErrors.push('Business type is required');
         console.log('  ❌ Business type validation failed');
       }
-      if (!cleanedData.city || cleanedData.city.length < 2) {
-        validationErrors.push('City is required and must be at least 2 characters');
-        console.log('  ❌ City validation failed');
+      if (cleanedData.city && cleanedData.city.length < 2) {
+        validationErrors.push('City must be at least 2 characters when provided');
+        console.log('  ❌ City validation failed (optional field provided)');
       }
-      if (!cleanedData.associationId || cleanedData.associationId === '' || cleanedData.associationId === '0') {
-        validationErrors.push('Association is required');
-        console.log('  ❌ Association validation failed');
+      if (cleanedData.associationId === '0') {
+        validationErrors.push('Please select a valid association when provided');
+        console.log('  ❌ Association validation failed (optional field provided)');
       }
 
       if (validationErrors.length > 0) {
@@ -336,7 +336,7 @@ const EventRegistrationPage = () => {
         email: cleanedData.email || null,
         businessName: cleanedData.businessName,
         businessType: cleanedData.businessType,
-        city: cleanedData.city,
+        city: cleanedData.city || null,
         associationId: cleanedData.associationId ? parseInt(cleanedData.associationId, 10) : null,
       };
       
@@ -1008,22 +1008,22 @@ const EventRegistrationPage = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <MapPinIcon className="h-4 w-4 inline mr-1" />
-                    City *
+                    City (Optional)
                   </label>
                   <input
                     type="text"
                     {...register('city', { 
-                      required: 'City is required',
                       validate: (value) => {
                         const trimmed = value?.trim();
-                        if (!trimmed || trimmed.length < 2) return 'City is required and must be at least 2 characters';
+                        if (!trimmed) return true;
+                        if (trimmed.length < 2) return 'City must be at least 2 characters';
                         return true;
                       }
                     })}
                     className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                       errors.city ? 'border-red-500' : 'border-gray-300'
                     }`}
-                    placeholder="Enter city name"
+                    placeholder="Enter city name (optional)"
                   />
                   {errors.city && (
                     <p className="text-red-500 text-sm mt-1">{errors.city.message}</p>
@@ -1032,7 +1032,7 @@ const EventRegistrationPage = () => {
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Association *
+                    Association (Optional)
                   </label>
                   {loadingAssociations ? (
                     <div className="flex items-center p-3 border border-gray-300 rounded-lg">
@@ -1042,9 +1042,9 @@ const EventRegistrationPage = () => {
                   ) : (
                     <select
                       {...register('associationId', { 
-                        required: 'Association is required',
                         validate: (value) => {
-                          if (!value || value.trim() === '' || value === '0') return 'Association is required';
+                          if (!value || value.trim() === '') return true;
+                          if (value === '0') return 'Please select a valid association';
                           return true;
                         }
                       })}
@@ -1055,10 +1055,10 @@ const EventRegistrationPage = () => {
                     >
                       <option value="">
                         {!selectedCity 
-                          ? 'Please enter city first' 
+                          ? 'Enter city to view associations (optional)' 
                           : associations.length === 0 
                             ? 'No associations found for this city' 
-                            : 'Select association'}
+                            : 'Select association (optional)'}
                       </option>
                       {associations.map(assoc => (
                         <option key={assoc.id} value={String(assoc.id)}>{assoc.name}</option>
