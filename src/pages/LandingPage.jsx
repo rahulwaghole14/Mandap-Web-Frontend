@@ -74,14 +74,8 @@ const LandingPage = () => {
 
       {/* Navigation */}
       <nav className="relative z-10 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
+        <div className="max-w-7xl mx-auto flex justify-center items-center">
           <MandapamLogo size="medium" showText={false} />
-          <button
-            onClick={handleLoginClick}
-            className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
-          >
-            Login
-          </button>
         </div>
       </nav>
 
