@@ -18,6 +18,17 @@ import AssociationMembers from './pages/AssociationMembers';
 import Settings from './pages/Settings';
 import EventRegistrationPage from './pages/EventRegistrationPage';
 import EventRegistrations from './pages/EventRegistrations';
+import { useAuth } from './contexts/AuthContext';
+
+const DashboardRoute = () => {
+  const { hasRole } = useAuth();
+
+  if (hasRole('manager')) {
+    return <Navigate to="/event-registrations" replace />;
+  }
+
+  return <Dashboard />;
+};
 
 function App() {
   return (
@@ -32,7 +43,7 @@ function App() {
           <Route path="/test-route" element={<div style={{padding: '20px'}}><h1>Test Route Works!</h1></div>} />
           
           {/* Protected Routes - Require Authentication */}
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><DashboardRoute /></ProtectedRoute>} />
           <Route path="/vendors" element={<ProtectedRoute><VendorList /></ProtectedRoute>} />
           <Route path="/add-vendor" element={<ProtectedRoute><AddVendorForm /></ProtectedRoute>} />
           <Route path="/bod" element={<ProtectedRoute><BODList /></ProtectedRoute>} />
