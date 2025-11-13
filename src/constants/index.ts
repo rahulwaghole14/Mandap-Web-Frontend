@@ -58,9 +58,14 @@ export const LANGUAGES = [
 ];
 
 const importMetaEnv = (import.meta as unknown as { env?: Record<string, string> }).env;
+const appMode = importMetaEnv?.MODE;
+const DEFAULT_API_BASE_URL =
+  appMode === 'production'
+    ? 'https://mandapam-backend-97mi.onrender.com/api'
+    : 'http://localhost:3001/api';
 
 export const API_BASE_URL =
-  (importMetaEnv?.VITE_API_URL as string | undefined) || 'https://mandapam-backend-97mi.onrender.com/api';
+  (importMetaEnv?.VITE_API_URL as string | undefined) || DEFAULT_API_BASE_URL;
 
 // Event slug to event ID mapping for public registration pages
 // Example: Access /kolhapur-2026 or /Kolhapur-2026 will map to the event with ID 32

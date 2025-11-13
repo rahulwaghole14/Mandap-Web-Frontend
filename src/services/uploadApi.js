@@ -282,21 +282,32 @@ export const uploadApi = {
       
       if (USE_CLOUDINARY) {
         return await uploadToCloudinary(optimizedFile, 'mandap-profiles');
-      } else {
-        // Fallback to backend API upload
-        const formData = new FormData();
-        formData.append('image', optimizedFile);
-        
-        const authInstance = createAuthInstance();
-        const response = await authInstance.post('/upload/profile-image', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        });
-        
-        console.log('UploadApi - Profile upload response:', response.data);
-        return response.data;
       }
+
+      // Fallback to backend API upload
+      const formData = new FormData();
+      formData.append('image', optimizedFile);
+
+      const authInstance = createAuthInstance();
+      const response = await authInstance.post('/upload/profile-image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      console.log('UploadApi - Profile upload response:', response.data);
+
+      const fileData = (response.data && response.data.file) || response.data || {};
+
+      return {
+        success: response.data?.success ?? true,
+        message: response.data?.message,
+        url: fileData.url || fileData.localUrl || null,
+        image: fileData.url || fileData.localUrl || null,
+        filename: fileData.filename || null,
+        localUrl: fileData.localUrl || null,
+        raw: response.data
+      };
     } catch (error) {
       console.error('UploadApi - Profile upload error:', error);
       if (error.response?.data) {
@@ -336,6 +347,44 @@ export const uploadApi = {
   // Get full image URL - handles both Cloudinary URLs and local uploads
   // Accepts either a filename or an object with {image, imageURL} fields
   getImageUrl: (filenameOrObject) => {
+    const buildLocalUrl = (rawPath) => {
+      if (!rawPath) return null;
+
+      const baseUrl = API_BASE_URL.replace('/api', '');
+      const knownSubDirs = [
+        'uploads',
+        'event-images',
+        'profile-images',
+        'business-images',
+        'gallery-images',
+        'documents',
+        'images',
+        'general'
+      ];
+
+      const normalizePath = (value) => value.replace(/^\/+/, '').replace(/\\/g, '/');
+      const encodePath = (value) =>
+        value
+          .split('/')
+          .map((segment) => encodeURIComponent(segment))
+          .join('/');
+
+      const normalized = normalizePath(rawPath);
+      if (!normalized) return null;
+
+      const [firstSegment] = normalized.split('/');
+
+      if (firstSegment === 'uploads') {
+        return `${baseUrl}/${encodePath(normalized)}`;
+      }
+
+      if (knownSubDirs.includes(firstSegment)) {
+        return `${baseUrl}/uploads/${encodePath(normalized)}`;
+      }
+
+      return `${baseUrl}/uploads/event-images/${encodePath(normalized)}`;
+    };
+
     // Handle object with imageURL and image fields
     let filename = null;
     let imageURL = null;
@@ -360,14 +409,35 @@ export const uploadApi = {
     
     // Priority 3: If imageURL is a local path, construct full local URL
     if (imageURL && typeof imageURL === 'string' && !imageURL.startsWith('http')) {
-      const baseUrl = API_BASE_URL.replace('/api', '');
-      // Remove leading slash if present to avoid double slashes
-      const cleanPath = imageURL.startsWith('/') ? imageURL.slice(1) : imageURL;
-      return `${baseUrl}/${cleanPath}`;
+      return buildLocalUrl(imageURL);
     }
     
     // Priority 4: Use filename (if provided) for Cloudinary or local construction
     if (!filename) return null;
+
+    const looksLikeLocalPath = (value) => {
+      if (typeof value !== 'string') return false;
+      const normalized = value.replace(/^\/+/, '').replace(/\\/g, '/');
+      if (!normalized) return false;
+      const firstSegment = normalized.split('/')[0];
+      const localPrefixes = [
+        '.',
+        '..',
+        'uploads',
+        'event-images',
+        'profile-images',
+        'business-images',
+        'gallery-images',
+        'documents',
+        'images',
+        'general'
+      ];
+      return localPrefixes.includes(firstSegment);
+    };
+
+    if (looksLikeLocalPath(filename)) {
+      return buildLocalUrl(filename);
+    }
     
     // If using Cloudinary, construct Cloudinary URL
     if (USE_CLOUDINARY) {
@@ -398,9 +468,7 @@ export const uploadApi = {
     }
     
     // Fallback: local uploads URL (encode spaces in filename for URL)
-    const baseUrl = API_BASE_URL.replace('/api', '');
-    const encodedFilename = encodeURIComponent(filename);
-    return `${baseUrl}/uploads/event-images/${encodedFilename}`;
+    return buildLocalUrl(filename);
   },
 
   // Get image URL with CORS proxy fallback

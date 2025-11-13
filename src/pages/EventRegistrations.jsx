@@ -19,7 +19,8 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
-  Camera
+  Camera,
+  Send
 } from 'lucide-react';
 
 const statusColors = {
@@ -34,6 +35,43 @@ const paymentColors = {
   pending: 'bg-yellow-100 text-yellow-700',
   failed: 'bg-red-100 text-red-700'
 };
+
+const DEVICE_UID = 'a8bec8c820614d8ba084a55429716a78';
+const DEVICE_NAME = 'Mandapam';
+const COUNTRY_CODE = '91';
+const DEFAULT_PROFILE_PLACEHOLDER =
+  'data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%27256%27 height=%27256%27 viewBox=%270 0 256 256%27><rect width=%27256%27 height=%27256%27 rx=%2760%27 fill=%27%23f3f4f6%27/><circle cx=%27128%27 cy=%2796%27 r=%2760%27 fill=%27%23d1d5db%27/><path d=%27M56 220c0-46 36-84 72-84s72 38 72 84%27 fill=%27%239ca3af%27/></svg>';
+
+let jsPdfModule = null;
+const loadJsPdf = async () => {
+  if (!jsPdfModule) {
+    jsPdfModule = await import('jspdf');
+  }
+  return jsPdfModule.jsPDF;
+};
+
+const WHATSAPP_MESSAGE_TEMPLATE = `
+🙏 MANDAPAM 2026 – कोल्हापूर मध्ये आपले हार्दिक स्वागत! 🎉
+
+आपण आता MANDAPAM Association चे अधिकृत सदस्य झाला आहात. 🎊
+
+आपला Visitor Pass खाली जोडलेला आहे. 🎫
+
+📞 कार्यक्रमाची सविस्तर माहिती, एक्झिबिटर्स माहिती, वेळापत्रक आणि खास ऑफर्स पाहण्यासाठी
+MANDAPAM App डाउनलोड करा 👇
+
+📱 Android वापरकर्त्यांसाठी:
+👉 https://play.google.com/store/apps/details?id=com.mandapam.expo
+
+🍎 iOS वापरकर्त्यांसाठी:
+👉 लवकरच येत आहे
+
+🔑 आपल्या मोबाईल क्रमांकाने लॉगिन करून अँपमध्ये प्रवेश करा.
+
+आपल्या सहभागाबद्दल मनःपूर्वक धन्यवाद!
+
+— MANDAPAM टीम
+`.trim();
 
 const formatDateTime = (value) => {
   if (!value) return '-';
@@ -51,6 +89,15 @@ const formatDateTime = (value) => {
   });
 };
 
+const getPassKey = (registration) => {
+  if (!registration) return null;
+  if (registration.registrationId) return `reg-${registration.registrationId}`;
+  if (registration.id) return `reg-${registration.id}`;
+  if (registration.memberId) return `member-${registration.memberId}`;
+  if (registration.phone) return `phone-${registration.phone}`;
+  return null;
+};
+
 const getBadgeClass = (map, key) => {
   if (!key) return 'bg-gray-100 text-gray-600';
   const normalized = key.toLowerCase();
@@ -66,19 +113,24 @@ const getVerificationKey = (registration) => {
 };
 
 const resolvePhotoUrl = (registration, member) => {
-  if (!registration) return null;
+  if (!registration) return DEFAULT_PROFILE_PLACEHOLDER;
   const candidate =
     registration.photo ||
     registration.photoUrl ||
     registration.profileImageURL ||
+    registration.rawPhotoData ||
     member?.profileImageURL ||
     member?.profilePhotoUrl ||
     member?.businessImageURL ||
     member?.photo ||
     member?.image;
 
-  if (!candidate) return null;
-  return uploadApi.getImageUrl({ image: candidate, imageURL: candidate });
+  if (!candidate) return DEFAULT_PROFILE_PLACEHOLDER;
+  if (typeof candidate === 'string' && candidate.startsWith('data:')) {
+    return candidate;
+  }
+
+  return uploadApi.getImageUrl({ image: candidate, imageURL: candidate }) || DEFAULT_PROFILE_PLACEHOLDER;
 };
 
 const resolveQrUrl = (detail) => {
@@ -90,6 +142,188 @@ const resolveQrUrl = (detail) => {
     detail.qrCodeDataURL ||
     null
   );
+};
+
+const loadImageElement = (url) =>
+  new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.referrerPolicy = 'no-referrer';
+    img.onload = () => resolve(img);
+    img.onerror = (error) => reject(error);
+    img.src = url;
+  });
+
+const cropImageToSquare = (img) => {
+  const size = Math.min(img.width, img.height);
+  const offsetX = (img.width - size) / 2;
+  const offsetY = (img.height - size) / 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, size, size);
+  ctx.drawImage(img, offsetX, offsetY, size, size, 0, 0, size, size);
+  return {
+    dataUrl: canvas.toDataURL('image/png'),
+    format: 'PNG'
+  };
+};
+
+const convertImageToDataUrl = async (src) => {
+  if (!src) return null;
+
+  const finalize = async (imgPromise, cleanup) => {
+    try {
+      const img = await imgPromise;
+      return cropImageToSquare(img);
+    } catch (error) {
+      console.error('EventRegistrations - convertImageToDataUrl error', src, error);
+      return null;
+    } finally {
+      if (cleanup) cleanup();
+    }
+  };
+
+  if (src instanceof File) {
+    const objectUrl = URL.createObjectURL(src);
+    return finalize(loadImageElement(objectUrl), () => URL.revokeObjectURL(objectUrl));
+  }
+
+  if (typeof src === 'string' && src.startsWith('data:')) {
+    return finalize(loadImageElement(src));
+  }
+
+  if (typeof src === 'string') {
+    try {
+      return await finalize(loadImageElement(src));
+    } catch (error) {
+      try {
+        const response = await fetch(src, { mode: 'cors' });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.status}`);
+        }
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        return await finalize(loadImageElement(objectUrl), () => URL.revokeObjectURL(objectUrl));
+      } catch (fetchError) {
+        console.error('EventRegistrations - failed to fetch image for cropping', src, fetchError);
+        return null;
+      }
+    }
+  }
+
+  return DEFAULT_PROFILE_PLACEHOLDER;
+};
+
+const resolveProfileImageSourceForPdf = (registration, member) => {
+  if (!registration) return null;
+
+  const candidates = [
+    registration.rawPhotoData,
+    registration.photoOriginal,
+    registration.photoBase64,
+    registration.photoData,
+    registration.profileImageData,
+    registration.profileImageURL,
+    registration.profileImage,
+    registration.photoUrl,
+    registration.photo,
+    registration.member?.profileImageURL,
+    registration.member?.profileImage,
+    registration.member?.photoUrl,
+    registration.member?.photo,
+    registration.member?.profilePhotoUrl,
+    registration.member?.image,
+    member?.profileImageURL,
+    member?.profileImage,
+    member?.photoUrl,
+    member?.photo,
+    member?.profilePhotoUrl,
+    member?.image
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+
+    if (typeof candidate === 'string') {
+      if (candidate.startsWith('data:')) {
+        return candidate;
+      }
+      const url = uploadApi.getImageUrl(candidate);
+      if (url) return url;
+    } else if (candidate.image || candidate.imageURL) {
+      const url = uploadApi.getImageUrl(candidate);
+      if (url) return url;
+    }
+  }
+
+  return null;
+};
+
+const base64ToBlob = (base64, type = 'application/pdf') => {
+  const byteCharacters = window.atob(base64);
+  const byteArrays = [];
+  const sliceSize = 8192;
+  for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+    const slice = byteCharacters.slice(offset, offset + sliceSize);
+    const byteNumbers = new Array(slice.length);
+    for (let i = 0; i < slice.length; i += 1) {
+      byteNumbers[i] = slice.charCodeAt(i);
+    }
+    byteArrays.push(new Uint8Array(byteNumbers));
+  }
+  return new Blob(byteArrays, { type });
+};
+
+const formatPhoneNumber = (value) => {
+  const digits = (value || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.length === 10) return `${COUNTRY_CODE}${digits}`;
+  if (digits.length === 12 && digits.startsWith(COUNTRY_CODE)) return digits;
+  if (digits.length > 10) return `${COUNTRY_CODE}${digits.slice(-10)}`;
+  return '';
+};
+
+const buildMessage = (memberName) => {
+  const greetingName = memberName ? `प्रिय ${memberName},\n\n` : '';
+  return `${greetingName}${WHATSAPP_MESSAGE_TEMPLATE}`;
+};
+
+const wait = (ms) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+const fetchMembersWithRateLimit = async (memberIds, fetchFn, options = {}) => {
+  const { batchSize = 6, delayMs = 150 } = options;
+  const successes = {};
+  const errors = [];
+
+  for (let index = 0; index < memberIds.length; index += batchSize) {
+    const batch = memberIds.slice(index, index + batchSize);
+
+    const results = await Promise.allSettled(batch.map((memberId) => fetchFn(memberId)));
+
+    results.forEach((result, resultIndex) => {
+      const memberId = batch[resultIndex];
+      if (result.status === 'fulfilled') {
+        successes[memberId] = result.value;
+      } else {
+        errors.push({
+          memberId,
+          error: result.reason
+        });
+      }
+    });
+
+    if (index + batchSize < memberIds.length) {
+      await wait(delayMs);
+    }
+  }
+
+  return { successes, errors };
 };
 
 const downloadQr = (detail, eventId) => {
@@ -125,6 +359,7 @@ const EventRegistrations = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [verificationMap, setVerificationMap] = useState({});
+  const [sendingPassIds, setSendingPassIds] = useState({});
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState(null);
@@ -213,6 +448,215 @@ const EventRegistrations = () => {
     return normalized;
   };
 
+  const getEventForRegistration = useCallback(
+    (registration) => {
+      if (!registration) return null;
+      if (registration.event) return registration.event;
+      const eventId = registration.eventId || selectedEventId;
+      if (!eventId) return null;
+      return events.find((evt) => String(evt.id) === String(eventId)) || null;
+    },
+    [events, selectedEventId]
+  );
+
+  const enrichRegistrationWithBackendData = useCallback(
+    async (registration, member) => {
+      if (!registration) return null;
+      let enriched = { ...registration };
+      const phoneDigits = (registration.phone || member?.phone || '').replace(/\D/g, '');
+      const eventIdToUse = registration.eventId || selectedEventId;
+
+      const existingQr = resolveQrUrl(enriched);
+      if (!existingQr && phoneDigits.length === 10 && eventIdToUse) {
+        try {
+          const status = await eventApi.checkPublicRegistrationStatus(eventIdToUse, phoneDigits);
+          const backendRegistration = status.registration || {};
+          enriched = {
+            ...enriched,
+            ...backendRegistration,
+            qrDataURL: status.qrDataURL || backendRegistration.qrDataURL || enriched.qrDataURL || null,
+            qrCode: status.qrCode || backendRegistration.qrCode || enriched.qrCode || null,
+            qrCodeUrl: status.qrCodeUrl || backendRegistration.qrCodeUrl || enriched.qrCodeUrl || null,
+            qrCodeDataURL:
+              status.qrCodeDataURL || backendRegistration.qrCodeDataURL || enriched.qrCodeDataURL || null,
+            qrToken: status.qrToken || backendRegistration.qrToken || enriched.qrToken || null,
+            registeredAt: backendRegistration.registeredAt || enriched.registeredAt,
+            paymentStatus: backendRegistration.paymentStatus || enriched.paymentStatus,
+            amountPaid: backendRegistration.amountPaid ?? enriched.amountPaid
+          };
+        } catch (error) {
+          console.error('EventRegistrations - enrichRegistrationWithBackendData error', error);
+        }
+      }
+
+      if (!enriched.member && member) {
+        enriched.member = member;
+      }
+
+      return enriched;
+    },
+    [selectedEventId]
+  );
+
+  const generatePassPdf = useCallback(
+    async (registration, member) => {
+      if (!registration) {
+        throw new Error('Registration data not available');
+      }
+
+      const event = getEventForRegistration(registration) || {};
+      const jsPDF = await loadJsPdf();
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const marginX = 60;
+      let cursorY = 72;
+
+      const logoImage = await convertImageToDataUrl('/mandapam-logo.png');
+      if (logoImage) {
+        const logoWidth = 150;
+        const logoHeight = 66;
+        doc.addImage(logoImage.dataUrl, logoImage.format, (pageWidth - logoWidth) / 2, cursorY, logoWidth, logoHeight);
+        cursorY += logoHeight + 28;
+      }
+
+      const eventTitle = event.title || event.name || registration.eventName || `Event #${event.id || ''}`;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(20);
+      doc.setTextColor(17, 24, 39);
+      doc.text(eventTitle, pageWidth / 2, cursorY, { align: 'center' });
+      cursorY += 30;
+
+      doc.setFontSize(16);
+      doc.setTextColor(37, 99, 235);
+      doc.text('VISITOR PASS', pageWidth / 2, cursorY, { align: 'center' });
+      cursorY += 24;
+
+      const profileSource =
+        resolveProfileImageSourceForPdf(registration, member) ||
+        resolvePhotoUrl(registration, member);
+      const profileImage = await convertImageToDataUrl(profileSource);
+
+      if (profileImage) {
+        const photoSize = 132;
+        doc.addImage(profileImage.dataUrl, profileImage.format, (pageWidth - photoSize) / 2, cursorY, photoSize, photoSize);
+        cursorY += photoSize + 26;
+      } else {
+        cursorY += 16;
+      }
+
+      const visitorName = registration.name || member?.name || registration.member?.name || 'MANDAPAM सदस्य';
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.setTextColor(17, 24, 39);
+      doc.text(visitorName, pageWidth / 2, cursorY, { align: 'center' });
+      cursorY += 32;
+
+      doc.setDrawColor(229, 231, 235);
+      doc.setLineWidth(1);
+      doc.line(marginX, cursorY, pageWidth - marginX, cursorY);
+      cursorY += 22;
+
+      const registrationId = registration.registrationId || registration.id || '—';
+      const paymentStatus = registration.paymentStatus || registration.payment_status || '—';
+      const amountPaidRaw = registration.amountPaid ?? registration.amount_paid ?? 0;
+      const amountPaid = Number.isFinite(Number(amountPaidRaw)) ? Number(amountPaidRaw).toFixed(2) : '0.00';
+      const registeredOn = formatDateTime(registration.registeredAt || registration.registered_at);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(12);
+      doc.setTextColor(55, 65, 81);
+      doc.text(`Registration ID: ${registrationId}`, marginX, cursorY);
+      doc.text(`Payment Status: ${paymentStatus}`, pageWidth - marginX, cursorY, { align: 'right' });
+      cursorY += 18;
+      doc.text(`Amount Paid: Rs. ${amountPaid}`, marginX, cursorY);
+      doc.text(`Registered On: ${registeredOn}`, pageWidth - marginX, cursorY, { align: 'right' });
+      cursorY += 22;
+
+      const contactPhone = (member?.phone || registration.phone || '').replace(/\D/g, '');
+      if (contactPhone) {
+        const formattedContactPhone = formatPhoneNumber(contactPhone) || contactPhone;
+        doc.text(`Contact: ${formattedContactPhone}`, marginX, cursorY);
+        cursorY += 22;
+      }
+
+      const qrUrl = resolveQrUrl(registration);
+      const qrImage = await convertImageToDataUrl(qrUrl);
+      if (qrImage) {
+        const qrSize = 168;
+        doc.addImage(qrImage.dataUrl, qrImage.format, (pageWidth - qrSize) / 2, cursorY, qrSize, qrSize);
+        cursorY += qrSize + 30;
+      } else {
+        cursorY += 20;
+      }
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(17, 24, 39);
+      doc.text('Important Instructions', pageWidth / 2, cursorY, { align: 'center' });
+      cursorY += 18;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(12);
+      doc.setTextColor(75, 85, 99);
+
+      const instructions = [
+        'Carry a valid photo ID along with this pass to the venue.',
+        'Present this QR code at the entry gate for verification.',
+        'Arrive at least 15 minutes before the event start time.',
+        'Do not share this pass with others; it is non-transferable.',
+        'For assistance, contact the Mandapam helpdesk at +91-73878-53989.'
+      ];
+
+      instructions.forEach((item) => {
+        const lines = doc.splitTextToSize(`• ${item}`, pageWidth - marginX * 2);
+        doc.text(lines, marginX, cursorY);
+        cursorY += lines.length * 18;
+      });
+
+      cursorY += 18;
+      doc.setDrawColor(229, 231, 235);
+      doc.line(marginX, cursorY, pageWidth - marginX, cursorY);
+      cursorY += 22;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.setTextColor(107, 114, 128);
+      doc.text(
+        'Thank you for registering with the Mandapam Event Team.',
+        pageWidth / 2,
+        cursorY,
+        { align: 'center' }
+      );
+
+      const dataUri = doc.output('datauristring');
+      const base64 = dataUri.split(',')[1];
+      const fileName = `Mandapam-Visitor-Pass-${registrationId || Date.now()}.pdf`;
+      return { base64, fileName };
+    },
+    [getEventForRegistration]
+  );
+
+  const sendMessageFileWithPdf = useCallback(async (phone, message, fileName, base64File) => {
+    const blob = base64ToBlob(base64File, 'application/pdf');
+    const formData = new FormData();
+    formData.append('file', blob, fileName);
+    formData.append('phone', phone);
+    formData.append('message', message);
+
+    const response = await fetch(
+      `https://messagesapi.co.in/chat/sendMessageFile/${DEVICE_UID}/${encodeURIComponent(DEVICE_NAME)}`,
+      {
+        method: 'POST',
+        body: formData
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`sendMessageFile failed: ${errorText || response.status}`);
+    }
+  }, []);
+
   const fetchRegistrations = useCallback(async (eventId) => {
     if (!eventId) {
       setRegistrations([]);
@@ -224,66 +668,20 @@ const EventRegistrations = () => {
       const response = await eventApi.getEventRegistrations(eventId);
       const registrationsData = response.registrations || [];
 
-      const registrationMapByMemberId = {};
       const directMemberCache = {};
-
       registrationsData.forEach((registration) => {
         const memberCandidate = extractMemberFromRegistration(registration);
-        const candidateId = memberCandidate?.id;
-        const memberId =
-          candidateId !== undefined && candidateId !== null
-            ? candidateId
-            : registration.memberId;
-
-        if (registration.memberId !== undefined && registration.memberId !== null) {
-          registrationMapByMemberId[String(registration.memberId)] = registration;
-        }
-
-        if (memberCandidate && memberId !== undefined && memberId !== null) {
-          directMemberCache[memberId] =
-            normalizeMemberData(memberCandidate, registration) || memberCandidate;
+        if (registration.memberId != null && memberCandidate) {
+          if (!directMemberCache[registration.memberId]) {
+            directMemberCache[registration.memberId] =
+              normalizeMemberData(memberCandidate, registration) || memberCandidate;
+          }
         }
       });
 
-      const missingMemberIds = Array.from(
-        new Set(
-          registrationsData
-            .map((registration) => registration.memberId)
-            .filter(
-              (memberId) =>
-                memberId &&
-                !directMemberCache[memberId] &&
-                !memberCacheRef.current[memberId]
-            )
-        )
-      );
-
-      const fetchedMembers = {};
-      if (missingMemberIds.length > 0) {
-        const results = await Promise.allSettled(
-          missingMemberIds.map((memberId) => memberApi.getMember(memberId))
-        );
-
-        results.forEach((result, index) => {
-          if (result.status === 'fulfilled') {
-            const rawMember = result.value.member || result.value;
-            if (rawMember) {
-              const targetMemberId = missingMemberIds[index];
-              const relatedRegistration =
-                registrationMapByMemberId[String(targetMemberId)];
-              fetchedMembers[targetMemberId] =
-                normalizeMemberData(rawMember, relatedRegistration) || rawMember;
-            }
-          } else {
-            console.error('EventRegistrations - member preload error', result.reason);
-          }
-        });
-      }
-
       const mergedMemberCache = {
         ...memberCacheRef.current,
-        ...directMemberCache,
-        ...fetchedMembers
+        ...directMemberCache
       };
 
       memberCacheRef.current = mergedMemberCache;
@@ -522,6 +920,73 @@ const EventRegistrations = () => {
     setDetail(null);
   };
 
+  const handleSendPass = useCallback(
+    async (registration) => {
+      if (!registration) return;
+
+      const key = getPassKey(registration);
+      if (!key) {
+        toast.error('Unable to identify registration.');
+        return;
+      }
+
+      if (sendingPassIds[key]) {
+        return;
+      }
+
+      setSendingPassIds((prev) => ({ ...prev, [key]: true }));
+
+      try {
+        let member =
+          registration.member ||
+          memberCache[registration.memberId] ||
+          extractMemberFromRegistration(registration) ||
+          null;
+
+        if (!member && registration.memberId) {
+          try {
+            const response = await memberApi.getMember(registration.memberId);
+            member = normalizeMemberData(response.member || response, registration);
+            if (member && member.id) {
+              setMemberCache((prev) => ({ ...prev, [member.id]: member }));
+            }
+          } catch (error) {
+            console.error('EventRegistrations - sendPass member lookup error', error);
+          }
+        }
+
+        const phoneRaw = registration.phone || member?.phone || registration.member?.phone || '';
+        const formattedPhone = formatPhoneNumber(phoneRaw);
+
+        if (!formattedPhone) {
+          toast.error('Valid phone number not found for this registration.');
+          return;
+        }
+
+        const enriched = await enrichRegistrationWithBackendData(registration, member);
+        const pdf = await generatePassPdf(enriched || registration, member);
+        if (!pdf?.base64) {
+          throw new Error('Failed to generate visitor pass PDF.');
+        }
+
+        const message = buildMessage(member?.name || registration.name || '');
+        await sendMessageFileWithPdf(formattedPhone, message, pdf.fileName, pdf.base64);
+
+        toast.success('Visitor pass sent via WhatsApp.');
+      } catch (error) {
+        console.error('EventRegistrations - handleSendPass error', error);
+        toast.error('Failed to send visitor pass. Please try again.');
+      } finally {
+        setSendingPassIds((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+      }
+    },
+    [enrichRegistrationWithBackendData, generatePassPdf, memberCache, sendMessageFileWithPdf, sendingPassIds]
+  );
+
   const statusOptions = useMemo(() => {
     const set = new Set();
     registrations.forEach((item) => {
@@ -702,7 +1167,8 @@ const EventRegistrations = () => {
                                   alt={registration.name || cachedMember?.name || 'Attendee'}
                                   className="h-full w-full object-cover"
                                   onError={(event) => {
-                                    event.currentTarget.style.display = 'none';
+                                    event.currentTarget.onerror = null;
+                                    event.currentTarget.src = DEFAULT_PROFILE_PLACEHOLDER;
                                   }}
                                 />
                               ) : (
@@ -763,6 +1229,29 @@ const EventRegistrations = () => {
                               </>
                             )}
                           </button>
+                          {(() => {
+                            const passKey = getPassKey(registration);
+                            const sending = passKey ? Boolean(sendingPassIds[passKey]) : false;
+                            return (
+                              <button
+                                onClick={() => handleSendPass(registration)}
+                                disabled={sending}
+                                className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-primary-300 text-primary-700 bg-white transition-colors ${
+                                  sending ? 'opacity-60 cursor-not-allowed' : 'hover:bg-primary-50'
+                                }`}
+                              >
+                                {sending ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Send className="h-4 w-4 mr-2" /> Send Pass
+                                  </>
+                                )}
+                              </button>
+                            );
+                          })()}
                           <button
                             onClick={() => openDetail(registration)}
                             className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors"
@@ -863,6 +1352,29 @@ const EventRegistrations = () => {
                       </>
                     )}
                   </button>
+                  {(() => {
+                    const passKey = getPassKey(detail);
+                    const sending = passKey ? Boolean(sendingPassIds[passKey]) : false;
+                    return (
+                      <button
+                        onClick={() => handleSendPass(detail)}
+                        disabled={sending}
+                        className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg border border-primary-300 text-primary-700 bg-white transition-colors ${
+                          sending ? 'opacity-60 cursor-not-allowed' : 'hover:bg-primary-50'
+                        }`}
+                      >
+                        {sending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="h-4 w-4 mr-2" /> Send Pass
+                          </>
+                        )}
+                      </button>
+                    );
+                  })()}
                   <button
                     onClick={() => downloadQr(detail, selectedEventId)}
                     className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700"

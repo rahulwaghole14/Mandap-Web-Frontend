@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import eventApi, { publicAssociationApi } from '../services/eventApi';
@@ -13,6 +13,7 @@ import {
   AlertCircle,
   CreditCard,
   Download,
+  FileDown,
   Clock,
   User,
   Phone,
@@ -39,6 +40,9 @@ const BUSINESS_TYPES = [
   { value: 'other', label: 'Other' }
 ];
 
+const PROFILE_PLACEHOLDER =
+  'data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%27256%27 height=%27256%27 viewBox=%270 0 256 256%27><rect width=%27256%27 height=%27256%27 rx=%2760%27 fill=%27%23f3f4f6%27/><circle cx=%27128%27 cy=%2796%27 r=%2760%27 fill=%27%23d1d5db%27/><path d=%27M56 220c0-46 36-84 72-84s72 38 72 84%27 fill=%27%239ca3af%27/></svg>';
+
 const EventRegistrationPage = () => {
   const { slug } = useParams();
   const location = useLocation();
@@ -60,7 +64,51 @@ const EventRegistrationPage = () => {
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [photoError, setPhotoError] = useState('');
+  const [isGeneratingPass, setIsGeneratingPass] = useState(false);
+  const [isDownloadReady, setIsDownloadReady] = useState(false);
+  const [lastRegisteredPhone, setLastRegisteredPhone] = useState('');
   const registrationDisplayName = registration?.memberName || registration?.member?.name || registration?.name || '';
+  const confirmationPhoto = useMemo(() => {
+    if (!registration) return null;
+
+    const memberData =
+      registration.member ||
+      registration.memberDetails ||
+      registration.memberData ||
+      registration.memberProfile ||
+      null;
+
+    const candidates = [
+      registration.profileImageURL,
+      registration.profileImage,
+      registration.photoUrl,
+      registration.photo,
+      registration.rawPhotoData,
+      memberData?.profileImageURL,
+      memberData?.profileImage,
+      memberData?.photoUrl,
+      memberData?.photo,
+      memberData?.profilePhotoUrl,
+      memberData?.image
+    ];
+
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+
+      if (typeof candidate === 'string') {
+        if (candidate.startsWith('data:')) {
+          return candidate;
+        }
+        const url = uploadApi.getImageUrl(candidate);
+        if (url) return url;
+      } else if (candidate.image || candidate.imageURL) {
+        const url = uploadApi.getImageUrl(candidate);
+        if (url) return url;
+      }
+    }
+
+    return null;
+  }, [registration]);
   
   // Get slug from params or extract from pathname if params is undefined
   const actualSlug = slug || location.pathname.replace(/^\//, '').split('/')[0];
@@ -145,40 +193,93 @@ const EventRegistrationPage = () => {
     }
   };
 
-  const checkRegistrationStatus = async (phone) => {
-    if (!phone || phone.length !== 10 || !resolvedEventId) {
-      // Reset registration if phone is not valid
-      setRegistration(null);
-      return;
-    }
-    
-    try {
-      setCheckingStatus(true);
-      const data = await eventApi.checkPublicRegistrationStatus(resolvedEventId, phone);
-      if (data.isRegistered) {
-        // Merge root-level qrDataURL into registration object if present
-        const registrationWithQR = {
-          ...data.registration,
-          qrDataURL: data.qrDataURL || data.registration?.qrDataURL,
-          qrCode: data.qrCode || data.registration?.qrCode,
-          qrCodeUrl: data.qrCodeUrl || data.registration?.qrCodeUrl,
-          qrCodeDataURL: data.qrCodeDataURL || data.registration?.qrCodeDataURL,
-          qrToken: data.qrToken || data.registration?.qrToken,
-          memberName: data.memberName || data.registration?.memberName || data.registration?.member?.name || data.registration?.name,
-        };
-        setRegistration(registrationWithQR);
-        toast.success('You are already registered for this event!');
-      } else {
-        // Not registered, clear any previous registration
+  const loadRegistrationStatus = useCallback(
+    async (phone, { showToast = false, useStatusIndicator = true } = {}) => {
+      if (!phone || phone.length !== 10 || !resolvedEventId) {
         setRegistration(null);
+        setIsDownloadReady(false);
+        return null;
       }
-    } catch (err) {
-      console.error('Error checking registration status:', err);
-      // If error checking, assume not registered - allow form submission
-      setRegistration(null);
-    } finally {
-      setCheckingStatus(false);
-    }
+
+      try {
+        if (useStatusIndicator) {
+          setCheckingStatus(true);
+        }
+        setIsDownloadReady(false);
+
+        const data = await eventApi.checkPublicRegistrationStatus(resolvedEventId, phone);
+        if (data.isRegistered) {
+          const registrationWithQR = {
+            ...data.registration,
+            qrDataURL: data.qrDataURL || data.registration?.qrDataURL,
+            qrCode: data.qrCode || data.registration?.qrCode,
+            qrCodeUrl: data.qrCodeUrl || data.registration?.qrCodeUrl,
+            qrCodeDataURL: data.qrCodeDataURL || data.registration?.qrCodeDataURL,
+            qrToken: data.qrToken || data.registration?.qrToken,
+            memberName:
+              data.memberName ||
+              data.registration?.memberName ||
+              data.registration?.member?.name ||
+              data.registration?.name,
+          };
+
+          if (data.member) {
+            registrationWithQR.member = data.member;
+            if (data.member.profileImageURL) {
+              registrationWithQR.profileImageURL = data.member.profileImageURL;
+              registrationWithQR.photoUrl = data.member.profileImageURL;
+              registrationWithQR.photo = data.member.profileImageURL;
+            }
+            if (data.member.profileImage && !registrationWithQR.photo && !registrationWithQR.photoUrl) {
+              registrationWithQR.profileImage = data.member.profileImage;
+            }
+            console.log('loadRegistrationStatus - member image data:', {
+              profileImage: data.member.profileImage,
+              profileImageURL: data.member.profileImageURL
+            });
+          }
+
+          if (!registrationWithQR.photo && !registrationWithQR.photoUrl && registration?.rawPhotoData) {
+            registrationWithQR.rawPhotoData = registration.rawPhotoData;
+          }
+
+          setRegistration(registrationWithQR);
+          setLastRegisteredPhone(phone);
+          setIsDownloadReady(true);
+          if (showToast) {
+            toast.success('You are already registered for this event!');
+          }
+          return { isRegistered: true, registration: registrationWithQR };
+        } else {
+          setRegistration(null);
+          setLastRegisteredPhone('');
+          setIsDownloadReady(false);
+          if (showToast) {
+            toast.dismiss();
+          }
+          return { isRegistered: false };
+        }
+
+      } catch (err) {
+        console.error('Error loading registration status:', err);
+        setRegistration(null);
+        setLastRegisteredPhone('');
+        setIsDownloadReady(false);
+        if (showToast) {
+          toast.error('Could not verify registration status. Please try again.');
+        }
+        return null;
+      } finally {
+        if (useStatusIndicator) {
+          setCheckingStatus(false);
+        }
+      }
+    },
+    [resolvedEventId]
+  );
+
+  const checkRegistrationStatus = async (phone) => {
+    await loadRegistrationStatus(phone, { showToast: true, useStatusIndicator: true });
   };
 
   const formatDateTime = (dateTimeStr) => {
@@ -371,7 +472,6 @@ const EventRegistrationPage = () => {
            qrCodeDataURL: paymentData.qrCodeDataURL || paymentData.registration?.qrCodeDataURL,
            qrToken: paymentData.qrToken || paymentData.registration?.qrToken,
          });
-         // Merge root-level qrDataURL into registration object
          const registrationWithQR = {
            ...paymentData.registration,
            qrDataURL: paymentData.qrDataURL || paymentData.registration?.qrDataURL,
@@ -379,7 +479,12 @@ const EventRegistrationPage = () => {
            qrCodeUrl: paymentData.qrCodeUrl || paymentData.registration?.qrCodeUrl,
            qrCodeDataURL: paymentData.qrCodeDataURL || paymentData.registration?.qrCodeDataURL,
            qrToken: paymentData.qrToken || paymentData.registration?.qrToken,
-          memberName: paymentData.memberName || paymentData.registration?.memberName || paymentData.registration?.member?.name || paymentData.registration?.name || registrationPayload.name,
+          memberName:
+            paymentData.memberName ||
+            paymentData.registration?.memberName ||
+            paymentData.registration?.member?.name ||
+            paymentData.registration?.name ||
+            registrationPayload.name,
          };
          setRegistration(registrationWithQR);
          // Clear photo after successful registration
@@ -427,8 +532,52 @@ const EventRegistrationPage = () => {
               qrToken: confirmData.qrToken || confirmData.registration?.qrToken,
               memberName: confirmData.memberName || confirmData.registration?.memberName || confirmData.registration?.member?.name || confirmData.registration?.name || registrationPayload.name,
             };
+
+            const memberInfo = confirmData.member || confirmData.registration?.member || paymentData.member || {};
+            if (registrationPayload.photo) {
+              registrationWithQR.photo = registrationPayload.photo;
+              registrationWithQR.photoUrl = registrationPayload.photo;
+              registrationWithQR.profileImageURL = registrationPayload.photo;
+              registrationWithQR.member = {
+                ...memberInfo,
+                profileImageURL: registrationPayload.photo,
+                profileImage: registrationPayload.photo,
+              };
+            } else if (memberInfo && Object.keys(memberInfo).length > 0) {
+              registrationWithQR.member = memberInfo;
+            }
+
+            if (photoPreview) {
+              registrationWithQR.rawPhotoData = photoPreview;
+            } else if (!registrationWithQR.photo && !registrationWithQR.photoUrl && registration?.rawPhotoData) {
+              registrationWithQR.rawPhotoData = registration.rawPhotoData;
+            }
+
+            console.log('onSubmitRegistration - paid event image data:', {
+              photo: registrationWithQR.photo,
+              photoUrl: registrationWithQR.photoUrl,
+              profileImageURL: registrationWithQR.profileImageURL,
+              memberProfile: registrationWithQR.member?.profileImageURL,
+              rawPhotoData: Boolean(registrationWithQR.rawPhotoData)
+            });
+
             setRegistration(registrationWithQR);
-            // Clear photo after successful registration
+            setLastRegisteredPhone(cleanedData.phone);
+            setIsDownloadReady(false);
+
+        const refreshedFree = await loadRegistrationStatus(cleanedData.phone, {
+          showToast: false,
+          useStatusIndicator: false
+        });
+
+        if (!refreshedFree?.isRegistered) {
+          setIsDownloadReady(true);
+        }
+
+            if (photoPreview) {
+              setRegistration((prev) => (prev ? { ...prev, rawPhotoData: photoPreview } : prev));
+            }
+
             setPhoto(null);
             setPhotoPreview(null);
             toast.success('Registration successful!');
@@ -502,6 +651,8 @@ const EventRegistrationPage = () => {
     } else {
       // Clear registration if phone is not 10 digits
       setRegistration(null);
+      setLastRegisteredPhone('');
+      setIsDownloadReady(false);
     }
   };
 
@@ -532,11 +683,11 @@ const EventRegistrationPage = () => {
     
     setPhoto(file);
     setPhotoError('');
-    
+
     // Create preview
     const reader = new FileReader();
-    reader.onload = (e) => {
-      setPhotoPreview(e.target.result);
+    reader.onload = (event) => {
+      setPhotoPreview(event.target.result);
     };
     reader.readAsDataURL(file);
   };
@@ -574,6 +725,319 @@ const EventRegistrationPage = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    }
+  };
+
+  const loadImageElement = (url) =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.referrerPolicy = 'no-referrer';
+      img.onload = () => resolve(img);
+      img.onerror = (error) => reject(error);
+      img.src = url;
+    });
+
+  const cropImageToSquare = (img) => {
+    const size = Math.min(img.width, img.height);
+    const offsetX = (img.width - size) / 2;
+    const offsetY = (img.height - size) / 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, size, size);
+    ctx.drawImage(img, offsetX, offsetY, size, size, 0, 0, size, size);
+    const dataUrl = canvas.toDataURL('image/png');
+    return { dataUrl, format: 'PNG' };
+  };
+
+  const convertImageToDataUrl = async (src) => {
+    if (!src) return null;
+
+    const finalize = async (imgPromise, cleanup) => {
+      try {
+        const img = await imgPromise;
+        return cropImageToSquare(img);
+      } catch (error) {
+        console.error('EventRegistrationPage - convertImageToDataUrl error', src, error);
+        return null;
+      } finally {
+        if (cleanup) cleanup();
+      }
+    };
+
+    if (src instanceof File) {
+      const objectUrl = URL.createObjectURL(src);
+      return finalize(loadImageElement(objectUrl), () => URL.revokeObjectURL(objectUrl));
+    }
+
+    if (typeof src === 'string' && src.startsWith('data:')) {
+      return finalize(loadImageElement(src));
+    }
+
+    if (typeof src === 'string') {
+      try {
+        return await finalize(loadImageElement(src));
+      } catch (error) {
+        try {
+          const response = await fetch(src, { mode: 'cors' });
+          if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${response.status}`);
+          }
+          const blob = await response.blob();
+          const objectUrl = URL.createObjectURL(blob);
+          return await finalize(loadImageElement(objectUrl), () => URL.revokeObjectURL(objectUrl));
+        } catch (fetchError) {
+          console.error('EventRegistrationPage - failed to fetch image for cropping', src, fetchError);
+          return null;
+        }
+      }
+    }
+
+    return null;
+  };
+
+  const resolveRegistrationPhoto = useCallback((registrationData) => {
+    if (!registrationData) return null;
+
+    const memberData =
+      registrationData.member ||
+      registrationData.memberDetails ||
+      registrationData.memberData ||
+      registrationData.memberProfile ||
+      null;
+
+    const candidates = [
+      registrationData.profileImageURL,
+      registrationData.profileImage,
+      registrationData.photoUrl,
+      registrationData.photo,
+      registrationData.rawPhotoData,
+      registrationData.photoOriginal,
+      registrationData.photoBase64,
+      registrationData.photoData,
+      registrationData.profileImageData,
+      memberData?.profileImageURL,
+      memberData?.profileImage,
+      memberData?.photoUrl,
+      memberData?.photo,
+      memberData?.profilePhotoUrl,
+      memberData?.image
+    ];
+
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+
+      if (typeof candidate === 'string') {
+        if (candidate.startsWith('data:')) {
+          return candidate;
+        }
+        const url = uploadApi.getImageUrl(candidate);
+        if (url) return url;
+      } else if (candidate.image || candidate.imageURL) {
+        const url = uploadApi.getImageUrl(candidate);
+        if (url) return url;
+      }
+    }
+
+    return null;
+  }, []);
+
+  const handleDownloadPass = async () => {
+    if (!registration) return;
+
+    setIsGeneratingPass(true);
+
+    try {
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const marginX = 60;
+      let cursorY = 72;
+
+      const logoImage = await convertImageToDataUrl('/mandapam-logo.png');
+      const resolveProfileImageSource = () => {
+        if (!registration) return null;
+        const candidates = [
+          registration.rawPhotoData,
+          { image: registration.member?.profileImage, imageURL: registration.member?.profileImageURL },
+          { image: registration.profileImage, imageURL: registration.profileImageURL },
+          { image: registration.photo, imageURL: registration.photoUrl },
+          registration.member?.photoUrl,
+          registration.member?.photo,
+          registration.member?.profilePhotoUrl,
+          registration.photoUrl,
+          registration.photo
+        ];
+
+        for (const candidate of candidates) {
+          if (!candidate) continue;
+          if (typeof candidate === 'string') {
+            if (candidate.startsWith('data:')) {
+              return candidate;
+            }
+            const url = uploadApi.getImageUrl(candidate);
+            if (url) return url;
+          } else if (candidate.image || candidate.imageURL) {
+            const url = uploadApi.getImageUrl(candidate);
+            if (url) return url;
+          }
+        }
+        return null;
+      };
+      const profileSource = resolveProfileImageSource();
+      console.log('handleDownloadPass - resolved profile image source:', profileSource);
+      const profileImage = await convertImageToDataUrl(profileSource);
+
+      if (logoImage) {
+        const logoWidth = 150;
+        const logoHeight = 66;
+        doc.addImage(
+          logoImage.dataUrl,
+          logoImage.format,
+          (pageWidth - logoWidth) / 2,
+          cursorY,
+          logoWidth,
+          logoHeight
+        );
+        cursorY += logoHeight + 28;
+      }
+
+      const eventTitle = event?.title || event?.name || 'Mandapam Event';
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(20);
+      doc.setTextColor(17, 24, 39);
+      doc.text(eventTitle, pageWidth / 2, cursorY, { align: 'center' });
+      cursorY += 30;
+
+      doc.setFontSize(16);
+      doc.setTextColor(37, 99, 235);
+      doc.text('VISITOR PASS', pageWidth / 2, cursorY, { align: 'center' });
+      cursorY += 24;
+
+      if (profileImage) {
+        const photoSize = 132;
+        const photoX = (pageWidth - photoSize) / 2;
+        const photoY = cursorY;
+
+        try {
+          doc.addImage(profileImage.dataUrl, profileImage.format, photoX, photoY, photoSize, photoSize);
+        } catch (error) {
+          console.warn('EventRegistrationPage - failed to add profile image to pass', error.message);
+        }
+
+        cursorY += photoSize + 26;
+      } else {
+        cursorY += 16;
+      }
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.setTextColor(17, 24, 39);
+      doc.text(registrationDisplayName || 'Guest', pageWidth / 2, cursorY, { align: 'center' });
+      cursorY += 32;
+
+      doc.setDrawColor(229, 231, 235);
+      doc.setLineWidth(1);
+      doc.line(marginX, cursorY, pageWidth - marginX, cursorY);
+      cursorY += 22;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(12);
+      doc.setTextColor(55, 65, 81);
+
+      const registrationId = registration.id || registration.registrationId || '—';
+      const paymentStatus = (registration.paymentStatus || 'Paid').toString();
+      const amountPaid = parseFloat(registration.amountPaid ?? 0);
+      const amountValue = Number.isFinite(amountPaid) ? amountPaid.toFixed(2) : '0.00';
+      const registeredOn = formatDateTime(registration.registeredAt);
+
+      doc.text(`Registration ID: ${registrationId}`, marginX, cursorY);
+      doc.text(`Payment Status: ${paymentStatus}`, pageWidth - marginX, cursorY, { align: 'right' });
+      cursorY += 18;
+      doc.text(`Amount Paid: Rs. ${amountValue}`, marginX, cursorY);
+      doc.text(`Registered On: ${registeredOn}`, pageWidth - marginX, cursorY, { align: 'right' });
+      cursorY += 22;
+
+      const qrSource =
+        registration.qrDataURL ||
+        registration.qrCode ||
+        registration.qrCodeUrl ||
+        registration.qrCodeDataURL;
+      let qrImage = await convertImageToDataUrl(qrSource);
+
+      if (!qrImage) {
+        const fallbackData = registration.qrToken || registration.id || '';
+        if (fallbackData) {
+          const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=380x380&data=${encodeURIComponent(
+            fallbackData
+          )}`;
+          qrImage = await convertImageToDataUrl(qrApiUrl);
+        }
+      }
+
+      if (qrImage) {
+        const qrSize = 168;
+        doc.addImage(
+          qrImage.dataUrl,
+          qrImage.format,
+          (pageWidth - qrSize) / 2,
+          cursorY,
+          qrSize,
+          qrSize
+        );
+        cursorY += qrSize + 30;
+      }
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(17, 24, 39);
+      doc.text('Important Instructions', pageWidth / 2, cursorY, { align: 'center' });
+      cursorY += 18;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(12);
+      doc.setTextColor(75, 85, 99);
+
+      const instructions = [
+        'Carry a valid photo ID along with this pass to the venue.',
+        'Present this QR code at the entry gate for verification.',
+        'Arrive at least 15 minutes before the event start time.',
+        'Do not share this pass with others; it is non-transferable.',
+        'For assistance, contact the Mandapam helpdesk at +91-98765-43210.'
+      ];
+
+      instructions.forEach((item) => {
+        const lines = doc.splitTextToSize(`• ${item}`, pageWidth - marginX * 2);
+        doc.text(lines, marginX, cursorY);
+        cursorY += lines.length * 18;
+      });
+
+      cursorY += 18;
+      doc.setDrawColor(229, 231, 235);
+      doc.line(marginX, cursorY, pageWidth - marginX, cursorY);
+      cursorY += 22;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.setTextColor(107, 114, 128);
+      doc.text(
+        'Thank you for registering with the Mandapam Event Team.',
+        pageWidth / 2,
+        cursorY,
+        { align: 'center' }
+      );
+
+      const fileName = `mandapam-visitor-pass-${registrationId}.pdf`;
+      doc.save(fileName);
+      toast.success('Pass downloaded successfully');
+    } catch (error) {
+      console.error('EventRegistrationPage - handleDownloadPass error', error);
+      toast.error('Could not generate the pass. Please try again.');
+    } finally {
+      setIsGeneratingPass(false);
     }
   };
 
@@ -725,6 +1189,19 @@ const EventRegistrationPage = () => {
              <span className="inline-block px-4 py-1 bg-primary-50 text-primary-700 font-semibold uppercase tracking-wide rounded-full mb-4">
                Visitor Pass
              </span>
+            {confirmationPhoto && (
+              <div className="mb-4">
+                <img
+                  src={confirmationPhoto}
+                  alt={registrationDisplayName || 'Registration photo'}
+                  className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
+                  onError={(event) => {
+                    event.currentTarget.onerror = null;
+                    event.currentTarget.src = PROFILE_PLACEHOLDER;
+                  }}
+                />
+              </div>
+            )}
              <div className="flex items-start">
                <CheckCircle className="h-8 w-8 text-green-500 mr-4 mt-1" />
                <div className="text-left">
@@ -742,19 +1219,7 @@ const EventRegistrationPage = () => {
            </div>
 
             <div className="border-t border-gray-200 pt-6">
-              {/* Display uploaded photo if available */}
-              {registration.member?.profileImageURL && (
-                <div className="mb-6 text-center">
-                  <div className="text-sm text-gray-500 mb-2">Profile Photo</div>
-                  <div className="inline-block">
-                    <img 
-                      src={registration.member.profileImageURL} 
-                      alt="Profile" 
-                      className="w-32 h-32 rounded-full object-cover border-4 border-primary-200 shadow-lg"
-                    />
-                  </div>
-                </div>
-              )}
+              {/* Profile photo hidden on the page; still available for PDF generation */}
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
@@ -805,6 +1270,7 @@ const EventRegistrationPage = () => {
                         }}
                       />
                     </div>
+                    <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
                     <button
                       onClick={() => {
                         const qrUrl = registration.qrDataURL || registration.qrCode || registration.qrCodeUrl || registration.qrCodeDataURL;
@@ -821,11 +1287,36 @@ const EventRegistrationPage = () => {
                           document.body.removeChild(link);
                         }
                       }}
-                      className="mt-4 flex items-center justify-center mx-auto px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                        className="flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                     >
                       <Download className="h-4 w-4 mr-2" />
                       Download QR Code
                     </button>
+                      <button
+                        onClick={handleDownloadPass}
+                        disabled={isGeneratingPass || !isDownloadReady}
+                        className={`flex items-center justify-center px-4 py-2 rounded-lg border border-primary-300 text-primary-700 bg-white transition-colors ${
+                          isGeneratingPass || !isDownloadReady ? 'opacity-60 cursor-not-allowed' : 'hover:bg-primary-50'
+                        }`}
+                      >
+                        {isGeneratingPass ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Generating Pass...
+                          </>
+                        ) : !isDownloadReady ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Preparing Pass...
+                          </>
+                        ) : (
+                          <>
+                            <FileDown className="h-4 w-4 mr-2" />
+                            Download Pass (PDF)
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
