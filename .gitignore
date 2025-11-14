@@ -93,3 +93,8 @@ MandapMobileApp/
 # Temporary files
 *.tmp
 *.temp
+
+# Sample files and test files
+sample-files/
+scripts/create-sample-pass.mjs
+scripts/send-sample-pass.mjs

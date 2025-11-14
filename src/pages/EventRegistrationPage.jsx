@@ -43,6 +43,65 @@ const BUSINESS_TYPES = [
 const PROFILE_PLACEHOLDER =
   'data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%27256%27 height=%27256%27 viewBox=%270 0 256 256%27><rect width=%27256%27 height=%27256%27 rx=%2760%27 fill=%27%23f3f4f6%27/><circle cx=%27128%27 cy=%2796%27 r=%2760%27 fill=%27%23d1d5db%27/><path d=%27M56 220c0-46 36-84 72-84s72 38 72 84%27 fill=%27%239ca3af%27/></svg>';
 
+// WhatsApp sending constants
+const DEVICE_UID = 'a8bec8c820614d8ba084a55429716a78';
+const DEVICE_NAME = 'Mandapam';
+const COUNTRY_CODE = '91';
+const WHATSAPP_MESSAGE_TEMPLATE = `
+🙏 MANDAPAM 2026 – कोल्हापूर मध्ये आपले हार्दिक स्वागत! 🎉
+
+आपण आता MANDAPAM Association चे अधिकृत सदस्य झाला आहात. 🎊
+
+आपला Visitor Pass खाली जोडलेला आहे. 🎫
+
+📞 कार्यक्रमाची सविस्तर माहिती, एक्झिबिटर्स माहिती, वेळापत्रक आणि खास ऑफर्स पाहण्यासाठी
+MANDAPAM App डाउनलोड करा 👇
+
+📱 Android वापरकर्त्यांसाठी:
+👉 https://play.google.com/store/apps/details?id=com.mandapam.expo
+
+🍎 iOS वापरकर्त्यांसाठी:
+👉 लवकरच येत आहे
+
+🔑 आपल्या मोबाईल क्रमांकाने लॉगिन करून अँपमध्ये प्रवेश करा.
+
+आपल्या सहभागाबद्दल मनःपूर्वक धन्यवाद!
+
+— MANDAPAM टीम
+`.trim();
+
+// Format phone number to 91XXXXXXXXXX
+const formatPhoneNumber = (value) => {
+  const digits = (value || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.length === 10) return `${COUNTRY_CODE}${digits}`;
+  if (digits.length === 12 && digits.startsWith(COUNTRY_CODE)) return digits;
+  if (digits.length > 10) return `${COUNTRY_CODE}${digits.slice(-10)}`;
+  return '';
+};
+
+// Build WhatsApp message with member name
+const buildMessage = (memberName) => {
+  const greetingName = memberName ? `प्रिय ${memberName},\n\n` : '';
+  return `${greetingName}${WHATSAPP_MESSAGE_TEMPLATE}`;
+};
+
+// Convert base64 to Blob
+const base64ToBlob = (base64, type = 'application/pdf') => {
+  const byteCharacters = window.atob(base64);
+  const byteArrays = [];
+  const sliceSize = 8192;
+  for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+    const slice = byteCharacters.slice(offset, offset + sliceSize);
+    const byteNumbers = new Array(slice.length);
+    for (let i = 0; i < slice.length; i += 1) {
+      byteNumbers[i] = slice.charCodeAt(i);
+    }
+    byteArrays.push(new Uint8Array(byteNumbers));
+  }
+  return new Blob(byteArrays, { type });
+};
+
 const EventRegistrationPage = () => {
   const { slug } = useParams();
   const location = useLocation();
@@ -67,6 +126,10 @@ const EventRegistrationPage = () => {
   const [isGeneratingPass, setIsGeneratingPass] = useState(false);
   const [isDownloadReady, setIsDownloadReady] = useState(false);
   const [lastRegisteredPhone, setLastRegisteredPhone] = useState('');
+  const [isSendingPass, setIsSendingPass] = useState(false);
+  const [passSent, setPassSent] = useState(false);
+  const [passSendError, setPassSendError] = useState(null);
+  const [hasTriggeredAutoSend, setHasTriggeredAutoSend] = useState(false);
   const registrationDisplayName = registration?.memberName || registration?.member?.name || registration?.name || '';
   const confirmationPhoto = useMemo(() => {
     if (!registration) return null;
@@ -485,12 +548,18 @@ const EventRegistrationPage = () => {
             paymentData.registration?.member?.name ||
             paymentData.registration?.name ||
             registrationPayload.name,
+          // Store phone number for WhatsApp sending
+          phone: cleanedData.phone || paymentData.member?.phone || paymentData.registration?.phone,
+          member: paymentData.member || paymentData.registration?.member,
          };
          setRegistration(registrationWithQR);
+         setLastRegisteredPhone(cleanedData.phone);
          // Clear photo after successful registration
          setPhoto(null);
          setPhotoPreview(null);
-         toast.success('Registration successful!');
+         // Set download ready to trigger auto-send
+         setIsDownloadReady(true);
+         toast.success('Registration successful! Your visitor pass will be sent to your WhatsApp shortly.');
          return;
        }
 
@@ -531,6 +600,8 @@ const EventRegistrationPage = () => {
               qrCodeDataURL: confirmData.qrCodeDataURL || confirmData.registration?.qrCodeDataURL,
               qrToken: confirmData.qrToken || confirmData.registration?.qrToken,
               memberName: confirmData.memberName || confirmData.registration?.memberName || confirmData.registration?.member?.name || confirmData.registration?.name || registrationPayload.name,
+              // Store phone number for WhatsApp sending
+              phone: cleanedData.phone || confirmData.member?.phone || confirmData.registration?.phone || paymentData.member?.phone,
             };
 
             const memberInfo = confirmData.member || confirmData.registration?.member || paymentData.member || {};
@@ -580,7 +651,9 @@ const EventRegistrationPage = () => {
 
             setPhoto(null);
             setPhotoPreview(null);
-            toast.success('Registration successful!');
+            // Set download ready to trigger auto-send
+            setIsDownloadReady(true);
+            toast.success('Registration successful! Your visitor pass will be sent to your WhatsApp shortly.');
           } catch (err) {
             console.error('Payment confirmation error:', err);
             toast.error(err.response?.data?.message || 'Payment confirmation failed');
@@ -1031,20 +1104,403 @@ const EventRegistrationPage = () => {
       );
 
       const fileName = `mandapam-visitor-pass-${registrationId}.pdf`;
+      
+      // Get PDF as base64 for WhatsApp sending
+      const dataUri = doc.output('datauristring');
+      const base64 = dataUri.split(',')[1];
+      
+      // Download the PDF
       doc.save(fileName);
       toast.success('Pass downloaded successfully');
+      
+      // Return PDF data for WhatsApp sending
+      return { base64, fileName };
     } catch (error) {
       console.error('EventRegistrationPage - handleDownloadPass error', error);
       toast.error('Could not generate the pass. Please try again.');
+      return null;
     } finally {
       setIsGeneratingPass(false);
     }
   };
 
+  // Generate PDF and return base64 (without downloading)
+  const generatePassPdfBase64 = useCallback(async (regData) => {
+    if (!regData || !event) return null;
+
+    try {
+      const { jsPDF } = await import('jspdf');
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const marginX = 60;
+      let cursorY = 72;
+
+      const logoImage = await convertImageToDataUrl('/mandapam-logo.png');
+      const resolveProfileImageSource = () => {
+        if (!regData) return null;
+        const candidates = [
+          regData.rawPhotoData,
+          { image: regData.member?.profileImage, imageURL: regData.member?.profileImageURL },
+          { image: regData.profileImage, imageURL: regData.profileImageURL },
+          { image: regData.photo, imageURL: regData.photoUrl },
+          regData.member?.photoUrl,
+          regData.member?.photo,
+          regData.member?.profilePhotoUrl,
+          regData.photoUrl,
+          regData.photo
+        ];
+
+        for (const candidate of candidates) {
+          if (!candidate) continue;
+          if (typeof candidate === 'string') {
+            if (candidate.startsWith('data:')) {
+              return candidate;
+            }
+            const url = uploadApi.getImageUrl(candidate);
+            if (url) return url;
+          } else if (candidate.image || candidate.imageURL) {
+            const url = uploadApi.getImageUrl(candidate);
+            if (url) return url;
+          }
+        }
+        return null;
+      };
+      const profileSource = resolveProfileImageSource();
+      const profileImage = await convertImageToDataUrl(profileSource);
+
+      if (logoImage) {
+        const logoWidth = 150;
+        const logoHeight = 66;
+        doc.addImage(
+          logoImage.dataUrl,
+          logoImage.format,
+          (pageWidth - logoWidth) / 2,
+          cursorY,
+          logoWidth,
+          logoHeight
+        );
+        cursorY += logoHeight + 28;
+      }
+
+      const eventTitle = event?.title || event?.name || 'Mandapam Event';
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(20);
+      doc.setTextColor(17, 24, 39);
+      doc.text(eventTitle, pageWidth / 2, cursorY, { align: 'center' });
+      cursorY += 30;
+
+      doc.setFontSize(16);
+      doc.setTextColor(37, 99, 235);
+      doc.text('VISITOR PASS', pageWidth / 2, cursorY, { align: 'center' });
+      cursorY += 24;
+
+      if (profileImage) {
+        const photoSize = 132;
+        const photoX = (pageWidth - photoSize) / 2;
+        const photoY = cursorY;
+
+        try {
+          doc.addImage(profileImage.dataUrl, profileImage.format, photoX, photoY, photoSize, photoSize);
+        } catch (error) {
+          console.warn('EventRegistrationPage - failed to add profile image to pass', error.message);
+        }
+
+        cursorY += photoSize + 26;
+      } else {
+        cursorY += 16;
+      }
+
+      const displayName = regData.memberName || regData.member?.name || regData.name || 'Guest';
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.setTextColor(17, 24, 39);
+      doc.text(displayName, pageWidth / 2, cursorY, { align: 'center' });
+      cursorY += 32;
+
+      doc.setDrawColor(229, 231, 235);
+      doc.setLineWidth(1);
+      doc.line(marginX, cursorY, pageWidth - marginX, cursorY);
+      cursorY += 22;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(12);
+      doc.setTextColor(55, 65, 81);
+
+      const registrationId = regData.id || regData.registrationId || '—';
+      const paymentStatus = (regData.paymentStatus || 'Paid').toString();
+      const amountPaid = parseFloat(regData.amountPaid ?? 0);
+      const amountValue = Number.isFinite(amountPaid) ? amountPaid.toFixed(2) : '0.00';
+      const registeredOn = formatDateTime(regData.registeredAt);
+
+      doc.text(`Registration ID: ${registrationId}`, marginX, cursorY);
+      doc.text(`Payment Status: ${paymentStatus}`, pageWidth - marginX, cursorY, { align: 'right' });
+      cursorY += 18;
+      doc.text(`Amount Paid: Rs. ${amountValue}`, marginX, cursorY);
+      doc.text(`Registered On: ${registeredOn}`, pageWidth - marginX, cursorY, { align: 'right' });
+      cursorY += 22;
+
+      const qrSource =
+        regData.qrDataURL ||
+        regData.qrCode ||
+        regData.qrCodeUrl ||
+        regData.qrCodeDataURL;
+      let qrImage = await convertImageToDataUrl(qrSource);
+
+      if (!qrImage) {
+        const fallbackData = regData.qrToken || regData.id || '';
+        if (fallbackData) {
+          const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=380x380&data=${encodeURIComponent(
+            fallbackData
+          )}`;
+          qrImage = await convertImageToDataUrl(qrApiUrl);
+        }
+      }
+
+      if (qrImage) {
+        const qrSize = 168;
+        doc.addImage(
+          qrImage.dataUrl,
+          qrImage.format,
+          (pageWidth - qrSize) / 2,
+          cursorY,
+          qrSize,
+          qrSize
+        );
+        cursorY += qrSize + 30;
+      }
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(17, 24, 39);
+      doc.text('Important Instructions', pageWidth / 2, cursorY, { align: 'center' });
+      cursorY += 18;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(12);
+      doc.setTextColor(75, 85, 99);
+
+      const instructions = [
+        'Carry a valid photo ID along with this pass to the venue.',
+        'Present this QR code at the entry gate for verification.',
+        'Arrive at least 15 minutes before the event start time.',
+        'Do not share this pass with others; it is non-transferable.',
+        'For assistance, contact the Mandapam helpdesk at +91-98765-43210.'
+      ];
+
+      instructions.forEach((item) => {
+        const lines = doc.splitTextToSize(`• ${item}`, pageWidth - marginX * 2);
+        doc.text(lines, marginX, cursorY);
+        cursorY += lines.length * 18;
+      });
+
+      cursorY += 18;
+      doc.setDrawColor(229, 231, 235);
+      doc.line(marginX, cursorY, pageWidth - marginX, cursorY);
+      cursorY += 22;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.setTextColor(107, 114, 128);
+      doc.text(
+        'Thank you for registering with the Mandapam Event Team.',
+        pageWidth / 2,
+        cursorY,
+        { align: 'center' }
+      );
+
+      const fileName = `mandapam-visitor-pass-${registrationId}.pdf`;
+      const dataUri = doc.output('datauristring');
+      const base64 = dataUri.split(',')[1];
+      
+      return { base64, fileName };
+    } catch (error) {
+      console.error('EventRegistrationPage - generatePassPdfBase64 error', error);
+      return null;
+    }
+  }, [event, convertImageToDataUrl]);
+
+  // Send PDF via WhatsApp
+  // NOTE: PDF should already be generated and validated before calling this function
+  // This function only handles sending the PDF + message together
+  const sendPassViaWhatsApp = useCallback(async (regData, pdfData = null) => {
+    if (!regData) return false;
+
+    try {
+      setIsSendingPass(true);
+      setPassSendError(null);
+
+      // Get phone number from registration - try multiple sources
+      const phoneRaw = 
+        regData.phone || 
+        regData.member?.phone || 
+        regData.memberPhone ||
+        lastRegisteredPhone || 
+        '';
+      const formattedPhone = formatPhoneNumber(phoneRaw);
+
+      if (!formattedPhone) {
+        console.warn('EventRegistrationPage - No phone number found for WhatsApp sending', {
+          regDataPhone: regData.phone,
+          memberPhone: regData.member?.phone,
+          lastRegisteredPhone
+        });
+        setPassSendError('Phone number not available');
+        return false;
+      }
+
+      console.log('EventRegistrationPage - Sending pass via WhatsApp to', formattedPhone);
+
+      // If PDF data not provided, generate it (for manual send scenarios)
+      let finalPdfData = pdfData;
+      if (!finalPdfData) {
+        console.log('EventRegistrationPage - Generating PDF (not provided)');
+        finalPdfData = await generatePassPdfBase64(regData);
+        if (!finalPdfData || !finalPdfData.base64) {
+          console.error('EventRegistrationPage - Failed to generate PDF for WhatsApp');
+          setPassSendError('Failed to generate PDF');
+          return false;
+        }
+      }
+
+      // Validate PDF is complete
+      if (!finalPdfData.base64 || finalPdfData.base64.length < 100) {
+        console.error('EventRegistrationPage - PDF appears to be incomplete or corrupted', {
+          base64Length: finalPdfData.base64?.length || 0
+        });
+        setPassSendError('PDF is incomplete or corrupted');
+        return false;
+      }
+
+      // Build message (sent WITH the PDF)
+      const memberName = regData.memberName || regData.member?.name || regData.name || '';
+      const message = buildMessage(memberName);
+
+      console.log('EventRegistrationPage - Sending PDF + Message to WhatsApp', {
+        fileName: finalPdfData.fileName,
+        pdfSize: finalPdfData.base64.length,
+        messageLength: message.length
+      });
+
+      // Send PDF + Message together via WhatsApp API
+      const blob = base64ToBlob(finalPdfData.base64, 'application/pdf');
+      const formData = new FormData();
+      formData.append('file', blob, finalPdfData.fileName);
+      formData.append('phone', formattedPhone);
+      formData.append('message', message); // Message sent WITH PDF
+
+      const response = await fetch(
+        `https://messagesapi.co.in/chat/sendMessageFile/${DEVICE_UID}/${encodeURIComponent(DEVICE_NAME)}`,
+        {
+          method: 'POST',
+          body: formData
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`WhatsApp send failed: ${errorText || response.status}`);
+      }
+
+      setPassSent(true);
+      console.log('EventRegistrationPage - Pass sent via WhatsApp successfully');
+      return true;
+    } catch (error) {
+      console.error('EventRegistrationPage - sendPassViaWhatsApp error', error);
+      setPassSendError(error.message || 'Failed to send pass via WhatsApp');
+      return false;
+    } finally {
+      setIsSendingPass(false);
+    }
+  }, [generatePassPdfBase64, lastRegisteredPhone]);
+
   const imgUrl = useMemo(() => {
     if (!event) return null;
     return uploadApi.getImageUrl({ image: event.image, imageURL: event.imageURL });
   }, [event]);
+
+  // Auto-send pass via WhatsApp after successful registration
+  // FLOW: Registration Success → Generate PDF (wait until complete) → Validate PDF → Send PDF + Message together → Success
+  useEffect(() => {
+    // Only trigger once when registration is successfully created
+    if (
+      registration &&
+      !hasTriggeredAutoSend &&
+      !isSendingPass &&
+      !passSent &&
+      event &&
+      isDownloadReady &&
+      (registration.paymentStatus === 'paid' || registration.status === 'registered')
+    ) {
+      // Mark as triggered immediately to prevent duplicate calls
+      setHasTriggeredAutoSend(true);
+      
+      // Start the process
+      const autoSendPass = async () => {
+        try {
+          console.log('EventRegistrationPage - Auto-sending pass via WhatsApp - Starting PDF generation', {
+            registrationId: registration.id,
+            phone: registration.phone || registration.member?.phone || lastRegisteredPhone
+          });
+          
+          // Step 1: Show "Generating PDF..." message
+          toast.loading('Generating your visitor pass...', { id: 'sending-pass' });
+          
+          // Step 2: Generate PDF completely (wait until fully generated)
+          const pdfData = await generatePassPdfBase64(registration);
+          
+          // Step 3: Validate PDF is complete
+          if (!pdfData || !pdfData.base64) {
+            throw new Error('Failed to generate PDF');
+          }
+          
+          // Validate PDF base64 is not empty and has minimum length
+          if (pdfData.base64.length < 100) {
+            throw new Error('Generated PDF appears to be incomplete or corrupted');
+          }
+          
+          console.log('EventRegistrationPage - PDF generated successfully', {
+            fileName: pdfData.fileName,
+            base64Length: pdfData.base64.length
+          });
+          
+          // Step 4: Show "Sending to WhatsApp..." message
+          toast.loading('Sending visitor pass to your WhatsApp...', { id: 'sending-pass' });
+          
+          // Step 5: Send PDF + Message together
+          const success = await sendPassViaWhatsApp(registration, pdfData);
+          
+          // Step 6: Show result
+          if (success) {
+            toast.success('Visitor pass sent to your WhatsApp!', { id: 'sending-pass' });
+          } else {
+            toast.error(
+              passSendError || 'Failed to send pass via WhatsApp. You can download it manually.', 
+              { id: 'sending-pass', duration: 5000 }
+            );
+          }
+        } catch (error) {
+          console.error('EventRegistrationPage - Error in auto-send flow', error);
+          toast.error(
+            error.message || 'Failed to generate or send pass. You can download it manually.', 
+            { id: 'sending-pass', duration: 5000 }
+          );
+          setPassSendError(error.message || 'Failed to send pass');
+        }
+      };
+      
+      // Start immediately (no arbitrary delay - PDF generation will wait for QR code if needed)
+      autoSendPass();
+    }
+  }, [registration, hasTriggeredAutoSend, isSendingPass, passSent, event, isDownloadReady, generatePassPdfBase64, sendPassViaWhatsApp, passSendError, lastRegisteredPhone]);
+
+  // Reset auto-send trigger when registration changes
+  useEffect(() => {
+    if (!registration) {
+      setHasTriggeredAutoSend(false);
+      setPassSent(false);
+      setPassSendError(null);
+    }
+  }, [registration]);
 
   if (loading) {
     return (
@@ -1209,6 +1665,24 @@ const EventRegistrationPage = () => {
                  <p className="text-gray-600">
                    You are successfully registered for this event. Please save your QR code for event entry.
                  </p>
+                 {isSendingPass && (
+                   <div className="mt-3 flex items-center text-blue-600">
+                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                     <span className="text-sm font-medium">Sending visitor pass to your WhatsApp...</span>
+                   </div>
+                 )}
+                 {passSent && !isSendingPass && (
+                   <div className="mt-3 flex items-center text-green-600">
+                     <CheckCircle className="h-4 w-4 mr-2" />
+                     <span className="text-sm font-medium">Visitor pass sent to your WhatsApp!</span>
+                   </div>
+                 )}
+                 {passSendError && !isSendingPass && !passSent && (
+                   <div className="mt-3 flex items-center text-amber-600">
+                     <AlertCircle className="h-4 w-4 mr-2" />
+                     <span className="text-sm font-medium">Pass sending failed. You can download it manually.</span>
+                   </div>
+                 )}
                  {registrationDisplayName && (
                    <p className="mt-3 text-lg font-semibold text-gray-900">
                      {registrationDisplayName}
