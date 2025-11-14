@@ -435,6 +435,55 @@ export const eventApi = {
       console.error('Error confirming payment:', error);
       throw error;
     }
+  },
+
+  // Save PDF to database
+  saveRegistrationPdf: async (eventId, registrationId, pdfBase64, fileName) => {
+    try {
+      const publicInstance = createPublicInstance();
+      const response = await publicInstance.post(
+        `/public/events/${eventId}/registrations/${registrationId}/save-pdf`,
+        {
+          pdfBase64,
+          fileName
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error saving PDF:', error);
+      throw error;
+    }
+  },
+
+  // Send WhatsApp message with PDF (PDF retrieved from database)
+  sendRegistrationPdfViaWhatsApp: async (eventId, registrationId) => {
+    try {
+      const publicInstance = createPublicInstance();
+      const response = await publicInstance.post(
+        `/public/events/${eventId}/registrations/${registrationId}/send-whatsapp`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error sending WhatsApp:', error);
+      throw error;
+    }
+  },
+
+  // Download/Fetch PDF from database
+  downloadRegistrationPdf: async (eventId, registrationId) => {
+    try {
+      const publicInstance = createPublicInstance();
+      const response = await publicInstance.get(
+        `/public/events/${eventId}/registrations/${registrationId}/download-pdf`,
+        {
+          responseType: 'blob' // Important: receive as blob for PDF download
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      throw error;
+    }
   }
 };
 

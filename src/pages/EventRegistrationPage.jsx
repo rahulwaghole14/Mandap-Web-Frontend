@@ -12,7 +12,6 @@ import {
   CheckCircle, 
   AlertCircle,
   CreditCard,
-  Download,
   FileDown,
   Clock,
   User,
@@ -42,65 +41,6 @@ const BUSINESS_TYPES = [
 
 const PROFILE_PLACEHOLDER =
   'data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%27256%27 height=%27256%27 viewBox=%270 0 256 256%27><rect width=%27256%27 height=%27256%27 rx=%2760%27 fill=%27%23f3f4f6%27/><circle cx=%27128%27 cy=%2796%27 r=%2760%27 fill=%27%23d1d5db%27/><path d=%27M56 220c0-46 36-84 72-84s72 38 72 84%27 fill=%27%239ca3af%27/></svg>';
-
-// WhatsApp sending constants
-const DEVICE_UID = 'a8bec8c820614d8ba084a55429716a78';
-const DEVICE_NAME = 'Mandapam';
-const COUNTRY_CODE = '91';
-const WHATSAPP_MESSAGE_TEMPLATE = `
-🙏 MANDAPAM 2026 – कोल्हापूर मध्ये आपले हार्दिक स्वागत! 🎉
-
-आपण आता MANDAPAM Association चे अधिकृत सदस्य झाला आहात. 🎊
-
-आपला Visitor Pass खाली जोडलेला आहे. 🎫
-
-📞 कार्यक्रमाची सविस्तर माहिती, एक्झिबिटर्स माहिती, वेळापत्रक आणि खास ऑफर्स पाहण्यासाठी
-MANDAPAM App डाउनलोड करा 👇
-
-📱 Android वापरकर्त्यांसाठी:
-👉 https://play.google.com/store/apps/details?id=com.mandapam.expo
-
-🍎 iOS वापरकर्त्यांसाठी:
-👉 लवकरच येत आहे
-
-🔑 आपल्या मोबाईल क्रमांकाने लॉगिन करून अँपमध्ये प्रवेश करा.
-
-आपल्या सहभागाबद्दल मनःपूर्वक धन्यवाद!
-
-— MANDAPAM टीम
-`.trim();
-
-// Format phone number to 91XXXXXXXXXX
-const formatPhoneNumber = (value) => {
-  const digits = (value || '').replace(/\D/g, '');
-  if (!digits) return '';
-  if (digits.length === 10) return `${COUNTRY_CODE}${digits}`;
-  if (digits.length === 12 && digits.startsWith(COUNTRY_CODE)) return digits;
-  if (digits.length > 10) return `${COUNTRY_CODE}${digits.slice(-10)}`;
-  return '';
-};
-
-// Build WhatsApp message with member name
-const buildMessage = (memberName) => {
-  const greetingName = memberName ? `प्रिय ${memberName},\n\n` : '';
-  return `${greetingName}${WHATSAPP_MESSAGE_TEMPLATE}`;
-};
-
-// Convert base64 to Blob
-const base64ToBlob = (base64, type = 'application/pdf') => {
-  const byteCharacters = window.atob(base64);
-  const byteArrays = [];
-  const sliceSize = 8192;
-  for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-    const slice = byteCharacters.slice(offset, offset + sliceSize);
-    const byteNumbers = new Array(slice.length);
-    for (let i = 0; i < slice.length; i += 1) {
-      byteNumbers[i] = slice.charCodeAt(i);
-    }
-    byteArrays.push(new Uint8Array(byteNumbers));
-  }
-  return new Blob(byteArrays, { type });
-};
 
 const EventRegistrationPage = () => {
   const { slug } = useParams();
@@ -776,31 +716,6 @@ const EventRegistrationPage = () => {
     }
   };
 
-  const downloadQRCode = () => {
-    if (!registration || !resolvedEventId) return;
-    
-    // Try multiple possible QR code field names
-    const qrUrl = registration.qrDataURL || registration.qrCode || registration.qrCodeUrl || registration.qrCodeDataURL;
-    
-    if (qrUrl) {
-      const link = document.createElement('a');
-      link.href = qrUrl;
-      link.download = `event-${resolvedEventId}-qr-code.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else if (registration.qrToken || registration.id) {
-      // Generate QR code from token/ID if no image URL is provided
-      const qrData = registration.qrToken || registration.id;
-      const link = document.createElement('a');
-      link.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(qrData)}`;
-      link.download = `event-${resolvedEventId}-qr-code.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
-
   const loadImageElement = (url) =>
     new Promise((resolve, reject) => {
       const img = new Image();
@@ -1319,99 +1234,68 @@ const EventRegistrationPage = () => {
     }
   }, [event, convertImageToDataUrl]);
 
-  // Send PDF via WhatsApp
-  // NOTE: PDF should already be generated and validated before calling this function
-  // This function only handles sending the PDF + message together
-  const sendPassViaWhatsApp = useCallback(async (regData, pdfData = null) => {
-    if (!regData) return false;
+  // Save PDF to database and send via WhatsApp
+  // FLOW: Generate PDF → Save PDF to DB → Send WhatsApp (retrieves PDF from DB)
+  const savePdfAndSendViaWhatsApp = useCallback(async (regData, pdfData) => {
+    if (!regData || !pdfData || !pdfData.base64) {
+      setPassSendError('PDF data is required');
+      return false;
+    }
 
     try {
       setIsSendingPass(true);
       setPassSendError(null);
 
-      // Get phone number from registration - try multiple sources
-      const phoneRaw = 
-        regData.phone || 
-        regData.member?.phone || 
-        regData.memberPhone ||
-        lastRegisteredPhone || 
-        '';
-      const formattedPhone = formatPhoneNumber(phoneRaw);
-
-      if (!formattedPhone) {
-        console.warn('EventRegistrationPage - No phone number found for WhatsApp sending', {
-          regDataPhone: regData.phone,
-          memberPhone: regData.member?.phone,
-          lastRegisteredPhone
+      const registrationId = regData.id || regData.registrationId;
+      if (!registrationId || !resolvedEventId) {
+        console.error('EventRegistrationPage - Missing registration ID or event ID', {
+          registrationId,
+          resolvedEventId
         });
-        setPassSendError('Phone number not available');
+        setPassSendError('Registration ID or event ID not found');
         return false;
       }
 
-      console.log('EventRegistrationPage - Sending pass via WhatsApp to', formattedPhone);
-
-      // If PDF data not provided, generate it (for manual send scenarios)
-      let finalPdfData = pdfData;
-      if (!finalPdfData) {
-        console.log('EventRegistrationPage - Generating PDF (not provided)');
-        finalPdfData = await generatePassPdfBase64(regData);
-        if (!finalPdfData || !finalPdfData.base64) {
-          console.error('EventRegistrationPage - Failed to generate PDF for WhatsApp');
-          setPassSendError('Failed to generate PDF');
-          return false;
-        }
-      }
-
-      // Validate PDF is complete
-      if (!finalPdfData.base64 || finalPdfData.base64.length < 100) {
-        console.error('EventRegistrationPage - PDF appears to be incomplete or corrupted', {
-          base64Length: finalPdfData.base64?.length || 0
-        });
-        setPassSendError('PDF is incomplete or corrupted');
-        return false;
-      }
-
-      // Build message (sent WITH the PDF)
-      const memberName = regData.memberName || regData.member?.name || regData.name || '';
-      const message = buildMessage(memberName);
-
-      console.log('EventRegistrationPage - Sending PDF + Message to WhatsApp', {
-        fileName: finalPdfData.fileName,
-        pdfSize: finalPdfData.base64.length,
-        messageLength: message.length
+      console.log('EventRegistrationPage - Saving PDF to database', {
+        eventId: resolvedEventId,
+        registrationId,
+        fileName: pdfData.fileName
       });
 
-      // Send PDF + Message together via WhatsApp API
-      const blob = base64ToBlob(finalPdfData.base64, 'application/pdf');
-      const formData = new FormData();
-      formData.append('file', blob, finalPdfData.fileName);
-      formData.append('phone', formattedPhone);
-      formData.append('message', message); // Message sent WITH PDF
-
-      const response = await fetch(
-        `https://messagesapi.co.in/chat/sendMessageFile/${DEVICE_UID}/${encodeURIComponent(DEVICE_NAME)}`,
-        {
-          method: 'POST',
-          body: formData
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`WhatsApp send failed: ${errorText || response.status}`);
+      // Step 1: Save PDF to database (backend automatically sends WhatsApp after saving)
+      // This ensures WhatsApp is sent even if user closes the page
+      toast.loading('Saving visitor pass and sending to WhatsApp...', { id: 'saving-pdf' });
+      
+      try {
+        const result = await eventApi.saveRegistrationPdf(
+          resolvedEventId,
+          registrationId,
+          pdfData.base64,
+          pdfData.fileName
+        );
+        console.log('EventRegistrationPage - PDF saved to database successfully');
+        
+        // Backend automatically sends WhatsApp after saving PDF
+        // Mark as sent and dismiss loading toast
+        setPassSent(true);
+        toast.dismiss('saving-pdf');
+        toast.success('Visitor pass saved! It will be sent to your WhatsApp shortly.', { id: 'saving-pdf-success', duration: 5000 });
+        return true;
+      } catch (saveError) {
+        console.error('EventRegistrationPage - Error saving PDF:', saveError);
+        toast.dismiss('saving-pdf');
+        toast.error('Failed to save PDF. You can download it manually.', { id: 'saving-pdf-error', duration: 5000 });
+        setPassSendError(saveError.response?.data?.message || 'Failed to save PDF');
+        return false;
       }
-
-      setPassSent(true);
-      console.log('EventRegistrationPage - Pass sent via WhatsApp successfully');
-      return true;
     } catch (error) {
-      console.error('EventRegistrationPage - sendPassViaWhatsApp error', error);
-      setPassSendError(error.message || 'Failed to send pass via WhatsApp');
+      console.error('EventRegistrationPage - savePdfAndSendViaWhatsApp error', error);
+      setPassSendError(error.message || 'Failed to process pass');
       return false;
     } finally {
       setIsSendingPass(false);
     }
-  }, [generatePassPdfBase64, lastRegisteredPhone]);
+  }, [resolvedEventId]);
 
   const imgUrl = useMemo(() => {
     if (!event) return null;
@@ -1450,11 +1334,13 @@ const EventRegistrationPage = () => {
           
           // Step 3: Validate PDF is complete
           if (!pdfData || !pdfData.base64) {
+            toast.dismiss('sending-pass');
             throw new Error('Failed to generate PDF');
           }
           
           // Validate PDF base64 is not empty and has minimum length
           if (pdfData.base64.length < 100) {
+            toast.dismiss('sending-pass');
             throw new Error('Generated PDF appears to be incomplete or corrupted');
           }
           
@@ -1463,21 +1349,14 @@ const EventRegistrationPage = () => {
             base64Length: pdfData.base64.length
           });
           
-          // Step 4: Show "Sending to WhatsApp..." message
-          toast.loading('Sending visitor pass to your WhatsApp...', { id: 'sending-pass' });
+          // Step 4: Dismiss the generating toast before saving
+          toast.dismiss('sending-pass');
           
-          // Step 5: Send PDF + Message together
-          const success = await sendPassViaWhatsApp(registration, pdfData);
+          // Step 5: Save PDF to database (backend automatically sends WhatsApp)
+          const success = await savePdfAndSendViaWhatsApp(registration, pdfData);
           
-          // Step 6: Show result
-          if (success) {
-            toast.success('Visitor pass sent to your WhatsApp!', { id: 'sending-pass' });
-          } else {
-            toast.error(
-              passSendError || 'Failed to send pass via WhatsApp. You can download it manually.', 
-              { id: 'sending-pass', duration: 5000 }
-            );
-          }
+          // Step 6: Result is handled inside savePdfAndSendViaWhatsApp
+          // Backend handles WhatsApp sending automatically after PDF is saved
         } catch (error) {
           console.error('EventRegistrationPage - Error in auto-send flow', error);
           toast.error(
@@ -1491,7 +1370,7 @@ const EventRegistrationPage = () => {
       // Start immediately (no arbitrary delay - PDF generation will wait for QR code if needed)
       autoSendPass();
     }
-  }, [registration, hasTriggeredAutoSend, isSendingPass, passSent, event, isDownloadReady, generatePassPdfBase64, sendPassViaWhatsApp, passSendError, lastRegisteredPhone]);
+  }, [registration, hasTriggeredAutoSend, isSendingPass, passSent, event, isDownloadReady, generatePassPdfBase64, savePdfAndSendViaWhatsApp, passSendError]);
 
   // Reset auto-send trigger when registration changes
   useEffect(() => {
@@ -1665,24 +1544,24 @@ const EventRegistrationPage = () => {
                  <p className="text-gray-600">
                    You are successfully registered for this event. Please save your QR code for event entry.
                  </p>
-                 {isSendingPass && (
-                   <div className="mt-3 flex items-center text-blue-600">
-                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                     <span className="text-sm font-medium">Sending visitor pass to your WhatsApp...</span>
-                   </div>
-                 )}
-                 {passSent && !isSendingPass && (
-                   <div className="mt-3 flex items-center text-green-600">
-                     <CheckCircle className="h-4 w-4 mr-2" />
-                     <span className="text-sm font-medium">Visitor pass sent to your WhatsApp!</span>
-                   </div>
-                 )}
-                 {passSendError && !isSendingPass && !passSent && (
-                   <div className="mt-3 flex items-center text-amber-600">
-                     <AlertCircle className="h-4 w-4 mr-2" />
-                     <span className="text-sm font-medium">Pass sending failed. You can download it manually.</span>
-                   </div>
-                 )}
+                {(isSendingPass || (!passSent && !passSendError)) && (
+                  <div className="mt-3 flex items-center text-blue-600">
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <span className="text-sm font-medium">Generating visitor pass...</span>
+                  </div>
+                )}
+                {passSent && !isSendingPass && (
+                  <div className="mt-3 flex items-center text-green-600">
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    <span className="text-sm font-medium">Visitor pass saved! It will be sent to your WhatsApp shortly.</span>
+                  </div>
+                )}
+                {passSendError && !isSendingPass && !passSent && (
+                  <div className="mt-3 flex items-center text-amber-600">
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    <span className="text-sm font-medium">Pass sending failed. You can download it manually.</span>
+                  </div>
+                )}
                  {registrationDisplayName && (
                    <p className="mt-3 text-lg font-semibold text-gray-900">
                      {registrationDisplayName}
@@ -1744,33 +1623,12 @@ const EventRegistrationPage = () => {
                         }}
                       />
                     </div>
-                    <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
-                    <button
-                      onClick={() => {
-                        const qrUrl = registration.qrDataURL || registration.qrCode || registration.qrCodeUrl || registration.qrCodeDataURL;
-                        if (qrUrl) {
-                          downloadQRCode();
-                        } else if (registration.qrToken || registration.id) {
-                          // Generate QR code URL for download
-                          const qrData = registration.qrToken || registration.id;
-                          const link = document.createElement('a');
-                          link.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(qrData)}`;
-                          link.download = `event-${resolvedEventId}-qr-code.png`;
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        }
-                      }}
-                        className="flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download QR Code
-                    </button>
+                    <div className="mt-4 flex items-center justify-center">
                       <button
                         onClick={handleDownloadPass}
                         disabled={isGeneratingPass || !isDownloadReady}
-                        className={`flex items-center justify-center px-4 py-2 rounded-lg border border-primary-300 text-primary-700 bg-white transition-colors ${
-                          isGeneratingPass || !isDownloadReady ? 'opacity-60 cursor-not-allowed' : 'hover:bg-primary-50'
+                        className={`flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors ${
+                          isGeneratingPass || !isDownloadReady ? 'opacity-60 cursor-not-allowed' : ''
                         }`}
                       >
                         {isGeneratingPass ? (

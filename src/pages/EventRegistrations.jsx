@@ -934,48 +934,87 @@ const EventRegistrations = () => {
         return;
       }
 
+      const registrationId = registration.id || registration.registrationId;
+      const eventId = selectedEventId || registration.eventId || registration.event_id;
+
+      if (!registrationId || !eventId) {
+        toast.error('Registration ID or Event ID not found.');
+        return;
+      }
+
       setSendingPassIds((prev) => ({ ...prev, [key]: true }));
 
       try {
-        let member =
-          registration.member ||
-          memberCache[registration.memberId] ||
-          extractMemberFromRegistration(registration) ||
-          null;
-
-        if (!member && registration.memberId) {
-          try {
-            const response = await memberApi.getMember(registration.memberId);
-            member = normalizeMemberData(response.member || response, registration);
-            if (member && member.id) {
-              setMemberCache((prev) => ({ ...prev, [member.id]: member }));
-            }
-          } catch (error) {
-            console.error('EventRegistrations - sendPass member lookup error', error);
+        // First, check if PDF exists in database. If not, generate and save it first
+        let pdfExists = false;
+        try {
+          // Try to send - if PDF doesn't exist, backend will return error
+          const result = await eventApi.sendRegistrationPdfViaWhatsApp(eventId, registrationId);
+          if (result.success) {
+            toast.success('Visitor pass sent via WhatsApp.');
+            return;
+          }
+        } catch (sendError) {
+          // If PDF doesn't exist, we need to generate and save it first
+          if (sendError.response?.status === 404 || sendError.response?.data?.message?.includes('PDF not found')) {
+            pdfExists = false;
+          } else {
+            // Some other error occurred
+            throw sendError;
           }
         }
 
-        const phoneRaw = registration.phone || member?.phone || registration.member?.phone || '';
-        const formattedPhone = formatPhoneNumber(phoneRaw);
+        // PDF doesn't exist - generate and save it first
+        if (!pdfExists) {
+          toast.loading('Generating visitor pass...', { id: `send-pass-${key}` });
+          
+          let member =
+            registration.member ||
+            memberCache[registration.memberId] ||
+            extractMemberFromRegistration(registration) ||
+            null;
 
-        if (!formattedPhone) {
-          toast.error('Valid phone number not found for this registration.');
-          return;
+          if (!member && registration.memberId) {
+            try {
+              const response = await memberApi.getMember(registration.memberId);
+              member = normalizeMemberData(response.member || response, registration);
+              if (member && member.id) {
+                setMemberCache((prev) => ({ ...prev, [member.id]: member }));
+              }
+            } catch (error) {
+              console.error('EventRegistrations - sendPass member lookup error', error);
+            }
+          }
+
+          const enriched = await enrichRegistrationWithBackendData(registration, member);
+          const pdf = await generatePassPdf(enriched || registration, member);
+          
+          if (!pdf?.base64) {
+            throw new Error('Failed to generate visitor pass PDF.');
+          }
+
+          // Save PDF to database
+          toast.loading('Saving visitor pass...', { id: `send-pass-${key}` });
+          await eventApi.saveRegistrationPdf(eventId, registrationId, pdf.base64, pdf.fileName);
+          
+          // Now send via WhatsApp
+          toast.loading('Sending visitor pass via WhatsApp...', { id: `send-pass-${key}` });
         }
 
-        const enriched = await enrichRegistrationWithBackendData(registration, member);
-        const pdf = await generatePassPdf(enriched || registration, member);
-        if (!pdf?.base64) {
-          throw new Error('Failed to generate visitor pass PDF.');
+        // Send via WhatsApp (PDF now exists in database)
+        const result = await eventApi.sendRegistrationPdfViaWhatsApp(eventId, registrationId);
+        
+        if (result.success) {
+          toast.success('Visitor pass sent via WhatsApp.', { id: `send-pass-${key}` });
+        } else {
+          throw new Error(result.message || 'Failed to send pass via WhatsApp');
         }
-
-        const message = buildMessage(member?.name || registration.name || '');
-        await sendMessageFileWithPdf(formattedPhone, message, pdf.fileName, pdf.base64);
-
-        toast.success('Visitor pass sent via WhatsApp.');
       } catch (error) {
         console.error('EventRegistrations - handleSendPass error', error);
-        toast.error('Failed to send visitor pass. Please try again.');
+        toast.error(
+          error.response?.data?.message || error.message || 'Failed to send visitor pass. Please try again.',
+          { id: `send-pass-${key}`, duration: 5000 }
+        );
       } finally {
         setSendingPassIds((prev) => {
           const next = { ...prev };
@@ -984,7 +1023,106 @@ const EventRegistrations = () => {
         });
       }
     },
-    [enrichRegistrationWithBackendData, generatePassPdf, memberCache, sendMessageFileWithPdf, sendingPassIds]
+    [selectedEventId, enrichRegistrationWithBackendData, generatePassPdf, memberCache, sendingPassIds]
+  );
+
+  // Handle download pass - fetch from database instead of generating
+  const handleDownloadPass = useCallback(
+    async (registration) => {
+      if (!registration) return;
+
+      const registrationId = registration.id || registration.registrationId;
+      const eventId = selectedEventId || registration.eventId || registration.event_id;
+
+      if (!registrationId || !eventId) {
+        toast.error('Registration ID or Event ID not found.');
+        return;
+      }
+
+      try {
+        toast.loading('Downloading visitor pass...', { id: `download-pass-${registrationId}` });
+
+        // Download PDF from database
+        const pdfBlob = await eventApi.downloadRegistrationPdf(eventId, registrationId);
+        
+        // Create download link and trigger download
+        const url = window.URL.createObjectURL(pdfBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `mandapam-visitor-pass-${registrationId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        toast.success('Visitor pass downloaded successfully.', { id: `download-pass-${registrationId}` });
+      } catch (error) {
+        console.error('EventRegistrations - handleDownloadPass error', error);
+        
+        // If PDF doesn't exist, generate and save it first, then download
+        if (error.response?.status === 404 || error.response?.data?.message?.includes('PDF not found')) {
+          toast.loading('Generating visitor pass...', { id: `download-pass-${registrationId}` });
+          
+          try {
+            let member =
+              registration.member ||
+              memberCache[registration.memberId] ||
+              extractMemberFromRegistration(registration) ||
+              null;
+
+            if (!member && registration.memberId) {
+              try {
+                const response = await memberApi.getMember(registration.memberId);
+                member = normalizeMemberData(response.member || response, registration);
+                if (member && member.id) {
+                  setMemberCache((prev) => ({ ...prev, [member.id]: member }));
+                }
+              } catch (error) {
+                console.error('EventRegistrations - downloadPass member lookup error', error);
+              }
+            }
+
+            const enriched = await enrichRegistrationWithBackendData(registration, member);
+            const pdf = await generatePassPdf(enriched || registration, member);
+            
+            if (!pdf?.base64) {
+              throw new Error('Failed to generate visitor pass PDF.');
+            }
+
+            // Save PDF to database
+            toast.loading('Saving visitor pass...', { id: `download-pass-${registrationId}` });
+            await eventApi.saveRegistrationPdf(eventId, registrationId, pdf.base64, pdf.fileName);
+
+            // Now download it
+            toast.loading('Downloading visitor pass...', { id: `download-pass-${registrationId}` });
+            const pdfBlob = await eventApi.downloadRegistrationPdf(eventId, registrationId);
+            
+            const url = window.URL.createObjectURL(pdfBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `mandapam-visitor-pass-${registrationId}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+            toast.success('Visitor pass downloaded successfully.', { id: `download-pass-${registrationId}` });
+          } catch (genError) {
+            console.error('EventRegistrations - handleDownloadPass generate error', genError);
+            toast.error(
+              genError.response?.data?.message || genError.message || 'Failed to generate and download visitor pass.',
+              { id: `download-pass-${registrationId}`, duration: 5000 }
+            );
+          }
+        } else {
+          toast.error(
+            error.response?.data?.message || error.message || 'Failed to download visitor pass.',
+            { id: `download-pass-${registrationId}`, duration: 5000 }
+          );
+        }
+      }
+    },
+    [selectedEventId, enrichRegistrationWithBackendData, generatePassPdf, memberCache]
   );
 
   const statusOptions = useMemo(() => {
@@ -1375,12 +1513,6 @@ const EventRegistrations = () => {
                       </button>
                     );
                   })()}
-                  <button
-                    onClick={() => downloadQr(detail, selectedEventId)}
-                    className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700"
-                  >
-                    <Download className="h-4 w-4 mr-2" /> Download QR
-                  </button>
                 </div>
               </div>
 
