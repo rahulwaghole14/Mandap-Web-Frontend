@@ -426,13 +426,32 @@ export const eventApi = {
   },
 
   // Confirm payment and complete registration (public)
-  confirmPublicPayment: async (eventId, paymentData) => {
+  confirmPublicPayment: async (eventId, paymentData, timeout = 30000) => {
     try {
       const publicInstance = createPublicInstance();
-      const response = await publicInstance.post(`/public/events/${eventId}/confirm-payment`, paymentData);
+      
+      // Create a timeout promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Payment confirmation request timed out. Checking registration status...'));
+        }, timeout);
+      });
+      
+      // Race between API call and timeout
+      const response = await Promise.race([
+        publicInstance.post(`/public/events/${eventId}/confirm-payment`, paymentData),
+        timeoutPromise
+      ]);
+      
       return response.data;
     } catch (error) {
       console.error('Error confirming payment:', error);
+      
+      // If timeout, throw a special error that can be handled
+      if (error.message && error.message.includes('timed out')) {
+        error.isTimeout = true;
+      }
+      
       throw error;
     }
   },

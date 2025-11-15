@@ -511,16 +511,87 @@ const EventRegistrationPage = () => {
         ...paymentData.paymentOptions,
         handler: async function (response) {
           try {
-            // Step 2: Confirm payment
-            const confirmData = await eventApi.confirmPublicPayment(
-              resolvedEventId,
-              {
-                memberId: paymentData.member.id,
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature
+            // Step 2: Confirm payment with timeout handling
+            let confirmData = null;
+            let paymentConfirmed = false;
+            
+            try {
+              // Try to confirm payment with 30 second timeout
+              confirmData = await eventApi.confirmPublicPayment(
+                resolvedEventId,
+                {
+                  memberId: paymentData.member.id,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature
+                },
+                30000 // 30 second timeout
+              );
+              paymentConfirmed = true;
+              console.log('EventRegistrationPage - Payment confirmed successfully');
+            } catch (confirmError) {
+              // Handle timeout or network errors
+              if (confirmError.isTimeout || confirmError.code === 'ECONNABORTED' || confirmError.message?.includes('timeout')) {
+                console.warn('EventRegistrationPage - Payment confirmation timed out, checking registration status...');
+                toast.info('Payment received! Verifying registration...', { duration: 5000 });
+                
+                // Fallback: Poll registration status to check if payment was processed
+                const maxPollAttempts = 6; // 6 attempts
+                const pollInterval = 2000; // 2 seconds between attempts
+                let registrationFound = false;
+                
+                for (let attempt = 1; attempt <= maxPollAttempts; attempt++) {
+                  console.log(`EventRegistrationPage - Polling registration status (attempt ${attempt}/${maxPollAttempts})...`);
+                  
+                  await new Promise(resolve => setTimeout(resolve, pollInterval));
+                  
+                  try {
+                    const statusData = await eventApi.checkPublicRegistrationStatus(resolvedEventId, cleanedData.phone);
+                    
+                    if (statusData.isRegistered && statusData.registration?.paymentStatus === 'paid') {
+                      console.log('EventRegistrationPage - Registration found via polling!');
+                      registrationFound = true;
+                      
+                      // Build registration data from status check response
+                      confirmData = {
+                        success: true,
+                        message: 'Registration confirmed',
+                        registrationId: statusData.registration.id,
+                        qrDataURL: statusData.registration.qrDataURL,
+                        registration: {
+                          id: statusData.registration.id,
+                          eventId: statusData.registration.eventId,
+                          memberId: statusData.registration.memberId,
+                          status: statusData.registration.status,
+                          paymentStatus: statusData.registration.paymentStatus,
+                          amountPaid: statusData.registration.amountPaid,
+                          registeredAt: statusData.registration.registeredAt
+                        },
+                        member: statusData.member || paymentData.member
+                      };
+                      paymentConfirmed = true;
+                      break;
+                    }
+                  } catch (pollError) {
+                    console.error(`EventRegistrationPage - Poll attempt ${attempt} failed:`, pollError);
+                    // Continue to next attempt
+                  }
+                }
+                
+                if (!registrationFound) {
+                  // Registration not found after polling - payment might still be processing
+                  console.error('EventRegistrationPage - Registration not found after polling');
+                  throw new Error('Payment was successful, but registration verification is taking longer than expected. Please check your registration status or contact support.');
+                }
+              } else {
+                // Other errors - rethrow
+                throw confirmError;
               }
-            );
+            }
+            
+            if (!confirmData || !paymentConfirmed) {
+              throw new Error('Payment confirmation failed');
+            }
 
             console.log('EventRegistrationPage - Payment confirmation response:', confirmData);
             console.log('EventRegistrationPage - Registration object:', confirmData.registration);
