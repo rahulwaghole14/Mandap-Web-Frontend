@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import eventApi, { publicAssociationApi } from '../services/eventApi';
@@ -70,6 +70,7 @@ const EventRegistrationPage = () => {
   const [passSent, setPassSent] = useState(false);
   const [passSendError, setPassSendError] = useState(null);
   const [hasTriggeredAutoSend, setHasTriggeredAutoSend] = useState(false);
+  const paymentConfirmingRef = useRef(false); // Track if payment confirmation is in progress
   const registrationDisplayName = registration?.memberName || registration?.member?.name || registration?.name || '';
   const confirmationPhoto = useMemo(() => {
     if (!registration) return null;
@@ -510,13 +511,25 @@ const EventRegistrationPage = () => {
       const options = {
         ...paymentData.paymentOptions,
         handler: async function (response) {
+          // Prevent duplicate confirmation calls
+          if (paymentConfirmingRef.current) {
+            console.warn('EventRegistrationPage - Payment confirmation already in progress, ignoring duplicate call');
+            return;
+          }
+          
+          paymentConfirmingRef.current = true;
+          
           try {
             // Step 2: Confirm payment with timeout handling
             let confirmData = null;
             let paymentConfirmed = false;
             
             try {
-              // Try to confirm payment with 30 second timeout
+              // Confirm payment with retry logic (no timeout - let it complete naturally)
+              console.log('EventRegistrationPage - Starting payment confirmation...');
+              console.log('EventRegistrationPage - Payment ID:', response.razorpay_payment_id);
+              console.log('EventRegistrationPage - Order ID:', response.razorpay_order_id);
+              
               confirmData = await eventApi.confirmPublicPayment(
                 resolvedEventId,
                 {
@@ -524,18 +537,29 @@ const EventRegistrationPage = () => {
                   razorpay_order_id: response.razorpay_order_id,
                   razorpay_payment_id: response.razorpay_payment_id,
                   razorpay_signature: response.razorpay_signature
-                },
-                30000 // 30 second timeout
+                }
+                // No timeout parameter - will use default retry logic with no timeout
               );
               paymentConfirmed = true;
               console.log('EventRegistrationPage - Payment confirmed successfully');
             } catch (confirmError) {
-              // Handle timeout or network errors
-              if (confirmError.isTimeout || confirmError.code === 'ECONNABORTED' || confirmError.message?.includes('timeout')) {
-                console.warn('EventRegistrationPage - Payment confirmation timed out, checking registration status...');
+              // Payment confirmation failed after all retries
+              // The retry logic already handled network errors, so this is likely a validation or server error
+              console.error('EventRegistrationPage - Payment confirmation failed after retries:', confirmError);
+              
+              // Check if it's a network error that might have succeeded on server side
+              const isNetworkError = confirmError.code === 'ERR_NETWORK' || 
+                                   confirmError.code === 'ETIMEDOUT' ||
+                                   confirmError.code === 'ECONNABORTED' ||
+                                   confirmError.code === 'ENOTFOUND' ||
+                                   confirmError.code === 'ECONNREFUSED';
+              
+              if (isNetworkError) {
+                // Network error - payment might have been processed on server
+                // Poll registration status as fallback
+                console.warn('EventRegistrationPage - Network error after retries, checking registration status...');
                 toast.info('Payment received! Verifying registration...', { duration: 5000 });
                 
-                // Fallback: Poll registration status to check if payment was processed
                 const maxPollAttempts = 6; // 6 attempts
                 const pollInterval = 2000; // 2 seconds between attempts
                 let registrationFound = false;
@@ -579,12 +603,12 @@ const EventRegistrationPage = () => {
                 }
                 
                 if (!registrationFound) {
-                  // Registration not found after polling - payment might still be processing
+                  // Registration not found after polling
                   console.error('EventRegistrationPage - Registration not found after polling');
-                  throw new Error('Payment was successful, but registration verification is taking longer than expected. Please check your registration status or contact support.');
+                  throw new Error('Payment was successful, but we could not verify the registration. Please check your registration status or contact support.');
                 }
               } else {
-                // Other errors - rethrow
+                // Other errors (validation, server errors) - rethrow
                 throw confirmError;
               }
             }
@@ -667,15 +691,17 @@ const EventRegistrationPage = () => {
             toast.success('Registration successful! Your visitor pass will be sent to your WhatsApp shortly.');
           } catch (err) {
             console.error('Payment confirmation error:', err);
-            toast.error(err.response?.data?.message || 'Payment confirmation failed');
+            toast.error(err.response?.data?.message || err.message || 'Payment confirmation failed');
           } finally {
             setRegistering(false);
+            paymentConfirmingRef.current = false; // Reset flag
           }
         },
         modal: {
           ondismiss: function() {
             console.log('Payment cancelled');
             setRegistering(false);
+            paymentConfirmingRef.current = false; // Reset flag on cancel
           }
         }
       };

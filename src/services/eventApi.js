@@ -425,35 +425,67 @@ export const eventApi = {
     }
   },
 
-  // Confirm payment and complete registration (public)
-  confirmPublicPayment: async (eventId, paymentData, timeout = 30000) => {
-    try {
-      const publicInstance = createPublicInstance();
-      
-      // Create a timeout promise
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('Payment confirmation request timed out. Checking registration status...'));
-        }, timeout);
-      });
-      
-      // Race between API call and timeout
-      const response = await Promise.race([
-        publicInstance.post(`/public/events/${eventId}/confirm-payment`, paymentData),
-        timeoutPromise
-      ]);
-      
-      return response.data;
-    } catch (error) {
-      console.error('Error confirming payment:', error);
-      
-      // If timeout, throw a special error that can be handled
-      if (error.message && error.message.includes('timed out')) {
-        error.isTimeout = true;
+  // Confirm payment and complete registration (public) with retry logic
+  // No timeout - let the request complete naturally to ensure payment is confirmed
+  confirmPublicPayment: async (eventId, paymentData, maxRetries = 5) => {
+    const retryDelays = [2000, 3000, 5000, 7000, 10000]; // Exponential backoff: 2s, 3s, 5s, 7s, 10s
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const publicInstance = createPublicInstance();
+        
+        console.log(`[Payment Confirmation] Attempt ${attempt + 1}/${maxRetries} for event ${eventId}`);
+        console.log(`[Payment Confirmation] Payment ID: ${paymentData.razorpay_payment_id}`);
+        console.log(`[Payment Confirmation] Order ID: ${paymentData.razorpay_order_id}`);
+        
+        // Make the request WITHOUT timeout - let it complete naturally
+        // Payment confirmation is critical, we must wait for it
+        // Don't set timeout option - axios will use default (no timeout)
+        const response = await publicInstance.post(
+          `/public/events/${eventId}/confirm-payment`,
+          paymentData
+          // No timeout option - axios default is no timeout, request will wait for response
+        );
+        
+        console.log(`[Payment Confirmation] ✅ Success on attempt ${attempt + 1}`);
+        return response.data;
+      } catch (error) {
+        const isLastAttempt = attempt === maxRetries - 1;
+        const isNetworkError = error.code === 'ERR_NETWORK' || 
+                              error.code === 'ETIMEDOUT' ||
+                              error.code === 'ECONNABORTED' ||
+                              error.code === 'ENOTFOUND' ||
+                              error.code === 'ECONNREFUSED';
+        
+        console.error(`[Payment Confirmation] ❌ Attempt ${attempt + 1}/${maxRetries} failed:`, {
+          error: error.message || error.code,
+          status: error.response?.status,
+          isNetworkError,
+          isLastAttempt
+        });
+        
+        // If it's the last attempt, throw the error
+        if (isLastAttempt) {
+          console.error(`[Payment Confirmation] ❌ All ${maxRetries} attempts failed`);
+          throw error;
+        }
+        
+        // If it's a network error, retry with exponential backoff
+        if (isNetworkError) {
+          const delay = retryDelays[attempt] || 10000;
+          console.log(`[Payment Confirmation] ⏳ Network error detected. Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue; // Retry
+        }
+        
+        // For other errors (like validation errors, 400, 404), don't retry
+        console.error(`[Payment Confirmation] ❌ Non-retryable error: ${error.response?.status || error.code}`);
+        throw error;
       }
-      
-      throw error;
     }
+    
+    // Should never reach here, but just in case
+    throw new Error('Payment confirmation failed after all retries');
   },
 
   // Save PDF to database
