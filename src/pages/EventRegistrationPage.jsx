@@ -680,7 +680,7 @@ const EventRegistrationPage = () => {
             setIsNewRegistration(isNew && willSendWhatsApp); // Only show WhatsApp UI if it will actually be sent
             
             // Set download ready (PDF can be downloaded anytime)
-            setIsDownloadReady(true);
+          setIsDownloadReady(true);
 
             if (photoPreview) {
               setRegistration((prev) => (prev ? { ...prev, rawPhotoData: photoPreview } : null));
@@ -691,7 +691,7 @@ const EventRegistrationPage = () => {
             
             // Show appropriate message based on registration type and WhatsApp sending
             if (willSendWhatsApp) {
-              toast.success('Registration successful! Your visitor pass will be sent to your WhatsApp shortly.');
+            toast.success('Registration successful! Your visitor pass will be sent to your WhatsApp shortly.');
             } else {
               toast.success('Registration confirmed. You can download your pass now.');
             }
@@ -938,13 +938,25 @@ const EventRegistrationPage = () => {
 
   const handleDownloadPass = async () => {
     if (!registration || !resolvedEventId) return;
+    
+    // Prevent multiple simultaneous downloads
+    if (isGeneratingPass) {
+      console.warn('EventRegistrationPage - Download already in progress');
+      return;
+    }
 
     setIsGeneratingPass(true);
 
-    try {
+        try {
       // Download PDF from backend (generated on-demand)
       const registrationId = registration.id || registration.registrationId;
+      console.log('EventRegistrationPage - Starting PDF download for registration:', registrationId);
+      
       const pdfBlob = await eventApi.downloadRegistrationPdf(resolvedEventId, registrationId);
+      
+      if (!pdfBlob) {
+        throw new Error('PDF blob is empty');
+      }
       
       // Create download link
       const url = window.URL.createObjectURL(pdfBlob);
@@ -953,16 +965,23 @@ const EventRegistrationPage = () => {
       link.download = `mandapam-visitor-pass-${registrationId}.pdf`;
       document.body.appendChild(link);
       link.click();
+      
+      // Small delay to ensure download starts before cleanup
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       
+      console.log('EventRegistrationPage - PDF download completed successfully');
       toast.success('Pass downloaded successfully');
     } catch (error) {
       console.error('EventRegistrationPage - handleDownloadPass error', error);
       toast.error('Could not download the pass. Please try again.');
     } finally {
+      // Ensure state is cleared
       setIsGeneratingPass(false);
-    }
+      console.log('EventRegistrationPage - Download state cleared');
+          }
   };
 
   // PDF generation removed - now handled by backend
@@ -1205,27 +1224,18 @@ const EventRegistrationPage = () => {
                    You are successfully registered for this event. Please save your QR code for event entry.
                  </p>
                 {/* Only show WhatsApp-related messages for new registrations */}
-                {isNewRegistration && (
-                  <>
-                {(isSendingPass || (!passSent && !passSendError)) && (
-                  <div className="mt-3 flex items-center text-blue-600">
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    <span className="text-sm font-medium">Generating visitor pass...</span>
-                  </div>
-                )}
-                {passSent && !isSendingPass && (
+                {/* Note: Auto-send is now handled by backend, so we don't show loading state here */}
+                {isNewRegistration && passSent && !isSendingPass && (
                   <div className="mt-3 flex items-center text-green-600">
                     <CheckCircle className="h-4 w-4 mr-2" />
-                    <span className="text-sm font-medium">Visitor pass saved! It will be sent to your WhatsApp shortly.</span>
+                    <span className="text-sm font-medium">Visitor pass will be sent to your WhatsApp shortly.</span>
                   </div>
                 )}
-                {passSendError && !isSendingPass && !passSent && (
+                {isNewRegistration && passSendError && !isSendingPass && !passSent && (
                   <div className="mt-3 flex items-center text-amber-600">
                     <AlertCircle className="h-4 w-4 mr-2" />
                     <span className="text-sm font-medium">Pass sending failed. You can download it manually.</span>
                   </div>
-                    )}
-                  </>
                 )}
                  {registrationDisplayName && (
                    <p className="mt-3 text-lg font-semibold text-gray-900">

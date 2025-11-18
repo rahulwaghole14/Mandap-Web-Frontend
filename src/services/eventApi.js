@@ -523,15 +523,41 @@ export const eventApi = {
   },
 
   // Send WhatsApp message with PDF (PDF generated on-demand, sent, then deleted)
+  // Uses authenticated instance when called from manager panel to track who sent it
   sendRegistrationPdfViaWhatsApp: async (eventId, registrationId) => {
     try {
-      const publicInstance = createPublicInstance();
-      const response = await publicInstance.post(
-        `/public/events/${eventId}/registrations/${registrationId}/send-whatsapp`
+      // Try authenticated first (for manager panel), fallback to public
+      try {
+        const authInstance = createAuthInstance();
+        const response = await authInstance.post(
+          `/public/events/${eventId}/registrations/${registrationId}/send-whatsapp`
+        );
+        return response.data;
+      } catch (authError) {
+        // If auth fails, try public (for public registration page)
+        const publicInstance = createPublicInstance();
+        const response = await publicInstance.post(
+          `/public/events/${eventId}/registrations/${registrationId}/send-whatsapp`
+        );
+        return response.data;
+      }
+    } catch (error) {
+      console.error('Error sending WhatsApp:', error);
+      throw error;
+    }
+  },
+
+  // Create manual registration (for manager panel with cash payment)
+  createManualRegistration: async (eventId, registrationData) => {
+    try {
+      const authInstance = createAuthInstance();
+      const response = await authInstance.post(
+        `/events/${eventId}/manual-registration`,
+        registrationData
       );
       return response.data;
     } catch (error) {
-      console.error('Error sending WhatsApp:', error);
+      console.error('Error creating manual registration:', error);
       throw error;
     }
   }

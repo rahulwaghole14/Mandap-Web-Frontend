@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import Modal from '../components/Modal';
+import ManualRegistrationModal from '../components/ManualRegistrationModal';
 import { eventApi } from '../services/eventApi';
 import { memberApi } from '../services/memberApi';
 import { uploadApi } from '../services/uploadApi';
@@ -364,6 +365,7 @@ const EventRegistrations = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState(null);
   const [memberCache, setMemberCache] = useState({});
+  const [showManualRegistration, setShowManualRegistration] = useState(false);
   const memberCacheRef = useRef({});
 
   useEffect(() => {
@@ -993,15 +995,11 @@ const EventRegistrations = () => {
             throw new Error('Failed to generate visitor pass PDF.');
           }
 
-          // Save PDF to database
-          toast.loading('Saving visitor pass...', { id: `send-pass-${key}` });
-          await eventApi.saveRegistrationPdf(eventId, registrationId, pdf.base64, pdf.fileName);
-          
-          // Now send via WhatsApp
+          // PDF is generated on-demand by backend, no need to save
           toast.loading('Sending visitor pass via WhatsApp...', { id: `send-pass-${key}` });
         }
 
-        // Send via WhatsApp (PDF now exists in database)
+        // Send via WhatsApp (PDF will be generated on-demand by backend)
         const result = await eventApi.sendRegistrationPdfViaWhatsApp(eventId, registrationId);
         
         if (result.success) {
@@ -1089,11 +1087,8 @@ const EventRegistrations = () => {
               throw new Error('Failed to generate visitor pass PDF.');
             }
 
-            // Save PDF to database
-            toast.loading('Saving visitor pass...', { id: `download-pass-${registrationId}` });
-            await eventApi.saveRegistrationPdf(eventId, registrationId, pdf.base64, pdf.fileName);
-
-            // Now download it
+            // PDF is generated on-demand by backend, no need to save
+            // Download directly (backend generates on-demand)
             toast.loading('Downloading visitor pass...', { id: `download-pass-${registrationId}` });
             const pdfBlob = await eventApi.downloadRegistrationPdf(eventId, registrationId);
             
@@ -1260,6 +1255,15 @@ const EventRegistrations = () => {
                 )}
               </div>
             </div>
+            {selectedEventId && (
+              <button
+                onClick={() => setShowManualRegistration(true)}
+                className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors"
+              >
+                <User className="h-4 w-4 mr-2" />
+                Manual Registration
+              </button>
+            )}
           </div>
 
           {loadingRegistrations ? (
@@ -1490,6 +1494,12 @@ const EventRegistrations = () => {
                       </>
                     )}
                   </button>
+                  <button
+                    onClick={() => handleDownloadPass(detail)}
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg border border-primary-300 text-primary-700 bg-white hover:bg-primary-50 transition-colors"
+                  >
+                    <Download className="h-4 w-4 mr-2" /> Download Pass
+                  </button>
                   {(() => {
                     const passKey = getPassKey(detail);
                     const sending = passKey ? Boolean(sendingPassIds[passKey]) : false;
@@ -1646,6 +1656,21 @@ const EventRegistrations = () => {
             <div className="p-6 text-center text-gray-500">Select a registration to view details.</div>
           )}
         </Modal>
+        
+        {/* Manual Registration Modal */}
+        {selectedEventId && (
+          <ManualRegistrationModal
+            isOpen={showManualRegistration}
+            onClose={() => setShowManualRegistration(false)}
+            eventId={selectedEventId}
+            event={events.find(e => e.id === parseInt(selectedEventId))}
+            onSuccess={(data) => {
+              setShowManualRegistration(false);
+              fetchRegistrations(selectedEventId);
+              toast.success('Registration created successfully!');
+            }}
+          />
+        )}
       </div>
     </Layout>
   );
