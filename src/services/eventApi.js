@@ -25,9 +25,11 @@ const createAuthInstance = () => {
 };
 
 // Create public axios instance (no auth required)
+// No timeout set - allows slow networks to complete requests naturally
 const createPublicInstance = () => {
   return axios.create({
     baseURL: API_BASE_URL,
+    timeout: 0, // No timeout - allow slow networks to complete
     headers: {
       'Content-Type': 'application/json'
     }
@@ -488,25 +490,39 @@ export const eventApi = {
     throw new Error('Payment confirmation failed after all retries');
   },
 
-  // Save PDF to database
-  saveRegistrationPdf: async (eventId, registrationId, pdfBase64, fileName) => {
+  // Trigger auto-send for new registrations (PDFs are now generated on-demand in backend)
+  saveRegistrationPdf: async (eventId, registrationId) => {
     try {
       const publicInstance = createPublicInstance();
       const response = await publicInstance.post(
         `/public/events/${eventId}/registrations/${registrationId}/save-pdf`,
-        {
-          pdfBase64,
-          fileName
-        }
+        {}
       );
       return response.data;
     } catch (error) {
-      console.error('Error saving PDF:', error);
+      console.error('Error triggering auto-send:', error);
       throw error;
     }
   },
 
-  // Send WhatsApp message with PDF (PDF retrieved from database)
+  // Download PDF (generated on-demand in backend)
+  downloadRegistrationPdf: async (eventId, registrationId) => {
+    try {
+      const publicInstance = createPublicInstance();
+      const response = await publicInstance.get(
+        `/public/events/${eventId}/registrations/${registrationId}/download-pdf`,
+        {
+          responseType: 'blob'
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      throw error;
+    }
+  },
+
+  // Send WhatsApp message with PDF (PDF generated on-demand, sent, then deleted)
   sendRegistrationPdfViaWhatsApp: async (eventId, registrationId) => {
     try {
       const publicInstance = createPublicInstance();
@@ -516,23 +532,6 @@ export const eventApi = {
       return response.data;
     } catch (error) {
       console.error('Error sending WhatsApp:', error);
-      throw error;
-    }
-  },
-
-  // Download/Fetch PDF from database
-  downloadRegistrationPdf: async (eventId, registrationId) => {
-    try {
-      const publicInstance = createPublicInstance();
-      const response = await publicInstance.get(
-        `/public/events/${eventId}/registrations/${registrationId}/download-pdf`,
-        {
-          responseType: 'blob' // Important: receive as blob for PDF download
-        }
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Error downloading PDF:', error);
       throw error;
     }
   }
