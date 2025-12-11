@@ -955,6 +955,11 @@ const EventRegistrations = () => {
           if (result.success) {
             toast.success('Visitor pass sent via WhatsApp.');
             return;
+          } else {
+            // Show error message from backend
+            const errorMessage = result.message || result.error || 'Failed to send pass via WhatsApp';
+            toast.error(errorMessage, { duration: 8000 });
+            return;
           }
         } catch (sendError) {
           // If PDF doesn't exist, we need to generate and save it first
@@ -1000,19 +1005,44 @@ const EventRegistrations = () => {
         }
 
         // Send via WhatsApp (PDF will be generated on-demand by backend)
-        const result = await eventApi.sendRegistrationPdfViaWhatsApp(eventId, registrationId);
+        let result;
+        try {
+          result = await eventApi.sendRegistrationPdfViaWhatsApp(eventId, registrationId);
+        } catch (apiError) {
+          // Handle axios errors (500, etc.)
+          const errorMessage = apiError.response?.data?.message || 
+                              apiError.response?.data?.error || 
+                              apiError.message || 
+                              'Failed to send visitor pass. Please try again.';
+          toast.error(errorMessage, { id: `send-pass-${key}`, duration: 8000 });
+          console.error('EventRegistrations - WhatsApp API error:', apiError);
+          return;
+        }
         
-        if (result.success) {
-          toast.success('Visitor pass sent via WhatsApp.', { id: `send-pass-${key}` });
+        if (result && result.success) {
+          // Check if it was already sent
+          if (result.alreadySent) {
+            toast.info('WhatsApp message was already sent for this registration.', { 
+              id: `send-pass-${key}`, 
+              duration: 5000 
+            });
+          } else {
+            toast.success('Visitor pass sent via WhatsApp.', { id: `send-pass-${key}` });
+          }
         } else {
-          throw new Error(result.message || 'Failed to send pass via WhatsApp');
+          // Show the actual error message from backend
+          const errorMessage = result?.message || result?.error || 'Failed to send pass via WhatsApp';
+          toast.error(errorMessage, { id: `send-pass-${key}`, duration: 8000 });
+          console.error('EventRegistrations - WhatsApp send failed:', result);
         }
       } catch (error) {
         console.error('EventRegistrations - handleSendPass error', error);
-        toast.error(
-          error.response?.data?.message || error.message || 'Failed to send visitor pass. Please try again.',
-          { id: `send-pass-${key}`, duration: 5000 }
-        );
+        // Show detailed error message
+        const errorMessage = error.response?.data?.message || 
+                            error.response?.data?.error || 
+                            error.message || 
+                            'Failed to send visitor pass. Please try again.';
+        toast.error(errorMessage, { id: `send-pass-${key}`, duration: 8000 });
       } finally {
         setSendingPassIds((prev) => {
           const next = { ...prev };

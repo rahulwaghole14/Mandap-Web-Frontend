@@ -9,7 +9,7 @@
     "start": "node server.js",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "dev:local": "VITE_API_URL=http://localhost:5000 npm run dev",
+    "dev:local": "VITE_API_URL=http://localhost:5000/api npm run dev",
     "dev:prod": "VITE_API_URL=https://mandapam-backend-97mi.onrender.com npm run dev",
     "dev:backend": "cd ../mandap-backend && npm run dev",
     "dev:full": "concurrently \"npm run dev:backend\" \"npm run dev:local\""

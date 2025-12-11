@@ -524,20 +524,24 @@ export const eventApi = {
 
   // Send WhatsApp message with PDF (PDF generated on-demand, sent, then deleted)
   // Uses authenticated instance when called from manager panel to track who sent it
-  sendRegistrationPdfViaWhatsApp: async (eventId, registrationId) => {
+  // forceResend: if true, allows resending even if already sent (for manual sends from registrations table)
+  sendRegistrationPdfViaWhatsApp: async (eventId, registrationId, forceResend = true) => {
     try {
+      // Add force parameter for manual sends (from registrations table/view details)
+      const queryParams = forceResend ? '?force=true' : '';
+      
       // Try authenticated first (for manager panel), fallback to public
       try {
         const authInstance = createAuthInstance();
         const response = await authInstance.post(
-          `/public/events/${eventId}/registrations/${registrationId}/send-whatsapp`
+          `/public/events/${eventId}/registrations/${registrationId}/send-whatsapp${queryParams}`
         );
         return response.data;
       } catch (authError) {
         // If auth fails, try public (for public registration page)
         const publicInstance = createPublicInstance();
         const response = await publicInstance.post(
-          `/public/events/${eventId}/registrations/${registrationId}/send-whatsapp`
+          `/public/events/${eventId}/registrations/${registrationId}/send-whatsapp${queryParams}`
         );
         return response.data;
       }
