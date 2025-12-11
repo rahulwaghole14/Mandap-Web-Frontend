@@ -157,7 +157,7 @@ const AddMemberForm = ({ onSuccess, onCancel }) => {
   const businessTypes = [
     { value: 'catering', label: 'Catering' },
     { value: 'sound', label: 'Sound' },
-    { value: 'mandapam', label: 'Mandapam' },
+    { value: 'mandap', label: 'Mandap' },
     { value: 'light', label: 'Light' },
     { value: 'decorator', label: 'Decorator' },
     { value: 'photography', label: 'Photography' },

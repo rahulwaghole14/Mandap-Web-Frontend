@@ -133,7 +133,7 @@ const CSVImportModal = ({ isOpen, onClose, onImportSuccess }) => {
   const validateCSVStructure = (data) => {
     const errors = [];
     const requiredFields = ['name', 'businessName', 'businessType', 'phone', 'email', 'city', 'state', 'district', 'associationName'];
-    const validBusinessTypes = ['catering', 'sound', 'mandap', 'madap', 'light', 'decorator', 'photography', 'videography', 'transport', 'other'];
+    const validBusinessTypes = ['catering', 'sound', 'mandap', 'light', 'decorator', 'photography', 'videography', 'transport', 'other'];
     
     // Check if all required fields are present
     const headers = Object.keys(data[0] || {});

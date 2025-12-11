@@ -103,7 +103,7 @@ const Members = () => {
   const filtered = members;
 
   const cities = [...new Set(members.map(m => m.city).filter(Boolean))];
-  const businessTypes = ['sound', 'decorator', 'catering', 'mandapam', 'madap', 'light', 'photography', 'videography', 'transport', 'other'];
+  const businessTypes = ['sound', 'decorator', 'catering', 'mandap', 'light', 'photography', 'videography', 'transport', 'other'];
 
   // Pagination handlers
   const handlePageChange = (newPage) => {
@@ -145,8 +145,7 @@ const Members = () => {
       case 'sound': return 'bg-blue-100 text-blue-800';
       case 'decorator': return 'bg-purple-100 text-purple-800';
       case 'catering': return 'bg-green-100 text-green-800';
-      case 'mandapam': return 'bg-red-100 text-red-800';
-      case 'madap': return 'bg-red-100 text-red-800';
+      case 'mandap': return 'bg-red-100 text-red-800';
       case 'light': return 'bg-indigo-100 text-indigo-800';
       case 'photography': return 'bg-pink-100 text-pink-800';
       case 'videography': return 'bg-purple-100 text-purple-800';

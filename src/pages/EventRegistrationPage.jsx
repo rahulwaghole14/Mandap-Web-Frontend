@@ -30,7 +30,6 @@ const BUSINESS_TYPES = [
   { value: 'catering', label: 'Catering' },
   { value: 'sound', label: 'Sound' },
   { value: 'mandap', label: 'Mandap' },
-  { value: 'madap', label: 'Event Planner' },
   { value: 'light', label: 'Light' },
   { value: 'decorator', label: 'Decorator' },
   { value: 'photography', label: 'Photography' },

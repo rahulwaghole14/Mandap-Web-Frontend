@@ -324,7 +324,7 @@ const AssociationMembers = () => {
       'decorator': 'bg-purple-100 text-purple-800',
       'catering': 'bg-orange-100 text-orange-800',
       'generator': 'bg-green-100 text-green-800',
-      'madap': 'bg-red-100 text-red-800',
+      'mandap': 'bg-red-100 text-red-800',
       'light': 'bg-yellow-100 text-yellow-800'
     };
     return colors[type] || 'bg-gray-100 text-gray-800';

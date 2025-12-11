@@ -122,7 +122,7 @@ Content-Type: application/json
 ### 2. Business Rule Validation
 - **Phone Number**: Must be 10 digits, unique across all members
 - **Email**: Valid email format, unique across all members
-- **Business Type**: Must be one of: `['catering', 'sound', 'mandap', 'madap', 'light', 'decorator', 'photography', 'videography', 'transport', 'other']`
+- **Business Type**: Must be one of: `['catering', 'sound', 'mandap', 'light', 'decorator', 'photography', 'videography', 'transport', 'other']`
 - **Birth Date**: Valid date format (YYYY-MM-DD), person must be at least 18 years old
 - **GST Number**: Valid GST format if provided
 - **Experience**: Must be between 0-100 years if provided
@@ -207,7 +207,7 @@ router.post('/import-csv', [
   body('members').isArray({ min: 1, max: 1000 }).withMessage('Members must be an array with 1-1000 items'),
   body('members.*.name').notEmpty().withMessage('Name is required'),
   body('members.*.businessName').notEmpty().withMessage('Business name is required'),
-  body('members.*.businessType').isIn(['catering', 'sound', 'mandap', 'madap', 'light', 'decorator', 'photography', 'videography', 'transport', 'other']).withMessage('Invalid business type'),
+  body('members.*.businessType').isIn(['catering', 'sound', 'mandap', 'light', 'decorator', 'photography', 'videography', 'transport', 'other']).withMessage('Invalid business type'),
   body('members.*.phone').isMobilePhone('en-IN').withMessage('Invalid phone number'),
   body('members.*.email').isEmail().withMessage('Invalid email'),
   body('members.*.city').notEmpty().withMessage('City is required'),

@@ -300,7 +300,7 @@ const EditMemberForm = ({ member, onSuccess, onCancel }) => {
             <option value="decorator">Decorator</option>
             <option value="catering">Catering</option>
             <option value="generator">Generator</option>
-            <option value="madap">Madap</option>
+            <option value="mandap">Mandap</option>
             <option value="light">Light</option>
           </select>
           {errors.businessType && (
