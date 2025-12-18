@@ -171,7 +171,7 @@ const EventDetails = () => {
     setExportMenuOpen(false);
   };
 
-  const handleExportPDF = async (devanagari = false) => {
+  const handleExportPDF = async () => {
     if (registrations.length === 0) {
       toast.error('No registrations to export');
       return;
@@ -179,28 +179,34 @@ const EventDetails = () => {
 
     const doc = new jsPDF();
 
-    if (devanagari) {
-      // Load the font
-      try {
-        const font = await fetch('/fonts/Devanagari-Regular.ttf').then(res => res.arrayBuffer());
-        
-        let binary = '';
-        const bytes = new Uint8Array(font);
-        const len = bytes.byteLength;
-        for (let i = 0; i < len; i++) {
-          binary += String.fromCharCode(bytes[i]);
-        }
-        const fontBase64 = btoa(binary);
-
-        doc.addFileToVFS('Devanagari-Regular.ttf', fontBase64);
-        doc.addFont('Devanagari-Regular.ttf', 'Devanagari-Regular', 'normal');
-        doc.setFont('Devanagari-Regular');
-      } catch (error) {
-        console.error('Error loading font:', error);
-        toast.error('Failed to load font for PDF generation.');
-        return;
+    // Load the font (always devanagari now)
+    try {
+      const font = await fetch('/fonts/Devanagari-Regular.ttf').then(res => res.arrayBuffer());
+      
+      let binary = '';
+      const bytes = new Uint8Array(font);
+      const len = bytes.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
       }
+      const fontBase64 = btoa(binary);
+
+      doc.addFileToVFS('Devanagari-Regular.ttf', fontBase64);
+      doc.addFont('Devanagari-Regular.ttf', 'Devanagari-Regular', 'normal');
+      doc.setFont('Devanagari-Regular');
+    } catch (error) {
+      console.error('Error loading font:', error);
+      toast.error('Failed to load font for PDF generation.');
+      return;
     }
+
+    // Add Event Title
+    const pdfTitle = `${event?.name || event?.title}${event?.city ? ` ${event.city}` : ''} Registrations`;
+    doc.setFontSize(18);
+    doc.text(pdfTitle, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+
+    // Add a bit of space after the title
+    let finalY = 30; // Starting Y position for the table
 
     const tableColumns = ['Name', 'Phone', 'Amount Paid', 'Registered At', 'Attended'];
     const tableRows = registrations.map(r => [
@@ -214,16 +220,15 @@ const EventDetails = () => {
     autoTable(doc, {
       head: [tableColumns],
       body: tableRows,
-      didDrawPage: (data) => {
-        doc.text('Event Registrations', data.settings.margin.left, 15);
-      },
-      styles: devanagari ? {
+      startY: finalY, // Start table after the title
+      styles: {
         font: 'Devanagari-Regular',
         fontStyle: 'normal'
-      } : {}
+      }
     });
 
-    doc.save(`event-registrations${devanagari ? '-devanagari' : ''}.pdf`);
+    const fileName = `${pdfTitle.replace(/ /g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    doc.save(fileName);
     setExportMenuOpen(false);
   };
 
@@ -386,16 +391,10 @@ const EventDetails = () => {
                         Export as Excel
                       </button>
                       <button
-                        onClick={handleExportPDF}
+                        onClick={() => handleExportPDF()}
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
                         Export as PDF
-                      </button>
-                      <button
-                        onClick={() => handleExportPDF(true)}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Export as PDF (Marathi)
                       </button>
                     </div>
                   )}
