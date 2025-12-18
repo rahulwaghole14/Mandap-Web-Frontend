@@ -4,8 +4,11 @@ import Layout from '../components/Layout';
 import { eventApi } from '../services/eventApi';
 import { uploadApi } from '../services/uploadApi';
 import ExhibitorModal from '../components/events/ExhibitorModal';
-import { Calendar, MapPin, IndianRupee, Pencil, Plus, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, MapPin, IndianRupee, Pencil, Plus, Loader2, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const TabButton = ({ active, onClick, children }) => (
   <button
@@ -27,6 +30,7 @@ const EventDetails = () => {
   const [exhibitors, setExhibitors] = useState([]);
   const [loadingExh, setLoadingExh] = useState(false);
   const [showExhibitorModal, setShowExhibitorModal] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   
   // Pagination state for registrations
   const [currentPage, setCurrentPage] = useState(1);
@@ -114,6 +118,113 @@ const EventDetails = () => {
       console.error(err);
       toast.error(err.response?.data?.message || 'Failed to check-in');
     }
+  };
+
+  const handleExportCSV = () => {
+    if (registrations.length === 0) {
+      toast.error('No registrations to export');
+      return;
+    }
+
+    const headers = ['Name', 'Phone', 'Amount Paid', 'Registered At', 'Attended'];
+    const rows = registrations.map(r => [
+      `"${r.name || r.memberName}"`,
+      `"${r.phone}"`,
+      `"${parseFloat(r.amountPaid) || 0}"`,
+      `"${r.registeredAt ? new Date(r.registeredAt).toLocaleString() : '-'}"`,
+      `"${r.attendedAt ? 'Yes' : 'No'}"`
+    ].join(','));
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.href) {
+      URL.revokeObjectURL(link.href);
+    }
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', 'event-registrations.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setExportMenuOpen(false);
+  };
+
+  const handleExportExcel = () => {
+    if (registrations.length === 0) {
+      toast.error('No registrations to export');
+      return;
+    }
+
+    const worksheetData = registrations.map(r => ({
+      Name: r.name || r.memberName,
+      Phone: r.phone,
+      'Amount Paid': parseFloat(r.amountPaid) || 0,
+      'Registered At': r.registeredAt ? new Date(r.registeredAt).toLocaleString() : '-',
+      Attended: r.attendedAt ? 'Yes' : 'No',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(worksheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Registrations');
+    XLSX.writeFile(wb, 'event-registrations.xlsx');
+    setExportMenuOpen(false);
+  };
+
+  const handleExportPDF = async (devanagari = false) => {
+    if (registrations.length === 0) {
+      toast.error('No registrations to export');
+      return;
+    }
+
+    const doc = new jsPDF();
+
+    if (devanagari) {
+      // Load the font
+      try {
+        const font = await fetch('/fonts/Devanagari-Regular.ttf').then(res => res.arrayBuffer());
+        
+        let binary = '';
+        const bytes = new Uint8Array(font);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const fontBase64 = btoa(binary);
+
+        doc.addFileToVFS('Devanagari-Regular.ttf', fontBase64);
+        doc.addFont('Devanagari-Regular.ttf', 'Devanagari-Regular', 'normal');
+        doc.setFont('Devanagari-Regular');
+      } catch (error) {
+        console.error('Error loading font:', error);
+        toast.error('Failed to load font for PDF generation.');
+        return;
+      }
+    }
+
+    const tableColumns = ['Name', 'Phone', 'Amount Paid', 'Registered At', 'Attended'];
+    const tableRows = registrations.map(r => [
+      r.name || r.memberName,
+      r.phone,
+      parseFloat(r.amountPaid) || 0,
+      r.registeredAt ? new Date(r.registeredAt).toLocaleString() : '-',
+      r.attendedAt ? 'Yes' : 'No'
+    ]);
+
+    autoTable(doc, {
+      head: [tableColumns],
+      body: tableRows,
+      didDrawPage: (data) => {
+        doc.text('Event Registrations', data.settings.margin.left, 15);
+      },
+      styles: devanagari ? {
+        font: 'Devanagari-Regular',
+        fontStyle: 'normal'
+      } : {}
+    });
+
+    doc.save(`event-registrations${devanagari ? '-devanagari' : ''}.pdf`);
+    setExportMenuOpen(false);
   };
 
   const imgUrl = useMemo(() => {
@@ -253,6 +364,42 @@ const EventDetails = () => {
                   <p className="text-lg font-bold text-green-600">₹ {totalFees.toFixed(2)}</p>
                 </div>
                 <button onClick={loadRegistrations} className="text-sm text-primary-600 hover:underline">Refresh</button>
+                <div className="relative">
+                  <button
+                    onClick={() => setExportMenuOpen(!exportMenuOpen)}
+                    className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 flex items-center gap-2"
+                  >
+                    <Download className="h-4 w-4" /> Export
+                  </button>
+                  {exportMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
+                      <button
+                        onClick={handleExportCSV}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Export as CSV
+                      </button>
+                      <button
+                        onClick={handleExportExcel}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Export as Excel
+                      </button>
+                      <button
+                        onClick={handleExportPDF}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Export as PDF
+                      </button>
+                      <button
+                        onClick={() => handleExportPDF(true)}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Export as PDF (Marathi)
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             <div className="p-6 overflow-x-auto">
