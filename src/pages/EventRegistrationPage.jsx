@@ -304,6 +304,165 @@ const EventRegistrationPage = () => {
     }
   };
 
+  const parseDateList = (value) => {
+    if (!value) return [];
+
+    const values = Array.isArray(value)
+      ? value
+      : typeof value === 'string'
+        ? value.split(',')
+        : [value];
+
+    return values
+      .map((item) => {
+        if (item == null) return null;
+        const v = typeof item === 'string' ? item.trim() : item;
+        if (!v) return null;
+        const d = v instanceof Date ? v : new Date(v);
+        return Number.isNaN(d.getTime()) ? null : d;
+      })
+      .filter(Boolean);
+  };
+
+  const normalizeDateOnly = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  const getLocalDateKey = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const expandDateRange = (dates) => {
+    if (dates.length < 2) return dates;
+    
+    const sorted = [...dates].sort((a, b) => a.getTime() - b.getTime());
+    const expanded = [];
+    
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const current = sorted[i];
+      const next = sorted[i + 1];
+      
+      // Add current date
+      expanded.push(current);
+      
+      // Add all dates between current and next
+      const daysDiff = Math.round((next - current) / (1000 * 60 * 60 * 24));
+      if (daysDiff > 1) {
+        for (let d = 1; d < daysDiff; d++) {
+          const middleDate = new Date(current);
+          middleDate.setDate(current.getDate() + d);
+          expanded.push(middleDate);
+        }
+      }
+    }
+    
+    // Add the last date
+    expanded.push(sorted[sorted.length - 1]);
+    
+    return expanded;
+  };
+
+  const formatEventDates = (startValue, endValue) => {
+    const datesFromStart = parseDateList(startValue);
+    const datesFromEnd = parseDateList(endValue);
+    let dates = [...datesFromStart, ...datesFromEnd];
+
+    if (dates.length === 0) return '-';
+
+    dates = dates
+      .map(normalizeDateOnly)
+      .sort((a, b) => a.getTime() - b.getTime());
+
+    // Expand date ranges to include all dates between start and end
+    dates = expandDateRange(dates);
+
+    const uniqueDates = [];
+    const seen = new Set();
+    for (const d of dates) {
+      const key = getLocalDateKey(d);
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueDates.push(d);
+      }
+    }
+
+    if (uniqueDates.length === 0) return '-';
+
+    if (uniqueDates.length === 1) {
+      return uniqueDates[0].toLocaleDateString('en-IN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+
+    const first = uniqueDates[0];
+    const last = uniqueDates[uniqueDates.length - 1];
+    const sameMonthYear = first.getMonth() === last.getMonth() && first.getFullYear() === last.getFullYear();
+
+    if (sameMonthYear) {
+      const dayList = uniqueDates.map((d) => d.getDate()).join(', ');
+      const monthYear = first.toLocaleDateString('en-IN', {
+        month: 'short',
+        year: 'numeric'
+      });
+      return `${dayList} ${monthYear}`;
+    }
+
+    return uniqueDates
+      .map((d) =>
+        d.toLocaleDateString('en-IN', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        })
+      )
+      .join(', ');
+  };
+
+  const formatTimeOnly = (value) => {
+    if (!value) return null;
+
+    if (Array.isArray(value)) {
+      return formatTimeOnly(value[0]);
+    }
+
+    if (typeof value === 'string' && value.includes(',')) {
+      const first = value.split(',')[0];
+      return formatTimeOnly(first);
+    }
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        return null;
+      }
+
+      const timeOnlyMatch = trimmed.match(/^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/);
+      if (timeOnlyMatch) {
+        const [hh, mm] = trimmed.split(':');
+        const date = new Date();
+        date.setHours(Number(hh), Number(mm), 0, 0);
+        return date.toLocaleTimeString('en-IN', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        });
+      }
+    }
+
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
   const onSubmitRegistration = async (formData) => {
     try {
       setRegistering(true);
@@ -1140,17 +1299,31 @@ const EventRegistrationPage = () => {
               <div className="flex items-start">
                 <Calendar className="h-5 w-5 mr-3 text-primary-600 mt-1" />
                 <div>
-                  <div className="font-medium text-gray-900">Date & Time</div>
+                  <div className="font-medium text-gray-900">Date</div>
                   <div className="text-gray-600">
-                    {formatDateTime(event.startDateTime || event.startDate)}
+                    {formatEventDates(event.startDateTime || event.startDate, event.endDateTime || event.endDate)}
                   </div>
-                  {event.endDateTime || event.endDate ? (
-                    <div className="text-gray-600 mt-1">
-                      to {formatDateTime(event.endDateTime || event.endDate)}
-                    </div>
-                  ) : null}
                 </div>
               </div>
+
+              {(() => {
+                const startTimeLabel = formatTimeOnly(event.startTime || event.startDateTime || event.startDate);
+                const endTimeLabel = formatTimeOnly(event.endTime || event.endDateTime || event.endDate);
+
+                if (!startTimeLabel && !endTimeLabel) return null;
+
+                return (
+                  <div className="flex items-start">
+                    <Clock className="h-5 w-5 mr-3 text-primary-600 mt-1" />
+                    <div>
+                      <div className="font-medium text-gray-900">Time</div>
+                      <div className="text-gray-600">
+                        {`${startTimeLabel || '-'} to ${endTimeLabel || '-'}`}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {event.address && (
                 <div className="flex items-start">

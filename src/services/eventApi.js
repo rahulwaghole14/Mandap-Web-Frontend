@@ -564,6 +564,35 @@ export const eventApi = {
       console.error('Error creating manual registration:', error);
       throw error;
     }
+  },
+
+  // Update registration image
+  updateRegistrationImage: async (eventId, registrationId, imageUrl) => {
+    try {
+      const authInstance = createAuthInstance();
+      const response = await authInstance.put(
+        `/events/${eventId}/registrations/${registrationId}/image`,
+        { imageUrl }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error updating registration image:', error);
+      throw error;
+    }
+  },
+
+  // Cancel registration
+  cancelRegistration: async (eventId, registrationId) => {
+    try {
+      const authInstance = createAuthInstance();
+      const response = await authInstance.delete(
+        `/events/${eventId}/registrations/${registrationId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error cancelling registration:', error);
+      throw error;
+    }
   }
 };
 

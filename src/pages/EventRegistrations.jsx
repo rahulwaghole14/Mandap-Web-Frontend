@@ -5,6 +5,7 @@ import ManualRegistrationModal from '../components/ManualRegistrationModal';
 import { eventApi } from '../services/eventApi';
 import { memberApi } from '../services/memberApi';
 import { uploadApi } from '../services/uploadApi';
+import { API_BASE_URL } from '../constants';
 import toast from 'react-hot-toast';
 import {
   Loader2,
@@ -21,7 +22,8 @@ import {
   CheckCircle2,
   XCircle,
   Camera,
-  Send
+  Send,
+  X
 } from 'lucide-react';
 
 const statusColors = {
@@ -113,13 +115,14 @@ const getVerificationKey = (registration) => {
   return null;
 };
 
-const resolvePhotoUrl = (registration, member) => {
+const resolvePhotoUrl = (registration, member, forceRefresh = false) => {
   if (!registration) return DEFAULT_PROFILE_PLACEHOLDER;
   const candidate =
     registration.photo ||
     registration.photoUrl ||
     registration.profileImageURL ||
     registration.rawPhotoData ||
+    member?.profileImage ||
     member?.profileImageURL ||
     member?.profilePhotoUrl ||
     member?.businessImageURL ||
@@ -131,7 +134,19 @@ const resolvePhotoUrl = (registration, member) => {
     return candidate;
   }
 
-  return uploadApi.getImageUrl({ image: candidate, imageURL: candidate }) || DEFAULT_PROFILE_PLACEHOLDER;
+  // If the URL already has a cache-busting parameter, return it as-is
+  if (typeof candidate === 'string' && candidate.includes('?t=')) {
+    return candidate;
+  }
+
+  const imageUrl = uploadApi.getImageUrl({ image: candidate, imageURL: candidate }) || DEFAULT_PROFILE_PLACEHOLDER;
+  
+  // Add cache-busting if forceRefresh is true (for recently updated images)
+  if (forceRefresh && imageUrl !== DEFAULT_PROFILE_PLACEHOLDER) {
+    return `${imageUrl}?t=${Date.now()}`;
+  }
+  
+  return imageUrl;
 };
 
 const resolveQrUrl = (detail) => {
@@ -366,6 +381,12 @@ const EventRegistrations = () => {
   const [detail, setDetail] = useState(null);
   const [memberCache, setMemberCache] = useState({});
   const [showManualRegistration, setShowManualRegistration] = useState(false);
+  const fileInputRef = useRef(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [recentlyUpdatedImages, setRecentlyUpdatedImages] = useState(new Set());
+  const [cancellingRegistrationId, setCancellingRegistrationId] = useState(null);
+  const [cancelConfirmationModal, setCancelConfirmationModal] = useState(false);
+  const [registrationToCancel, setRegistrationToCancel] = useState(null);
   const memberCacheRef = useRef({});
 
   useEffect(() => {
@@ -373,6 +394,17 @@ const EventRegistrations = () => {
   }, [memberCache]);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+
+  // Cleanup recently updated images after 5 minutes to prevent unnecessary cache-busting
+  useEffect(() => {
+    if (recentlyUpdatedImages.size === 0) return;
+
+    const timer = setTimeout(() => {
+      setRecentlyUpdatedImages(new Set());
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearTimeout(timer);
+  }, [recentlyUpdatedImages]);
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -399,6 +431,96 @@ const EventRegistrations = () => {
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
+
+  const handleImageChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file || !detail || !selectedEventId) return;
+
+    setUploadingImage(true);
+    toast.loading('Uploading image...', { id: 'image-upload' });
+
+    try {
+      const uploadResult = await uploadApi.uploadProfileImage(file);
+      const newImageUrl = uploadResult.url || uploadResult.image;
+
+      if (!newImageUrl) {
+        throw new Error('Failed to get image URL after upload.');
+      }
+
+      const registrationId = detail.registrationId || detail.id;
+      if (!registrationId) {
+        throw new Error('Registration ID not found for update.');
+      }
+
+      await eventApi.updateRegistrationImage(selectedEventId, registrationId, newImageUrl);
+
+      // Track this registration as recently updated for cache-busting
+      setRecentlyUpdatedImages(prev => new Set([...prev, registrationId]));
+
+      // Add cache-busting timestamp for immediate display
+      const cacheBustingUrl = `${newImageUrl}?t=${Date.now()}`;
+
+      setDetail((prevDetail) => {
+        if (!prevDetail) return prevDetail;
+        const updatedMember = prevDetail.member ? { ...prevDetail.member, profileImage: cacheBustingUrl } : null;
+        return {
+          ...prevDetail,
+          photo: cacheBustingUrl,
+          photoUrl: cacheBustingUrl,
+          profileImageURL: cacheBustingUrl,
+          member: updatedMember,
+        };
+      });
+
+      // Also update the main registrations list to reflect the change
+      setRegistrations((prevRegistrations) =>
+        prevRegistrations.map((reg) =>
+          (reg.registrationId || reg.id) === registrationId
+            ? {
+                ...reg,
+                photo: cacheBustingUrl,
+                photoUrl: cacheBustingUrl,
+                profileImageURL: cacheBustingUrl,
+                member: reg.member ? { ...reg.member, profileImage: cacheBustingUrl } : null,
+              }
+            : reg
+        )
+      );
+
+      // Update member cache if it exists - use cache-busting URL for immediate display
+      if (memberCache[registrationId]) {
+        setMemberCache((prevCache) => ({
+          ...prevCache,
+          [registrationId]: {
+            ...prevCache[registrationId],
+            profileImage: cacheBustingUrl,
+          }
+        }));
+      }
+
+      // Also update member cache by memberId if it exists
+      if (detail.memberId && memberCache[detail.memberId]) {
+        setMemberCache((prevCache) => ({
+          ...prevCache,
+          [detail.memberId]: {
+            ...prevCache[detail.memberId],
+            profileImage: cacheBustingUrl,
+          }
+        }));
+      }
+
+      toast.success('Image updated successfully!', { id: 'image-upload' });
+    } catch (error) {
+      console.error('Error uploading or updating image:', error);
+      toast.error(error.message || 'Failed to update image.', { id: 'image-upload' });
+    } finally {
+      setUploadingImage(false);
+      // Clear the file input value to allow re-uploading the same file
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   const extractMemberFromRegistration = (registration) =>
     registration?.member ||
@@ -837,16 +959,94 @@ const EventRegistrations = () => {
     return key ? Boolean(verificationMap[key]) : false;
   };
 
+  const handleCancelRegistration = async (registration) => {
+    const registrationId = registration.registrationId || registration.id;
+    const memberName = registration.name || registration.memberName || 'this member';
+    
+    // Show custom confirmation modal
+    setRegistrationToCancel({
+      registration,
+      registrationId,
+      memberName
+    });
+    setCancelConfirmationModal(true);
+  };
+
+  const confirmCancelRegistration = async () => {
+    if (!registrationToCancel) return;
+    
+    const { registration, registrationId } = registrationToCancel;
+    
+    try {
+      setCancellingRegistrationId(registrationId);
+      setCancelConfirmationModal(false);
+      
+      await eventApi.cancelRegistration(selectedEventId, registrationId);
+      
+      // Update the registration in the local state
+      setRegistrations(prev => 
+        prev.map(reg => 
+          (reg.registrationId || reg.id) === registrationId 
+            ? { ...reg, status: 'cancelled' }
+            : reg
+        )
+      );
+      
+      // Update detail if it's the same registration
+      if (detail && (detail.registrationId || detail.id) === registrationId) {
+        setDetail(prev => prev ? { ...prev, status: 'cancelled' } : null);
+      }
+      
+      toast.success('Registration cancelled successfully');
+    } catch (error) {
+      console.error('Error cancelling registration:', error);
+      toast.error(error.message || 'Failed to cancel registration');
+    } finally {
+      setCancellingRegistrationId(null);
+      setRegistrationToCancel(null);
+    }
+  };
+
+  const closeCancelConfirmationModal = () => {
+    setCancelConfirmationModal(false);
+    setRegistrationToCancel(null);
+  };
+
   const openDetail = async (registration) => {
     setDetailModalOpen(true);
     setDetail(null);
     setDetailLoading(true);
 
     try {
-      let member = memberCache[registration.memberId] || registration.member;
-      if (!member && registration.memberId) {
+      // Fetch fresh registration data from server to get updated image
+      const registrationId = registration.registrationId || registration.id;
+      let freshRegistration = registration;
+      
+      if (registrationId && selectedEventId) {
         try {
-          const response = await memberApi.getMember(registration.memberId);
+          const response = await fetch(`${API_BASE_URL}/events/${selectedEventId}/registrations/${registrationId}`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.registration) {
+              freshRegistration = data.registration;
+            }
+          }
+        } catch (error) {
+          console.error('EventRegistrations - fresh data fetch error', error);
+          // Fall back to original registration data
+        }
+      }
+
+      let member = memberCache[freshRegistration.memberId] || freshRegistration.member;
+      if (!member && freshRegistration.memberId) {
+        try {
+          const response = await memberApi.getMember(freshRegistration.memberId);
           member = response.member || response;
           if (member && member.id) {
             setMemberCache((prev) => ({
@@ -860,16 +1060,16 @@ const EventRegistrations = () => {
       }
 
       let qrData = {
-        qrDataURL: registration.qrDataURL,
-        qrCode: registration.qrCode,
-        qrCodeUrl: registration.qrCodeUrl,
-        qrCodeDataURL: registration.qrCodeDataURL,
-        qrToken: registration.qrToken,
-        registrationId: registration.registrationId
+        qrDataURL: freshRegistration.qrDataURL,
+        qrCode: freshRegistration.qrCode,
+        qrCodeUrl: freshRegistration.qrCodeUrl,
+        qrCodeDataURL: freshRegistration.qrCodeDataURL,
+        qrToken: freshRegistration.qrToken,
+        registrationId: freshRegistration.registrationId
       };
 
       const hasQr = Boolean(resolveQrUrl(qrData));
-      const phone = (registration.phone || member?.phone || '').replace(/\D/g, '');
+      const phone = (freshRegistration.phone || member?.phone || '').replace(/\D/g, '');
 
       if (!hasQr && phone && phone.length === 10 && selectedEventId) {
         try {
@@ -881,12 +1081,12 @@ const EventRegistrations = () => {
             qrCodeUrl: status.qrCodeUrl || backendRegistration.qrCodeUrl || null,
             qrCodeDataURL: status.qrCodeDataURL || backendRegistration.qrCodeDataURL || null,
             qrToken: status.qrToken || backendRegistration.qrToken || null,
-            registrationId: backendRegistration.id || registration.registrationId || null,
-            registeredAt: backendRegistration.registeredAt || registration.registeredAt,
-            attendedAt: backendRegistration.attendedAt || registration.attendedAt,
-            status: backendRegistration.status || registration.status,
-            paymentStatus: backendRegistration.paymentStatus || registration.paymentStatus,
-            amountPaid: backendRegistration.amountPaid || registration.amountPaid
+            registrationId: backendRegistration.id || freshRegistration.registrationId || null,
+            registeredAt: backendRegistration.registeredAt || freshRegistration.registeredAt,
+            attendedAt: backendRegistration.attendedAt || freshRegistration.attendedAt,
+            status: backendRegistration.status || freshRegistration.status,
+            paymentStatus: backendRegistration.paymentStatus || freshRegistration.paymentStatus,
+            amountPaid: backendRegistration.amountPaid || freshRegistration.amountPaid
           };
         } catch (error) {
           console.error('EventRegistrations - status lookup error', error);
@@ -895,16 +1095,16 @@ const EventRegistrations = () => {
       }
 
       const detailPayload = {
-        ...registration,
+        ...freshRegistration,
         ...qrData,
-        member: member || registration.member || null
+        member: member || freshRegistration.member || null
       };
 
       setDetail(detailPayload);
 
       setRegistrations((prev) =>
         prev.map((item) =>
-          item.memberId === registration.memberId
+          item.memberId === freshRegistration.memberId
             ? { ...item, ...qrData }
             : item
         )
@@ -1325,7 +1525,9 @@ const EventRegistrations = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {paginatedRegistrations.map((registration) => {
                     const cachedMember = memberCache[registration.memberId];
-                    const photoUrl = resolvePhotoUrl(registration, cachedMember);
+                    const registrationId = registration.registrationId || registration.id;
+                    const isRecentlyUpdated = recentlyUpdatedImages.has(registrationId);
+                    const photoUrl = resolvePhotoUrl(registration, cachedMember, isRecentlyUpdated);
                     const verified = isVerified(registration);
 
                     return (
@@ -1430,7 +1632,7 @@ const EventRegistrations = () => {
                           >
                             View Details
                           </button>
-                        </td>
+                                                  </td>
                       </tr>
                     );
                   })}
@@ -1530,54 +1732,68 @@ const EventRegistrations = () => {
                   >
                     <Download className="h-4 w-4 mr-2" /> Download Pass
                   </button>
-                  {(() => {
-                    const passKey = getPassKey(detail);
-                    const sending = passKey ? Boolean(sendingPassIds[passKey]) : false;
-                    return (
-                      <button
-                        onClick={() => handleSendPass(detail)}
-                        disabled={sending}
-                        className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg border border-primary-300 text-primary-700 bg-white transition-colors ${
-                          sending ? 'opacity-60 cursor-not-allowed' : 'hover:bg-primary-50'
-                        }`}
-                      >
-                        {sending ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending...
-                          </>
-                        ) : (
-                          <>
-                            <Send className="h-4 w-4 mr-2" /> Send Pass
-                          </>
-                        )}
-                      </button>
-                    );
-                  })()}
+                  {detail.status !== 'cancelled' && (
+                    <button
+                      onClick={() => handleCancelRegistration(detail)}
+                      disabled={cancellingRegistrationId === (detail.registrationId || detail.id)}
+                      className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {cancellingRegistrationId === (detail.registrationId || detail.id) ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Cancelling...
+                        </>
+                      ) : (
+                        <>
+                          <X className="h-4 w-4 mr-2" /> Cancel
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-1">
                   <div className="bg-gray-100 rounded-lg p-4 flex flex-col items-center justify-center">
-                    <div className="h-44 w-44 rounded-lg bg-white border border-gray-200 flex items-center justify-center overflow-hidden">
+                    <div 
+                      className="h-44 w-44 rounded-lg bg-white border border-gray-200 flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary-400 transition-colors relative group"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
                       {(() => {
-                        const photoUrl = resolvePhotoUrl(detail, cachedMember);
+                        const registrationId = detail.registrationId || detail.id;
+                        const isRecentlyUpdated = recentlyUpdatedImages.has(registrationId);
+                        const photoUrl = resolvePhotoUrl(detail, cachedMember, isRecentlyUpdated);
                         if (photoUrl) {
                           return (
-                            <img
-                              src={photoUrl}
-                              alt="Member profile"
-                              className="h-full w-full object-cover"
-                              onError={(event) => {
-                                event.currentTarget.style.display = 'none';
-                              }}
-                            />
+                            <>
+                              <img
+                                src={photoUrl}
+                                alt="Member profile"
+                                className="h-full w-full object-cover"
+                                onError={(event) => {
+                                  event.currentTarget.style.display = 'none';
+                                }}
+                              />
+                              <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Camera className="h-8 w-8 text-white" />
+                              </div>
+                            </>
                           );
                         }
                         return <Camera className="h-10 w-10 text-gray-400" />;
                       })()}
                     </div>
-                    <p className="text-sm text-gray-600 mt-3">Uploaded photo</p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      disabled={uploadingImage}
+                    />
+                    <p className="text-sm text-gray-600 mt-3">
+                      {uploadingImage ? 'Updating...' : 'Click to update photo'}
+                    </p>
                   </div>
                 </div>
                 <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1701,6 +1917,45 @@ const EventRegistrations = () => {
             }}
           />
         )}
+
+        {/* Cancel Confirmation Modal */}
+        <Modal title="Cancel Registration" isOpen={cancelConfirmationModal} onClose={closeCancelConfirmationModal} size="max-w-md">
+          <div className="space-y-4">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mx-auto">
+              <AlertCircle className="h-6 w-6 text-red-600" />
+            </div>
+            
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Cancel Registration</h3>
+              <p className="text-gray-600">
+                Are you sure you want to cancel the registration for <span className="font-medium text-gray-900">{registrationToCancel?.memberName}</span>?
+              </p>
+              <p className="text-sm text-red-600 mt-2">This action cannot be undone.</p>
+            </div>
+
+            <div className="flex space-x-3 pt-4">
+              <button
+                onClick={closeCancelConfirmationModal}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                No, Keep Registration
+              </button>
+              <button
+                onClick={confirmCancelRegistration}
+                disabled={cancellingRegistrationId !== null}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {cancellingRegistrationId !== null ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin inline" /> Cancelling...
+                  </>
+                ) : (
+                  'Yes, Cancel Registration'
+                )}
+              </button>
+            </div>
+          </div>
+        </Modal>
       </div>
     </Layout>
   );
