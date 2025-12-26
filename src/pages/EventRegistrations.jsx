@@ -1579,7 +1579,10 @@ const EventRegistrations = () => {
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBadgeClass(statusColors, registration.status)}`}>
                             {registration.status ? registration.status.charAt(0).toUpperCase() + registration.status.slice(1) : 'Unknown'}
                           </span>
-                          {registration.attendedAt && (
+                          {registration.status === 'cancelled' && registration.cancelledAt && (
+                            <div className="text-xs text-gray-500 mt-1">Cancelled at {formatDateTime(registration.cancelledAt)}</div>
+                          )}
+                          {registration.status !== 'cancelled' && registration.attendedAt && (
                             <div className="text-xs text-gray-500 mt-1">Checked-in: {formatDateTime(registration.attendedAt)}</div>
                           )}
                         </td>
