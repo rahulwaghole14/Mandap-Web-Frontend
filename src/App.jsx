@@ -18,6 +18,7 @@ import AssociationMembers from './pages/AssociationMembers';
 import Settings from './pages/Settings';
 import EventRegistrationPage from './pages/EventRegistrationPage';
 import EventRegistrations from './pages/EventRegistrations';
+import AccountDeletion from './pages/AccountDeletion';
 import { useAuth } from './contexts/AuthContext';
 
 const DashboardRoute = () => {
@@ -38,6 +39,7 @@ function App() {
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/delete-account" element={<AccountDeletion />} />
           
           {/* Test route to verify routing works */}
           <Route path="/test-route" element={<div style={{padding: '20px'}}><h1>Test Route Works!</h1></div>} />
