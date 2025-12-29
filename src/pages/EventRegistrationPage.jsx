@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MandapamLogo from '../components/MandapamLogo';
+import KolhapurEventImage from '../assets/kolhapur-event.png';
 
 const BUSINESS_TYPES = [
   { value: 'catering', label: 'Catering' },
@@ -1203,8 +1204,14 @@ const EventRegistrationPage = () => {
 
   const imgUrl = useMemo(() => {
     if (!event) return null;
+    
+    // Use Kolhapur event image specifically for Kolhapur event
+    if (normalizedSlug === 'kolhapur-2026' || actualSlug === 'kolhapur-2026') {
+      return KolhapurEventImage;
+    }
+    
     return uploadApi.getImageUrl({ image: event.image, imageURL: event.imageURL });
-  }, [event]);
+  }, [event, normalizedSlug, actualSlug]);
 
   // Auto-send is now handled automatically by confirm-payment endpoint
   // No need for separate useEffect - backend triggers WhatsApp sending after payment confirmation
