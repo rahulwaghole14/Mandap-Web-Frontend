@@ -104,6 +104,17 @@ const getPassKey = (registration) => {
   return null;
 };
 
+const extractCancellationReason = (notes) => {
+  if (!notes) return null;
+
+  const reasonMatch = notes.match(/Reason:\s*(.+)/i);
+  if (reasonMatch) {
+    return reasonMatch[1].trim();
+  }
+
+  return null;
+};
+
 const getBadgeClass = (map, key) => {
   if (!key) return 'bg-gray-100 text-gray-600';
   const normalized = key.toLowerCase();
@@ -1402,6 +1413,8 @@ const EventRegistrations = () => {
     return Array.from(set);
   }, [registrations]);
 
+  const detailMember = detail ? (memberCache[detail.memberId] || detail.member) : null;
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -1741,13 +1754,10 @@ const EventRegistrations = () => {
               <p className="text-gray-600">Loading registration information...</p>
             </div>
           ) : detail ? (
-            (() => {
-              const cachedMember = memberCache[detail.memberId] || detail.member;
-              return (
             <div className="space-y-6">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                  <h3 className="text-2xl font-semibold text-gray-900">{detail.name || cachedMember?.name || 'Attendee details'}</h3>
+                  <h3 className="text-2xl font-semibold text-gray-900">{detail.name || detailMember?.name || 'Attendee details'}</h3>
                   <p className="text-gray-500">Member ID: {detail.memberId || '—'}</p>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -1798,14 +1808,14 @@ const EventRegistrations = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-1">
                   <div className="bg-gray-100 rounded-lg p-4 flex flex-col items-center justify-center">
-                    <div 
+                    <div
                       className="h-44 w-44 rounded-lg bg-white border border-gray-200 flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary-400 transition-colors relative group"
                       onClick={() => fileInputRef.current?.click()}
                     >
                       {(() => {
                         const registrationId = detail.registrationId || detail.id;
                         const isRecentlyUpdated = recentlyUpdatedImages.has(registrationId);
-                        const photoUrl = resolvePhotoUrl(detail, cachedMember, isRecentlyUpdated);
+                        const photoUrl = resolvePhotoUrl(detail, detailMember, isRecentlyUpdated);
                         if (photoUrl) {
                           return (
                             <>
@@ -1844,32 +1854,32 @@ const EventRegistrations = () => {
                     <p className="text-xs text-gray-500 mb-1">Phone</p>
                     <div className="flex items-center text-sm text-gray-900">
                       <Phone className="h-4 w-4 mr-2 text-gray-400" />
-                      {detail.phone || cachedMember?.phone || 'Not available'}
+                      {detail.phone || detailMember?.phone || 'Not available'}
                     </div>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Email</p>
                     <div className="flex items-center text-sm text-gray-900">
                       <Mail className="h-4 w-4 mr-2 text-gray-400" />
-                      {detail.email || cachedMember?.email || 'Not available'}
+                      {detail.email || detailMember?.email || 'Not available'}
                     </div>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Business Name</p>
                     <div className="flex items-center text-sm text-gray-900">
                       <Building2 className="h-4 w-4 mr-2 text-gray-400" />
-                      {cachedMember?.businessName || 'Not provided'}
+                      {detailMember?.businessName || 'Not provided'}
                     </div>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Business Type</p>
-                    <div className="text-sm text-gray-900 capitalize">{cachedMember?.businessType || 'Not provided'}</div>
+                    <div className="text-sm text-gray-900 capitalize">{detailMember?.businessType || 'Not provided'}</div>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">City</p>
                     <div className="flex items-center text-sm text-gray-900">
                       <MapPin className="h-4 w-4 mr-2 text-gray-400" />
-                      {cachedMember?.city || 'Not specified'}
+                      {detailMember?.city || 'Not specified'}
                     </div>
                   </div>
                   <div>
@@ -1878,45 +1888,82 @@ const EventRegistrations = () => {
                     <span className={`inline-flex items-center px-2.5 py-0.5 mt-1 rounded-full text-xs font-medium ${getBadgeClass(paymentColors, detail.paymentStatus)}`}>
                       {detail.paymentStatus ? detail.paymentStatus.charAt(0).toUpperCase() + detail.paymentStatus.slice(1) : 'Unknown'}
                     </span>
-                    {(() => {
-                      const refundInfo = extractRefundInfo(detail.notes);
-                      const showRefundStatus = detail.paymentStatus === 'refunded' || !!refundInfo;
-                      const refundAmount = refundInfo?.amount ?? (detail.amountPaid ? Number(detail.amountPaid) : null);
-                      const refundTimestamp = refundInfo?.rawDate || detail.cancelledAt || detail.updatedAt;
-                      const formattedRefundDate = refundTimestamp ? formatDateTime(refundTimestamp) : null;
-                      
-                      return showRefundStatus ? (
-                        <div className="mt-3 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-sm text-purple-900">
-                          <div className="flex items-center font-semibold">
-                            <DollarSign className="h-4 w-4 mr-1 text-purple-600" />
-                            Refund processed
-                          </div>
-                          {refundAmount !== null && (
-                            <div className="mt-1 text-xs">
-                              Amount:&nbsp;
-                              <span className="font-semibold">₹ {refundAmount}</span>
-                            </div>
-                          )}
-                          {formattedRefundDate && (
-                            <div className="mt-1 flex items-center text-xs text-purple-700">
-                              <Clock className="h-3 w-3 mr-1" />
-                              {formattedRefundDate}
-                            </div>
-                          )}
-                        </div>
-                      ) : null;
-                    })()}
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Registration Status</p>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBadgeClass(statusColors, detail.status)}`}>
-                      {detail.status ? detail.status.charAt(0).toUpperCase() + detail.status.slice(1) : 'Unknown'}
-                    </span>
+                  <div className="flex flex-col">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Registration Status</p>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBadgeClass(statusColors, detail.status)}`}>
+                        {detail.status ? detail.status.charAt(0).toUpperCase() + detail.status.slice(1) : 'Unknown'}
+                      </span>
+                      {detail.status === 'cancelled' && detail.cancelledAt && (
+                        <div className="mt-1 text-[11px] text-gray-500">
+                          {formatDateTime(detail.cancelledAt)}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Registered At</p>
                     <div className="text-sm text-gray-900">{formatDateTime(detail.registeredAt)}</div>
                   </div>
+                </div>
+
+                {/* Refund status section - spanning both columns */}
+                <div className="md:col-span-2 mt-4">
+                  {(() => {
+                    if (!detail.amountPaid || detail.amountPaid <= 0) return null;
+
+                    const refundInfo = extractRefundInfo(detail.notes);
+                    const showRefundStatus = detail.paymentStatus === 'refunded' || !!refundInfo;
+                    const refundAmount = refundInfo?.amount ?? (detail.amountPaid ? Number(detail.amountPaid) : null);
+                    const refundTimestamp = refundInfo?.rawDate || detail.cancelledAt || detail.updatedAt;
+                    const formattedRefundDate = refundTimestamp ? formatDateTime(refundTimestamp) : null;
+                    const isCancelled = detail.status === 'cancelled';
+                    const wasPaid = ['paid', 'pending', 'processing'].includes(detail.paymentStatus?.toLowerCase?.() || '');
+
+                    if (showRefundStatus) {
+                      return (
+                        <div className="rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-sm text-purple-900">
+                          <div className="flex items-center font-semibold">
+                            <DollarSign className="h-4 w-4 mr-1 text-purple-600" />
+                            <span>{refundInfo?.status === 'processing' ? 'Refund processing' : refundInfo?.status === 'failed' ? 'Refund failed' : 'Refund completed'}</span>
+                          </div>
+                          <div className="mt-1 text-[13px] leading-5">
+                            {refundAmount !== null && (
+                              <div>Amount: ₹{Number(refundAmount).toFixed(2)}</div>
+                            )}
+                            {formattedRefundDate && (
+                              <div>{refundInfo?.status === 'processing' ? 'Initiated on' : refundInfo?.status === 'failed' ? 'Attempted on' : 'Processed on'}: {formattedRefundDate}</div>
+                            )}
+                            {refundInfo?.reason && (
+                              <div>Reason: {refundInfo.reason}</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (isCancelled && wasPaid) {
+                      return (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                          <div className="flex items-center font-semibold">
+                            <AlertCircle className="h-4 w-4 mr-1 text-amber-600" />
+                            <span>No refund processed</span>
+                          </div>
+                          <div className="mt-1 text-[13px] leading-5">
+                            <div>This registration was cancelled without issuing a refund.</div>
+                            <div>Reason: No Razorpay payment ID found or no payment record exists in the database.</div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return null;
+                  })()}
+                </div>
+
+                {/* Continue with other fields */}
+                <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {detail.attendedAt && (
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Checked-in At</p>
@@ -1945,6 +1992,7 @@ const EventRegistrations = () => {
                     }
 
                     const fallback = detail.qrToken || detail.registrationId || detail.memberId;
+
                     if (!fallback) {
                       return <p className="text-sm text-gray-500">QR code unavailable for this registration.</p>;
                     }
@@ -1967,13 +2015,11 @@ const EventRegistrations = () => {
                 </div>
               )}
             </div>
-              );
-            })()
           ) : (
             <div className="p-6 text-center text-gray-500">Select a registration to view details.</div>
           )}
         </Modal>
-        
+
         {/* Manual Registration Modal */}
         {selectedEventId && (
           <ManualRegistrationModal
