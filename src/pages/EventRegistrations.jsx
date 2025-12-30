@@ -23,7 +23,9 @@ import {
   XCircle,
   Camera,
   Send,
-  X
+  X,
+  DollarSign,
+  Clock
 } from 'lucide-react';
 
 const statusColors = {
@@ -36,7 +38,8 @@ const statusColors = {
 const paymentColors = {
   paid: 'bg-green-100 text-green-700',
   pending: 'bg-yellow-100 text-yellow-700',
-  failed: 'bg-red-100 text-red-700'
+  failed: 'bg-red-100 text-red-700',
+  refunded: 'bg-purple-100 text-purple-700'
 };
 
 const DEVICE_UID = 'a8bec8c820614d8ba084a55429716a78';
@@ -147,6 +150,38 @@ const resolvePhotoUrl = (registration, member, forceRefresh = false) => {
   }
   
   return imageUrl;
+};
+
+const extractRefundInfo = (notes) => {
+  if (!notes) return null;
+  
+  // Look for different refund patterns in notes
+  const refundPatterns = [
+    // Format: Refunded: ₹100 on 2023-12-30 14:30
+    /Refunded:\s*₹\s*(\d+(?:\.\d{2})?)\s*on\s*(.+?)(?:\.|$)/i,
+    // Format: Refund initiated: ₹100 on 2023-12-30 14:30
+    /Refund\s+(?:initiated|processing):\s*₹\s*(\d+(?:\.\d{2})?)\s*on\s*(.+?)(?:\.|$)/i,
+    // Format: Refund failed: ₹100 on 2023-12-30 14:30 - Reason: Some reason
+    /Refund\s+failed:\s*₹\s*(\d+(?:\.\d{2})?)\s*on\s*(.+?)(?:\s*-\s*Reason:\s*(.+?))?(?:\.|$)/i
+  ];
+
+  for (const pattern of refundPatterns) {
+    const match = notes.match(pattern);
+    if (match) {
+      const status = pattern.source.includes('failed') ? 'failed' : 
+                    pattern.source.includes('initiated') ? 'processing' : 'completed';
+      
+      return {
+        amount: parseFloat(match[1]),
+        rawDate: match[2].trim(),
+        status: status,
+        reason: match[3]?.trim() || null,
+        fullText: match[0]
+      };
+    }
+  }
+  
+  return null;
 };
 
 const resolveQrUrl = (detail) => {
@@ -381,9 +416,9 @@ const EventRegistrations = () => {
   const [detail, setDetail] = useState(null);
   const [memberCache, setMemberCache] = useState({});
   const [showManualRegistration, setShowManualRegistration] = useState(false);
+  const [recentlyUpdatedImages, setRecentlyUpdatedImages] = useState(new Set());
   const fileInputRef = useRef(null);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [recentlyUpdatedImages, setRecentlyUpdatedImages] = useState(new Set());
   const [cancellingRegistrationId, setCancellingRegistrationId] = useState(null);
   const [cancelConfirmationModal, setCancelConfirmationModal] = useState(false);
   const [registrationToCancel, setRegistrationToCancel] = useState(null);
@@ -938,7 +973,8 @@ const EventRegistrations = () => {
     const paid = registrations.filter((item) => item.paymentStatus?.toLowerCase() === 'paid').length;
     const attended = registrations.filter((item) => item.status?.toLowerCase() === 'attended').length;
     const pending = registrations.filter((item) => item.status?.toLowerCase() === 'registered' && item.paymentStatus?.toLowerCase() !== 'paid').length;
-    return { total, paid, attended, pending };
+    const cancelled = registrations.filter((item) => item.status?.toLowerCase() === 'cancelled').length;
+    return { total, paid, attended, pending, cancelled };
   }, [registrations]);
 
   const toggleVerification = (registration) => {
@@ -1383,7 +1419,7 @@ const EventRegistrations = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="bg-white rounded-lg shadow p-4">
             <p className="text-sm text-gray-500">Total Registrations</p>
             <p className="text-2xl font-semibold text-gray-900 mt-2">{metrics.total}</p>
@@ -1399,6 +1435,10 @@ const EventRegistrations = () => {
           <div className="bg-white rounded-lg shadow p-4">
             <p className="text-sm text-gray-500">Pending Verification</p>
             <p className="text-2xl font-semibold text-yellow-600 mt-2">{metrics.pending}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4">
+            <p className="text-sm text-gray-500">Cancelled</p>
+            <p className="text-2xl font-semibold text-red-600 mt-2">{metrics.cancelled}</p>
           </div>
         </div>
 
@@ -1838,6 +1878,34 @@ const EventRegistrations = () => {
                     <span className={`inline-flex items-center px-2.5 py-0.5 mt-1 rounded-full text-xs font-medium ${getBadgeClass(paymentColors, detail.paymentStatus)}`}>
                       {detail.paymentStatus ? detail.paymentStatus.charAt(0).toUpperCase() + detail.paymentStatus.slice(1) : 'Unknown'}
                     </span>
+                    {(() => {
+                      const refundInfo = extractRefundInfo(detail.notes);
+                      const showRefundStatus = detail.paymentStatus === 'refunded' || !!refundInfo;
+                      const refundAmount = refundInfo?.amount ?? (detail.amountPaid ? Number(detail.amountPaid) : null);
+                      const refundTimestamp = refundInfo?.rawDate || detail.cancelledAt || detail.updatedAt;
+                      const formattedRefundDate = refundTimestamp ? formatDateTime(refundTimestamp) : null;
+                      
+                      return showRefundStatus ? (
+                        <div className="mt-3 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-sm text-purple-900">
+                          <div className="flex items-center font-semibold">
+                            <DollarSign className="h-4 w-4 mr-1 text-purple-600" />
+                            Refund processed
+                          </div>
+                          {refundAmount !== null && (
+                            <div className="mt-1 text-xs">
+                              Amount:&nbsp;
+                              <span className="font-semibold">₹ {refundAmount}</span>
+                            </div>
+                          )}
+                          {formattedRefundDate && (
+                            <div className="mt-1 flex items-center text-xs text-purple-700">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {formattedRefundDate}
+                            </div>
+                          )}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Registration Status</p>
