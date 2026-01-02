@@ -581,12 +581,25 @@ export const eventApi = {
     }
   },
 
-  // Cancel registration
-  cancelRegistration: async (eventId, registrationId) => {
+  // Cancel registration (using smart cancel for automatic refund processing)
+  cancelRegistration: async (eventId, registrationId, options = {}) => {
     try {
       const authInstance = createAuthInstance();
+      
+      // Use smart cancel endpoint for automatic refund processing
+      const requestBody = {
+        reason: options.reason || 'Admin cancellation',
+        refundSpeed: options.refundSpeed || 'normal'
+      };
+      
+      // Add refund amount if specified (for partial refunds)
+      if (options.refundAmount) {
+        requestBody.refundAmount = options.refundAmount;
+      }
+      
       const response = await authInstance.delete(
-        `/events/${eventId}/registrations/${registrationId}`
+        `/events/${eventId}/registrations/${registrationId}/cancel-smart`,
+        { data: requestBody }
       );
       return response.data;
     } catch (error) {

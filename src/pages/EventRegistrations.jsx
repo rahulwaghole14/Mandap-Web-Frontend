@@ -1006,7 +1006,7 @@ const EventRegistrations = () => {
     return key ? Boolean(verificationMap[key]) : false;
   };
 
-  const handleCancelRegistration = async (registration) => {
+  /* const handleCancelRegistration = async (registration) => {
     const registrationId = registration.registrationId || registration.id;
     const memberName = registration.name || registration.memberName || 'this member';
     
@@ -1017,9 +1017,9 @@ const EventRegistrations = () => {
       memberName
     });
     setCancelConfirmationModal(true);
-  };
+  }; */
 
-  const confirmCancelRegistration = async () => {
+  /* const confirmCancelRegistration = async () => {
     if (!registrationToCancel) return;
     
     const { registration, registrationId } = registrationToCancel;
@@ -1028,23 +1028,41 @@ const EventRegistrations = () => {
       setCancellingRegistrationId(registrationId);
       setCancelConfirmationModal(false);
       
-      await eventApi.cancelRegistration(selectedEventId, registrationId);
+      // Prepare refund options for smart cancel
+      const cancelOptions = {
+        reason: `Admin cancellation for ${registration.name || registration.memberName || 'member'}`,
+        refundSpeed: 'normal'
+      };
       
-      // Update the registration in the local state
+      // Add refund amount for paid registrations (full refund by default)
+      if (registration.paymentStatus === 'paid' && registration.amountPaid) {
+        cancelOptions.refundAmount = registration.amountPaid;
+      }
+      
+      const response = await eventApi.cancelRegistration(selectedEventId, registrationId, cancelOptions);
+      
+      // Update the registration in the local state based on API response
       setRegistrations(prev => 
         prev.map(reg => 
           (reg.registrationId || reg.id) === registrationId 
-            ? { ...reg, status: 'cancelled' }
+            ? { ...reg, status: 'cancelled', ...response.registration }
             : reg
         )
       );
       
       // Update detail if it's the same registration
       if (detail && (detail.registrationId || detail.id) === registrationId) {
-        setDetail(prev => prev ? { ...prev, status: 'cancelled' } : null);
+        setDetail(prev => prev ? { ...prev, status: 'cancelled', ...response.registration } : null);
       }
       
-      toast.success('Registration cancelled successfully');
+      // Show appropriate success message based on refund status
+      if (response.refund) {
+        toast.success('Registration cancelled and refund processed successfully');
+      } else if (registration.paymentStatus === 'paid') {
+        toast.success('Registration cancelled successfully (no refund processed)');
+      } else {
+        toast.success('Registration cancelled successfully');
+      }
     } catch (error) {
       console.error('Error cancelling registration:', error);
       toast.error(error.message || 'Failed to cancel registration');
@@ -1052,12 +1070,12 @@ const EventRegistrations = () => {
       setCancellingRegistrationId(null);
       setRegistrationToCancel(null);
     }
-  };
+  }; */
 
-  const closeCancelConfirmationModal = () => {
+  /* const closeCancelConfirmationModal = () => {
     setCancelConfirmationModal(false);
     setRegistrationToCancel(null);
-  };
+  }; */
 
   const openDetail = async (registration) => {
     setDetailModalOpen(true);
@@ -1785,7 +1803,7 @@ const EventRegistrations = () => {
                   >
                     <Download className="h-4 w-4 mr-2" /> Download Pass
                   </button>
-                  {detail.status !== 'cancelled' && (
+                  {/* {detail.status !== 'cancelled' && (
                     <button
                       onClick={() => handleCancelRegistration(detail)}
                       disabled={cancellingRegistrationId === (detail.registrationId || detail.id)}
@@ -1797,11 +1815,12 @@ const EventRegistrations = () => {
                         </>
                       ) : (
                         <>
-                          <X className="h-4 w-4 mr-2" /> Cancel
+                          <XCircle className="h-4 w-4 mr-2" />
+                          Cancel Registration
                         </>
                       )}
                     </button>
-                  )}
+                  )} */}
                 </div>
               </div>
 
@@ -2036,7 +2055,7 @@ const EventRegistrations = () => {
         )}
 
         {/* Cancel Confirmation Modal */}
-        <Modal title="Cancel Registration" isOpen={cancelConfirmationModal} onClose={closeCancelConfirmationModal} size="max-w-md">
+        {/* <Modal title="Cancel Registration" isOpen={cancelConfirmationModal} onClose={closeCancelConfirmationModal} size="max-w-md">
           <div className="space-y-4">
             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mx-auto">
               <AlertCircle className="h-6 w-6 text-red-600" />
@@ -2072,7 +2091,7 @@ const EventRegistrations = () => {
               </button>
             </div>
           </div>
-        </Modal>
+        </Modal> */}
       </div>
     </Layout>
   );
