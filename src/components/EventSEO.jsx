@@ -119,6 +119,11 @@ const EventSEO = ({ event, isPostponed = false, originalDate = null }) => {
 
   return (
     <Helmet>
+      {/* Favicon and app icons */}
+      <link rel="icon" type="image/png" href="/mandapam-logo.png" />
+      <link rel="apple-touch-icon" href="/mandapam-logo.png" />
+      <link rel="shortcut icon" href="/mandapam-logo.png" />
+      
       {/* Meta tags */}
       <meta name="description" content={generateMetaDescription()} />
       <meta name="keywords" content={`${event?.name || event?.title}, event, ${event?.city}, mandapam association, ${event?.type}`} />
