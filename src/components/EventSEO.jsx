@@ -73,7 +73,13 @@ const EventSEO = ({ event, isPostponed = false, originalDate = null }) => {
       "organizer": {
         "@type": "Organization",
         "name": "Mandapam Association",
-        "url": window.location.origin
+        "url": window.location.origin,
+        "logo": {
+          "@type": "ImageObject",
+          "url": `${window.location.origin}/mandapam-logo.png`,
+          "width": 128,
+          "height": 128
+        }
       }
     };
 
@@ -122,6 +128,11 @@ const EventSEO = ({ event, isPostponed = false, originalDate = null }) => {
       <meta property="og:description" content={generateMetaDescription()} />
       <meta property="og:type" content="event" />
       <meta property="og:url" content={window.location.href} />
+      <meta property="og:site_name" content="Mandapam Association" />
+      <meta property="og:image" content={`${window.location.origin}/mandapam-logo.png`} />
+      <meta property="og:image:width" content="128" />
+      <meta property="og:image:height" content="128" />
+      <meta property="og:image:type" content="image/png" />
       
       {event?.image && (
         <meta property="og:image" content={typeof event.image === 'string' ? event.image : `${window.location.origin}/uploads/${event.image}`} />
@@ -131,6 +142,8 @@ const EventSEO = ({ event, isPostponed = false, originalDate = null }) => {
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={`${event?.name || event?.title} | ${event?.city}`} />
       <meta name="twitter:description" content={generateMetaDescription()} />
+      <meta name="twitter:image" content={`${window.location.origin}/mandapam-logo.png`} />
+      <meta name="twitter:site" content="@MandapamAssociation" />
       
       {/* Canonical URL */}
       <link rel="canonical" href={window.location.href} />
