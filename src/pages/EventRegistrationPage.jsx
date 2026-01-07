@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import eventApi, { publicAssociationApi } from '../services/eventApi';
 import { uploadApi } from '../services/uploadApi';
 import { EVENT_SLUGS } from '../constants';
+import EventSEO from '../components/EventSEO';
 import { 
   Calendar, 
   MapPin, 
@@ -21,7 +22,8 @@ import {
   MapPin as MapPinIcon,
   Camera,
   X,
-  Image as ImageIcon
+  Image as ImageIcon,
+  AlertTriangle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MandapamLogo from '../components/MandapamLogo';
@@ -128,6 +130,7 @@ const EventRegistrationPage = () => {
     if (!actualSlug) {
       setError('Event not found. Please check the URL.');
       setLoading(false);
+      setResolvedEventId(null);
       return;
     }
     
@@ -138,8 +141,9 @@ const EventRegistrationPage = () => {
     }
     
     if (!finalEventId) {
-      setError(`Event not found for "${actualSlug}". Please check the event URL.`);
+      setError(`Event not found for "${actualSlug}". Please check the Event URL.`);
       setLoading(false);
+      setResolvedEventId(null);
       return;
     }
     
@@ -1202,17 +1206,6 @@ const EventRegistrationPage = () => {
     }
   }, [resolvedEventId]);
 
-  const imgUrl = useMemo(() => {
-    if (!event) return null;
-    
-    // Use Kolhapur event image specifically for Kolhapur event
-    if (normalizedSlug === 'kolhapur-2026' || actualSlug === 'kolhapur-2026') {
-      return KolhapurEventImage;
-    }
-    
-    return uploadApi.getImageUrl({ image: event.image, imageURL: event.imageURL });
-  }, [event, normalizedSlug, actualSlug]);
-
   // Auto-send is now handled automatically by confirm-payment endpoint
   // No need for separate useEffect - backend triggers WhatsApp sending after payment confirmation
   // This reduces API calls from 2 (confirm-payment + save-pdf) to 1 (confirm-payment)
@@ -1224,6 +1217,60 @@ const EventRegistrationPage = () => {
       setPassSendError(null);
     }
   }, [registration]);
+
+  // Move useMemo hooks before early returns to fix hooks order
+  const imgUrl = useMemo(() => {
+    if (!event) return null;
+    
+    // Use Kolhapur event image specifically for Kolhapur event
+    if (normalizedSlug?.includes('kolhapur') && actualSlug?.includes('kolhapur')) {
+      return KolhapurEventImage;
+    }
+    
+    return uploadApi.getImageUrl({ image: event.image, imageURL: event.imageURL });
+  }, [event, normalizedSlug, actualSlug]);
+
+  // Check if event is postponed (for Kolhapur event specifically, but can work for any event)
+  const isEventPostponed = useMemo(() => {
+    if (!event) return false;
+    
+    // For Kolhapur event - check if it's the specific event that was postponed
+    const isKolhapurEvent = event.city?.toLowerCase() === 'kolhapur' && 
+                           (event.name?.toLowerCase().includes('expo') || 
+                            event.title?.toLowerCase().includes('expo') ||
+                            event.description?.toLowerCase().includes('expo'));
+    
+    // If it's a Kolhapur expo event and was originally scheduled for January 2026
+    // but now has a date in March 2026 or later, mark as postponed
+    if (isKolhapurEvent && event.startDate) {
+      const eventDate = new Date(event.startDate);
+      const originalDate = new Date('2026-01-15'); // Original January date
+      const newDate = new Date('2026-03-15'); // New March date
+      
+      return eventDate >= newDate;
+    }
+    
+    // Generic check: if event has a status of 'Postponed'
+    return event.status === 'Postponed';
+  }, [event]);
+
+  // Original date for SEO purposes (specifically for Kolhapur event)
+  const originalEventDate = useMemo(() => {
+    if (!event) return null;
+    
+    const isKolhapurEvent = event.city?.toLowerCase() === 'kolhapur' && 
+                           (event.name?.toLowerCase().includes('expo') || 
+                            event.title?.toLowerCase().includes('expo'));
+    
+    if (isKolhapurEvent) {
+      return '2026-01-15'; // Original Kolhapur expo date
+    }
+    
+    return null;
+  }, [event]);
+
+  const registrationFee = parseFloat(event?.registrationFee ?? event?.fee) || 0;
+  const isFree = registrationFee === 0;
 
   if (loading) {
     return (
@@ -1254,11 +1301,16 @@ const EventRegistrationPage = () => {
     );
   }
 
-  const registrationFee = parseFloat(event.registrationFee ?? event.fee) || 0;
-  const isFree = registrationFee === 0;
-
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      {/* SEO Component */}
+      <EventSEO 
+        event={event} 
+        isPostponed={isEventPostponed} 
+        originalDate={originalEventDate}
+      />
+      
+      <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -1302,6 +1354,29 @@ const EventRegistrationPage = () => {
               </p>
             )}
 
+            {/* Postponement Notice - Only show for postponed events */}
+            {isEventPostponed && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 mr-3 flex-shrink-0" />
+                  <div>
+                    <h3 className="text-amber-800 font-semibold">Event Update - Postponed</h3>
+                    <p className="text-amber-700 text-sm mt-1">
+                      ⚠️ Update: This event was originally scheduled for {originalEventDate ? new Date(originalEventDate).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      }) : 'January 2026'} and has been rescheduled to {event?.startDate ? new Date(event.startDate).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      }) : 'March 2026'}. Updated schedule available.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="flex items-start">
                 <Calendar className="h-5 w-5 mr-3 text-primary-600 mt-1" />
@@ -1317,7 +1392,9 @@ const EventRegistrationPage = () => {
                 const startTimeLabel = formatTimeOnly(event.startTime || event.startDateTime || event.startDate);
                 const endTimeLabel = formatTimeOnly(event.endTime || event.endDateTime || event.endDate);
 
-                if (!startTimeLabel && !endTimeLabel) return null;
+                if (!startTimeLabel && !endTimeLabel) {
+                  return null; // This is fine - returning null from inside the conditional render
+                }
 
                 return (
                   <div className="flex items-start">
@@ -1849,6 +1926,7 @@ const EventRegistrationPage = () => {
          )}
       </div>
     </div>
+    </>
   );
 };
 

@@ -62,7 +62,7 @@ const appMode = importMetaEnv?.MODE;
 const DEFAULT_API_BASE_URL =
   appMode === 'production'
     ? 'https://mandapam-backend-97mi.onrender.com/api'
-    : 'http://localhost:3001/api';
+    : 'http://localhost:5000/api';
 
 export const API_BASE_URL =
   (importMetaEnv?.VITE_API_URL as string | undefined) || DEFAULT_API_BASE_URL;

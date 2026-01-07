@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import Layout from '../components/Layout';
 import Modal from '../components/Modal';
 import EventGallery from '../components/EventGallery';
-import { Plus, Edit, Trash2, Eye, Upload, X, CheckCircle, Calendar, MapPin, Users, Loader2, Image } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Upload, X, CheckCircle, Calendar, MapPin, Users, Loader2, Image, AlertTriangle } from 'lucide-react';
 import { eventApi } from '../services/eventApi';
 import { uploadApi } from '../services/uploadApi';
 import { galleryApi } from '../services/galleryApi';
@@ -330,6 +330,29 @@ const Events = () => {
     return event.status;
   };
 
+  // Function to check if Kolhapur event is postponed
+  const isKolhapurEventPostponed = (event) => {
+    if (!event) return false;
+    
+    // For Kolhapur event - check if it's the specific event that was postponed
+    const isKolhapurEvent = event.city?.toLowerCase() === 'kolhapur' && 
+                           (event.name?.toLowerCase().includes('expo') || 
+                            event.title?.toLowerCase().includes('expo') ||
+                            event.description?.toLowerCase().includes('expo'));
+    
+    // If it's a Kolhapur expo event and was originally scheduled for January 2026
+    // but now has a date in March 2026 or later, mark as postponed
+    if (isKolhapurEvent && event.startDate) {
+      const eventDate = new Date(event.startDate);
+      const newDate = new Date('2026-03-15'); // New March date
+      
+      return eventDate >= newDate;
+    }
+    
+    // Generic check: if event has a status of 'Postponed'
+    return event.status === 'Postponed';
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'Date not specified';
     
@@ -443,6 +466,21 @@ const Events = () => {
                   </div>
                   
                   <p className="text-gray-600 text-sm mb-4 line-clamp-3">{event.description}</p>
+                  
+                  {/* Postponement Notice for Kolhapur Events */}
+                  {isKolhapurEventPostponed(event) && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                      <div className="flex items-start">
+                        <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 mr-2 flex-shrink-0" />
+                        <div>
+                          <p className="text-amber-800 text-xs font-semibold">Event Postponed</p>
+                          <p className="text-amber-700 text-xs mt-1">
+                            Rescheduled from January to March 2026
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center text-sm text-gray-500">

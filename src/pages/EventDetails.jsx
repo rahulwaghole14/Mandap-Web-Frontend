@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
+import EventSEO from '../components/EventSEO';
 import { eventApi } from '../services/eventApi';
 import { uploadApi } from '../services/uploadApi';
 import ExhibitorModal from '../components/events/ExhibitorModal';
-import { Calendar, MapPin, IndianRupee, Pencil, Plus, Loader2, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { Calendar, MapPin, IndianRupee, Pencil, Plus, Loader2, ChevronLeft, ChevronRight, Download, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -262,6 +263,45 @@ const EventDetails = () => {
     }
   };
 
+  // Check if event is postponed (for Kolhapur event specifically, but can work for any event)
+  const isEventPostponed = useMemo(() => {
+    if (!event) return false;
+    
+    // For Kolhapur event - check if it's the specific event that was postponed
+    const isKolhapurEvent = event.city?.toLowerCase() === 'kolhapur' && 
+                           (event.name?.toLowerCase().includes('expo') || 
+                            event.title?.toLowerCase().includes('expo') ||
+                            event.description?.toLowerCase().includes('expo'));
+    
+    // If it's a Kolhapur expo event and was originally scheduled for January 2026
+    // but now has a date in March 2026 or later, mark as postponed
+    if (isKolhapurEvent && event.startDate) {
+      const eventDate = new Date(event.startDate);
+      const originalDate = new Date('2026-01-15'); // Original January date
+      const newDate = new Date('2026-03-15'); // New March date
+      
+      return eventDate >= newDate;
+    }
+    
+    // Generic check: if event has a status of 'Postponed'
+    return event.status === 'Postponed';
+  }, [event]);
+
+  // Original date for SEO purposes (specifically for Kolhapur event)
+  const originalEventDate = useMemo(() => {
+    if (!event) return null;
+    
+    const isKolhapurEvent = event.city?.toLowerCase() === 'kolhapur' && 
+                           (event.name?.toLowerCase().includes('expo') || 
+                            event.title?.toLowerCase().includes('expo'));
+    
+    if (isKolhapurEvent) {
+      return '2026-01-15'; // Original Kolhapur expo date
+    }
+    
+    return null;
+  }, [event]);
+
   // Format datetime
   const formatDateTime = (dateTimeStr) => {
     if (!dateTimeStr) return 'N/A';
@@ -281,22 +321,53 @@ const EventDetails = () => {
   };
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Event Details</h1>
-            <p className="text-gray-600">View registrations and exhibitors</p>
+    <>
+      {/* SEO Component */}
+      <EventSEO 
+        event={event} 
+        isPostponed={isEventPostponed} 
+        originalDate={originalEventDate}
+      />
+      
+      <Layout>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Event Details</h1>
+              <p className="text-gray-600">View registrations and exhibitors</p>
+            </div>
+            <div className="flex gap-2">
+              <Link to={`/events/${eventId}/edit`} className="px-3 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 flex items-center gap-2">
+                <Pencil className="h-4 w-4" /> Edit
+              </Link>
+              <Link to="/events/new" className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2">
+                <Plus className="h-4 w-4" /> Add New
+              </Link>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Link to={`/events/${eventId}/edit`} className="px-3 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 flex items-center gap-2">
-              <Pencil className="h-4 w-4" /> Edit
-            </Link>
-            <Link to="/events/new" className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2">
-              <Plus className="h-4 w-4" /> Add New
-            </Link>
-          </div>
-        </div>
+
+          {/* Postponement Notice - Only show for postponed events */}
+          {isEventPostponed && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="flex items-start">
+                <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 mr-3 flex-shrink-0" />
+                <div>
+                  <h3 className="text-amber-800 font-semibold">Event Update - Postponed</h3>
+                  <p className="text-amber-700 text-sm mt-1">
+                    ⚠️ Update: This event was originally scheduled for {originalEventDate ? new Date(originalEventDate).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    }) : 'January 2026'} and has been rescheduled to {event?.startDate ? new Date(event.startDate).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    }) : 'March 2026'}. Updated schedule available.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
         {loading ? (
           <div className="bg-white rounded-lg shadow p-8 text-center">
@@ -534,6 +605,7 @@ const EventDetails = () => {
         />
       </div>
     </Layout>
+    </>
   );
 };
 
