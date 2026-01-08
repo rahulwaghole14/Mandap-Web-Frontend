@@ -154,18 +154,18 @@ const resolvePhotoUrl = (registration, member, forceRefresh = false) => {
   }
 
   const imageUrl = uploadApi.getImageUrl({ image: candidate, imageURL: candidate }) || DEFAULT_PROFILE_PLACEHOLDER;
-  
+
   // Add cache-busting if forceRefresh is true (for recently updated images)
   if (forceRefresh && imageUrl !== DEFAULT_PROFILE_PLACEHOLDER) {
     return `${imageUrl}?t=${Date.now()}`;
   }
-  
+
   return imageUrl;
 };
 
 const extractRefundInfo = (notes) => {
   if (!notes) return null;
-  
+
   // Look for different refund patterns in notes
   const refundPatterns = [
     // Format: Refunded: ₹100 on 2023-12-30 14:30
@@ -179,9 +179,9 @@ const extractRefundInfo = (notes) => {
   for (const pattern of refundPatterns) {
     const match = notes.match(pattern);
     if (match) {
-      const status = pattern.source.includes('failed') ? 'failed' : 
-                    pattern.source.includes('initiated') ? 'processing' : 'completed';
-      
+      const status = pattern.source.includes('failed') ? 'failed' :
+        pattern.source.includes('initiated') ? 'processing' : 'completed';
+
       return {
         amount: parseFloat(match[1]),
         rawDate: match[2].trim(),
@@ -191,7 +191,7 @@ const extractRefundInfo = (notes) => {
       };
     }
   }
-  
+
   return null;
 };
 
@@ -523,12 +523,12 @@ const EventRegistrations = () => {
         prevRegistrations.map((reg) =>
           (reg.registrationId || reg.id) === registrationId
             ? {
-                ...reg,
-                photo: cacheBustingUrl,
-                photoUrl: cacheBustingUrl,
-                profileImageURL: cacheBustingUrl,
-                member: reg.member ? { ...reg.member, profileImage: cacheBustingUrl } : null,
-              }
+              ...reg,
+              photo: cacheBustingUrl,
+              photoUrl: cacheBustingUrl,
+              profileImageURL: cacheBustingUrl,
+              member: reg.member ? { ...reg.member, profileImage: cacheBustingUrl } : null,
+            }
             : reg
         )
       );
@@ -1086,7 +1086,7 @@ const EventRegistrations = () => {
       // Fetch fresh registration data from server to get updated image
       const registrationId = registration.registrationId || registration.id;
       let freshRegistration = registration;
-      
+
       if (registrationId && selectedEventId) {
         try {
           const response = await fetch(`${API_BASE_URL}/events/${selectedEventId}/registrations/${registrationId}`, {
@@ -1095,7 +1095,7 @@ const EventRegistrations = () => {
               'Content-Type': 'application/json'
             }
           });
-          
+
           if (response.ok) {
             const data = await response.json();
             if (data.success && data.registration) {
@@ -1239,7 +1239,7 @@ const EventRegistrations = () => {
         // PDF doesn't exist - generate and save it first
         if (!pdfExists) {
           toast.loading('Generating visitor pass...', { id: `send-pass-${key}` });
-          
+
           let member =
             registration.member ||
             memberCache[registration.memberId] ||
@@ -1260,7 +1260,7 @@ const EventRegistrations = () => {
 
           const enriched = await enrichRegistrationWithBackendData(registration, member);
           const pdf = await generatePassPdf(enriched || registration, member);
-          
+
           if (!pdf?.base64) {
             throw new Error('Failed to generate visitor pass PDF.');
           }
@@ -1275,21 +1275,21 @@ const EventRegistrations = () => {
           result = await eventApi.sendRegistrationPdfViaWhatsApp(eventId, registrationId);
         } catch (apiError) {
           // Handle axios errors (500, etc.)
-          const errorMessage = apiError.response?.data?.message || 
-                              apiError.response?.data?.error || 
-                              apiError.message || 
-                              'Failed to send visitor pass. Please try again.';
+          const errorMessage = apiError.response?.data?.message ||
+            apiError.response?.data?.error ||
+            apiError.message ||
+            'Failed to send visitor pass. Please try again.';
           toast.error(errorMessage, { id: `send-pass-${key}`, duration: 8000 });
           console.error('EventRegistrations - WhatsApp API error:', apiError);
           return;
         }
-        
+
         if (result && result.success) {
           // Check if it was already sent
           if (result.alreadySent) {
-            toast.info('WhatsApp message was already sent for this registration.', { 
-              id: `send-pass-${key}`, 
-              duration: 5000 
+            toast.info('WhatsApp message was already sent for this registration.', {
+              id: `send-pass-${key}`,
+              duration: 5000
             });
           } else {
             toast.success('Visitor pass sent via WhatsApp.', { id: `send-pass-${key}` });
@@ -1303,10 +1303,10 @@ const EventRegistrations = () => {
       } catch (error) {
         console.error('EventRegistrations - handleSendPass error', error);
         // Show detailed error message
-        const errorMessage = error.response?.data?.message || 
-                            error.response?.data?.error || 
-                            error.message || 
-                            'Failed to send visitor pass. Please try again.';
+        const errorMessage = error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          'Failed to send visitor pass. Please try again.';
         toast.error(errorMessage, { id: `send-pass-${key}`, duration: 8000 });
       } finally {
         setSendingPassIds((prev) => {
@@ -1337,7 +1337,7 @@ const EventRegistrations = () => {
 
         // Download PDF from database
         const pdfBlob = await eventApi.downloadRegistrationPdf(eventId, registrationId);
-        
+
         // Create download link and trigger download
         const url = window.URL.createObjectURL(pdfBlob);
         const link = document.createElement('a');
@@ -1351,11 +1351,11 @@ const EventRegistrations = () => {
         toast.success('Visitor pass downloaded successfully.', { id: `download-pass-${registrationId}` });
       } catch (error) {
         console.error('EventRegistrations - handleDownloadPass error', error);
-        
+
         // If PDF doesn't exist, generate and save it first, then download
         if (error.response?.status === 404 || error.response?.data?.message?.includes('PDF not found')) {
           toast.loading('Generating visitor pass...', { id: `download-pass-${registrationId}` });
-          
+
           try {
             let member =
               registration.member ||
@@ -1377,7 +1377,7 @@ const EventRegistrations = () => {
 
             const enriched = await enrichRegistrationWithBackendData(registration, member);
             const pdf = await generatePassPdf(enriched || registration, member);
-            
+
             if (!pdf?.base64) {
               throw new Error('Failed to generate visitor pass PDF.');
             }
@@ -1386,7 +1386,7 @@ const EventRegistrations = () => {
             // Download directly (backend generates on-demand)
             toast.loading('Downloading visitor pass...', { id: `download-pass-${registrationId}` });
             const pdfBlob = await eventApi.downloadRegistrationPdf(eventId, registrationId);
-            
+
             const url = window.URL.createObjectURL(pdfBlob);
             const link = document.createElement('a');
             link.href = url;
@@ -1650,6 +1650,13 @@ const EventRegistrations = () => {
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBadgeClass(statusColors, registration.status)}`}>
                             {registration.status ? registration.status.charAt(0).toUpperCase() + registration.status.slice(1) : 'Unknown'}
                           </span>
+                          {!registration.memberId && (
+                            <div className="mt-1">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-100 uppercase tracking-tight">
+                                Member Deleted
+                              </span>
+                            </div>
+                          )}
                           {registration.status === 'cancelled' && registration.cancelledAt && (
                             <div className="text-xs text-gray-500 mt-1">Cancelled at {formatDateTime(registration.cancelledAt)}</div>
                           )}
@@ -1661,11 +1668,10 @@ const EventRegistrations = () => {
                         <td className="px-6 py-4 text-right space-x-2">
                           <button
                             onClick={() => toggleVerification(registration)}
-                            className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
-                              verified
+                            className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${verified
                                 ? 'text-green-700 bg-green-50 border-green-200 hover:bg-green-100'
                                 : 'text-gray-700 bg-white border-gray-200 hover:bg-gray-50'
-                            }`}
+                              }`}
                           >
                             {verified ? (
                               <>
@@ -1684,9 +1690,8 @@ const EventRegistrations = () => {
                               <button
                                 onClick={() => handleSendPass(registration)}
                                 disabled={sending}
-                                className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-primary-300 text-primary-700 bg-white transition-colors ${
-                                  sending ? 'opacity-60 cursor-not-allowed' : 'hover:bg-primary-50'
-                                }`}
+                                className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-primary-300 text-primary-700 bg-white transition-colors ${sending ? 'opacity-60 cursor-not-allowed' : 'hover:bg-primary-50'
+                                  }`}
                               >
                                 {sending ? (
                                   <>
@@ -1706,7 +1711,7 @@ const EventRegistrations = () => {
                           >
                             View Details
                           </button>
-                                                  </td>
+                        </td>
                       </tr>
                     );
                   })}
@@ -1725,11 +1730,10 @@ const EventRegistrations = () => {
               <button
                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
-                className={`px-3 py-1 rounded border text-sm transition-colors ${
-                  currentPage === 1
+                className={`px-3 py-1 rounded border text-sm transition-colors ${currentPage === 1
                     ? 'text-gray-400 border-gray-200 cursor-not-allowed'
                     : 'text-gray-700 border-gray-300 hover:bg-gray-100'
-                }`}
+                  }`}
               >
                 Previous
               </button>
@@ -1740,11 +1744,10 @@ const EventRegistrations = () => {
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-1 rounded border text-sm transition-colors ${
-                        currentPage === page
+                      className={`px-3 py-1 rounded border text-sm transition-colors ${currentPage === page
                           ? 'bg-primary-600 text-white border-primary-600'
                           : 'text-gray-700 border-gray-300 hover:bg-gray-100'
-                      }`}
+                        }`}
                     >
                       {page}
                     </button>
@@ -1753,11 +1756,10 @@ const EventRegistrations = () => {
               <button
                 onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                 disabled={currentPage === totalPages}
-                className={`px-3 py-1 rounded border text-sm transition-colors ${
-                  currentPage === totalPages
+                className={`px-3 py-1 rounded border text-sm transition-colors ${currentPage === totalPages
                     ? 'text-gray-400 border-gray-200 cursor-not-allowed'
                     : 'text-gray-700 border-gray-300 hover:bg-gray-100'
-                }`}
+                  }`}
               >
                 Next
               </button>
@@ -1776,16 +1778,22 @@ const EventRegistrations = () => {
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                   <h3 className="text-2xl font-semibold text-gray-900">{detail.name || detailMember?.name || 'Attendee details'}</h3>
-                  <p className="text-gray-500">Member ID: {detail.memberId || '—'}</p>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <p className="text-gray-500 text-sm">Member ID: {detail.memberId || '—'}</p>
+                    {!detail.memberId && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-100 uppercase tracking-tight">
+                        Account Deleted
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={() => toggleVerification(detail)}
-                    className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
-                      isVerified(detail)
+                    className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${isVerified(detail)
                         ? 'text-green-700 bg-green-50 border-green-200 hover:bg-green-100'
                         : 'text-gray-700 bg-white border-gray-200 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     {isVerified(detail) ? (
                       <>

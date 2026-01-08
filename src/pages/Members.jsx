@@ -25,7 +25,7 @@ const Members = () => {
   const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
   const [exportLoading, setExportLoading] = useState(false);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -42,27 +42,27 @@ const Members = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Build params object, only including non-empty values
       const params = {
         page: pageNum,
         limit: pageSize
       };
-      
+
       if (search && search.trim()) {
         params.search = search.trim();
       }
-      
+
       if (city && city.trim()) {
         params.city = city.trim();
       }
-      
+
       if (businessType && businessType.trim()) {
         params.businessType = businessType.trim();
       }
-      
+
       const response = await memberApi.getMembers(params);
-      
+
       // Handle pagination response
       if (response.success) {
         setMembers(response.members || []);
@@ -71,7 +71,7 @@ const Members = () => {
         setCurrentPage(response.page || 1);
       } else {
         // Fallback for old API response format
-      setMembers(response.members || []);
+        setMembers(response.members || []);
         setTotalMembers(response.total || response.members?.length || 0);
         setTotalPages(Math.ceil((response.total || response.members?.length || 0) / pageSize));
       }
@@ -123,7 +123,7 @@ const Members = () => {
   const getPageNumbers = () => {
     const pages = [];
     const maxVisiblePages = 5;
-    
+
     if (totalPages <= maxVisiblePages) {
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
@@ -131,12 +131,12 @@ const Members = () => {
     } else {
       const startPage = Math.max(1, currentPage - 2);
       const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-      
+
       for (let i = startPage; i <= endPage; i++) {
         pages.push(i);
       }
     }
-    
+
     return pages;
   };
 
@@ -353,7 +353,7 @@ const Members = () => {
       if (city && city.trim()) filterDetails.push(`City: "${city.trim()}"`);
       if (businessType && businessType.trim()) filterDetails.push(`Business Type: "${businessType.trim()}"`);
 
-      const message = filterDetails.length > 0 
+      const message = filterDetails.length > 0
         ? `Exported ${exportData.length} members (${filterDetails.join(', ')})`
         : `Exported ${exportData.length} members`;
 
@@ -423,8 +423,8 @@ const Members = () => {
                 </>
               ) : (
                 <>
-              <Download className="h-4 w-4" />
-              <span>Export</span>
+                  <Download className="h-4 w-4" />
+                  <span>Export</span>
                 </>
               )}
             </button>
@@ -446,8 +446,8 @@ const Members = () => {
                 />
               </div>
             </div>
-            
-            <select 
+
+            <select
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               value={city}
               onChange={(e) => setCity(e.target.value)}
@@ -457,24 +457,24 @@ const Members = () => {
                 <option key={city} value={city}>{city}</option>
               ))}
             </select>
-            
-                         <select 
-               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-               value={businessType}
-               onChange={(e) => setBusinessType(e.target.value)}
-             >
-               <option value="">All Business Types</option>
-               {businessTypes.map(type => (
-                 <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
-               ))}
-             </select>
+
+            <select
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              value={businessType}
+              onChange={(e) => setBusinessType(e.target.value)}
+            >
+              <option value="">All Business Types</option>
+              {businessTypes.map(type => (
+                <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
+              ))}
+            </select>
           </div>
         </div>
 
         {/* Results Summary */}
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
-          <p className="text-gray-600">
+            <p className="text-gray-600">
               Showing <span className="font-semibold">{((currentPage - 1) * pageSize) + 1}</span> to <span className="font-semibold">{Math.min(currentPage * pageSize, totalMembers)}</span> of <span className="font-semibold">{totalMembers}</span> members
             </p>
             <select
@@ -519,96 +519,96 @@ const Members = () => {
         {/* Members Table */}
         {!loading && !error && (
           <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                                 <tr>
-                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
-                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business</th>
-                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Birth Date</th>
-                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business Type</th>
-                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Association</th>
-                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                 </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filtered.map(member => (
-                  <tr key={member.id || member._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                          <span className="text-sm font-medium text-gray-700">
-                            {member.name.split(' ').map(n => n[0]).join('')}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Birth Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Association</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filtered.map(member => (
+                    <tr key={member.id || member._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                            <span className="text-sm font-medium text-gray-700">
+                              {member.name.split(' ').map(n => n[0]).join('')}
+                            </span>
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">{member.name}</div>
+                            <div className="text-sm text-gray-500">ID: {member.id || member._id}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm text-gray-900">{member.businessName}</div>
+                          <div className="text-sm text-gray-500">{member.phone}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm text-gray-900">{formatDateForDisplay(member.birthDate)}</div>
+                          {member.birthDate && (
+                            <div className="text-sm text-gray-500">Age: {calculateAge(member.birthDate)} years</div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm text-gray-900">{member.city}</div>
+                          <div className="text-sm text-gray-500">{member.state}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="space-y-1">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getBusinessTypeColor(member.businessType)}`}>
+                            {member.businessType ? member.businessType.charAt(0).toUpperCase() + member.businessType.slice(1) : 'N/A'}
                           </span>
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{member.name}</div>
-                          <div className="text-sm text-gray-500">ID: {member.id || member._id}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{member.associationName}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleView(member)}
+                            className="text-blue-600 hover:text-blue-900 p-1"
+                            title="View Details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEdit(member)}
+                            className="text-yellow-600 hover:text-yellow-900 p-1"
+                            title="Edit Member"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(member)}
+                            className="text-red-600 hover:text-red-900 p-1"
+                            title="Delete Member"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
-                      </div>
-                    </td>
-                                         <td className="px-6 py-4 whitespace-nowrap">
-                       <div>
-                         <div className="text-sm text-gray-900">{member.businessName}</div>
-                         <div className="text-sm text-gray-500">{member.phone}</div>
-                       </div>
-                     </td>
-                     <td className="px-6 py-4 whitespace-nowrap">
-                       <div>
-                         <div className="text-sm text-gray-900">{formatDateForDisplay(member.birthDate)}</div>
-                         {member.birthDate && (
-                           <div className="text-sm text-gray-500">Age: {calculateAge(member.birthDate)} years</div>
-                         )}
-                       </div>
-                     </td>
-                     <td className="px-6 py-4 whitespace-nowrap">
-                       <div>
-                         <div className="text-sm text-gray-900">{member.city}</div>
-                         <div className="text-sm text-gray-500">{member.state}</div>
-                       </div>
-                     </td>
-                     <td className="px-6 py-4 whitespace-nowrap">
-                       <div className="space-y-1">
-                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getBusinessTypeColor(member.businessType)}`}>
-                           {member.businessType ? member.businessType.charAt(0).toUpperCase() + member.businessType.slice(1) : 'N/A'}
-                         </span>
-                       </div>
-                     </td>
-                     <td className="px-6 py-4 whitespace-nowrap">
-                       <div className="text-sm text-gray-900">{member.associationName}</div>
-                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleView(member)}
-                          className="text-blue-600 hover:text-blue-900 p-1"
-                          title="View Details"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEdit(member)}
-                          className="text-yellow-600 hover:text-yellow-900 p-1"
-                          title="Edit Member"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(member)}
-                          className="text-red-600 hover:text-red-900 p-1"
-                          title="Delete Member"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-            
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
             {/* Pagination Controls */}
             {totalPages > 1 && (
               <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
@@ -643,21 +643,20 @@ const Members = () => {
                       >
                         <ChevronLeft className="h-5 w-5" />
                       </button>
-                      
+
                       {getPageNumbers().map((pageNum) => (
                         <button
                           key={pageNum}
                           onClick={() => handlePageChange(pageNum)}
-                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                            pageNum === currentPage
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${pageNum === currentPage
                               ? 'z-10 bg-primary-50 border-primary-500 text-primary-600'
                               : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                          }`}
+                            }`}
                         >
                           {pageNum}
                         </button>
                       ))}
-                      
+
                       <button
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage === totalPages}
@@ -670,7 +669,7 @@ const Members = () => {
                 </div>
               </div>
             )}
-        </div>
+          </div>
         )}
       </div>
 
@@ -689,7 +688,7 @@ const Members = () => {
                 {selectedMember.businessType ? selectedMember.businessType.charAt(0).toUpperCase() + selectedMember.businessType.slice(1) : 'N/A'}
               </span>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Member ID</label>
@@ -745,6 +744,11 @@ const Members = () => {
           <p className="text-gray-600">
             Are you sure you want to delete <strong>{selectedMember?.name}</strong>? This action cannot be undone.
           </p>
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-sm text-amber-800">
+              <strong>Registration Preservation:</strong> The member's event registration records will be kept for accounting and verification, but they will be marked as "Member Deleted".
+            </p>
+          </div>
           <div className="flex justify-end space-x-3">
             <button
               onClick={() => setShowDeleteModal(false)}
@@ -764,7 +768,7 @@ const Members = () => {
 
       {/* Add Member Modal */}
       <Modal title="Add New Member" isOpen={showAddModal} onClose={() => setShowAddModal(false)} size="lg">
-        <AddMemberForm 
+        <AddMemberForm
           onSuccess={(newMember) => {
             setMembers(prev => [newMember, ...prev]);
             setShowAddModal(false);
@@ -777,7 +781,7 @@ const Members = () => {
       {/* Edit Member Modal */}
       <Modal title="Edit Member" isOpen={showEditModal} onClose={() => setShowEditModal(false)} size="lg">
         {selectedMember && (
-          <EditMemberForm 
+          <EditMemberForm
             member={selectedMember}
             onSuccess={(updatedMember) => {
               setMembers(prev => prev.map(m => m._id === updatedMember._id ? updatedMember : m));

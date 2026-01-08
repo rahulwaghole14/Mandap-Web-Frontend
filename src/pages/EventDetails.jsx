@@ -32,7 +32,7 @@ const EventDetails = () => {
   const [loadingExh, setLoadingExh] = useState(false);
   const [showExhibitorModal, setShowExhibitorModal] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
-  
+
   // Pagination state for registrations
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
@@ -183,7 +183,7 @@ const EventDetails = () => {
     // Load the font (always devanagari now)
     try {
       const font = await fetch('/fonts/Devanagari-Regular.ttf').then(res => res.arrayBuffer());
-      
+
       let binary = '';
       const bytes = new Uint8Array(font);
       const len = bytes.byteLength;
@@ -266,23 +266,23 @@ const EventDetails = () => {
   // Check if event is postponed (for Kolhapur event specifically, but can work for any event)
   const isEventPostponed = useMemo(() => {
     if (!event) return false;
-    
+
     // For Kolhapur event - check if it's the specific event that was postponed
-    const isKolhapurEvent = event.city?.toLowerCase() === 'kolhapur' && 
-                           (event.name?.toLowerCase().includes('expo') || 
-                            event.title?.toLowerCase().includes('expo') ||
-                            event.description?.toLowerCase().includes('expo'));
-    
+    const isKolhapurEvent = event.city?.toLowerCase() === 'kolhapur' &&
+      (event.name?.toLowerCase().includes('expo') ||
+        event.title?.toLowerCase().includes('expo') ||
+        event.description?.toLowerCase().includes('expo'));
+
     // If it's a Kolhapur expo event and was originally scheduled for January 2026
     // but now has a date in March 2026 or later, mark as postponed
     if (isKolhapurEvent && event.startDate) {
       const eventDate = new Date(event.startDate);
       const originalDate = new Date('2026-01-15'); // Original January date
       const newDate = new Date('2026-03-15'); // New March date
-      
+
       return eventDate >= newDate;
     }
-    
+
     // Generic check: if event has a status of 'Postponed'
     return event.status === 'Postponed';
   }, [event]);
@@ -290,15 +290,15 @@ const EventDetails = () => {
   // Original date for SEO purposes (specifically for Kolhapur event)
   const originalEventDate = useMemo(() => {
     if (!event) return null;
-    
-    const isKolhapurEvent = event.city?.toLowerCase() === 'kolhapur' && 
-                           (event.name?.toLowerCase().includes('expo') || 
-                            event.title?.toLowerCase().includes('expo'));
-    
+
+    const isKolhapurEvent = event.city?.toLowerCase() === 'kolhapur' &&
+      (event.name?.toLowerCase().includes('expo') ||
+        event.title?.toLowerCase().includes('expo'));
+
     if (isKolhapurEvent) {
       return '2026-01-15'; // Original Kolhapur expo date
     }
-    
+
     return null;
   }, [event]);
 
@@ -323,12 +323,12 @@ const EventDetails = () => {
   return (
     <>
       {/* SEO Component */}
-      <EventSEO 
-        event={event} 
-        isPostponed={isEventPostponed} 
+      <EventSEO
+        event={event}
+        isPostponed={isEventPostponed}
         originalDate={originalEventDate}
       />
-      
+
       <Layout>
         <div className="space-y-6">
           <div className="flex items-center justify-between">
@@ -354,14 +354,14 @@ const EventDetails = () => {
                 <div>
                   <h3 className="text-amber-800 font-semibold">Event Update - Postponed</h3>
                   <p className="text-amber-700 text-sm mt-1">
-                    ⚠️ Update: This event was originally scheduled for {originalEventDate ? new Date(originalEventDate).toLocaleDateString('en-US', { 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    }) : 'January 2026'} and has been rescheduled to {event?.startDate ? new Date(event.startDate).toLocaleDateString('en-US', { 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
+                    ⚠️ Update: This event was originally scheduled for {originalEventDate ? new Date(originalEventDate).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    }) : 'January 2026'} and has been rescheduled to {event?.startDate ? new Date(event.startDate).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
                     }) : 'March 2026'}. Updated schedule available.
                   </p>
                 </div>
@@ -369,242 +369,249 @@ const EventDetails = () => {
             </div>
           )}
 
-        {loading ? (
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary-600 mx-auto" />
-          </div>
-        ) : event ? (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="h-48 bg-gray-100 flex items-center justify-center">
-              {imgUrl ? (
-                <>
-                  <img 
-                    src={imgUrl} 
-                    alt={event.name || event.title} 
-                    className="h-full w-full object-cover" 
-                    crossOrigin="anonymous"
-                    onError={(e) => {
-                      console.error('Image failed to load:', e.target.src);
-                      e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'flex';
-                    }}
-                  />
-                  <div className="h-full w-full flex items-center justify-center" style={{display: 'none'}}>
-                    <Calendar className="h-12 w-12 text-primary-600" />
-                  </div>
-                </>
-              ) : (
-                <Calendar className="h-12 w-12 text-primary-600" />
-              )}
+          {loading ? (
+            <div className="bg-white rounded-lg shadow p-8 text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary-600 mx-auto" />
             </div>
-            <div className="p-6 space-y-3">
-              <h2 className="text-xl font-semibold text-gray-900">{event.name || event.title}</h2>
-              <p className="text-gray-700">{event.description}</p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                <div className="flex items-center"><Calendar className="h-4 w-4 mr-2" />
-                  <div>
-                    <div className="font-medium">From:</div>
-                    <div>{formatDateTime(event.startDateTime || event.startDate)}</div>
-                    {event.endDateTime || event.endDate ? (
-                      <>
-                        <div className="font-medium mt-1">To:</div>
-                        <div>{formatDateTime(event.endDateTime || event.endDate)}</div>
-                      </>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="flex items-center"><MapPin className="h-4 w-4 mr-2" />{event.address}{event.city ? `, ${event.city}` : ''}</div>
-                <div className="flex items-center"><IndianRupee className="h-4 w-4 mr-2" />₹ {parseFloat(event.registrationFee ?? event.fee) || 0}</div>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {/* Tabs */}
-        <div className="flex items-center gap-2">
-          <TabButton active={activeTab === 'registrations'} onClick={() => setActiveTab('registrations')}>Registrations</TabButton>
-          <TabButton active={activeTab === 'exhibitors'} onClick={() => setActiveTab('exhibitors')}>Exhibitors</TabButton>
-        </div>
-
-        {/* Registrations */}
-        {activeTab === 'registrations' && (
-          <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <h3 className="font-semibold text-gray-900">Registrations</h3>
-                <span className="text-sm text-gray-600">({registrations.length} registered)</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-xs text-gray-500">Total Fees Collected</p>
-                  <p className="text-lg font-bold text-green-600">₹ {totalFees.toFixed(2)}</p>
-                </div>
-                <button onClick={loadRegistrations} className="text-sm text-primary-600 hover:underline">Refresh</button>
-                <div className="relative">
-                  <button
-                    onClick={() => setExportMenuOpen(!exportMenuOpen)}
-                    className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 flex items-center gap-2"
-                  >
-                    <Download className="h-4 w-4" /> Export
-                  </button>
-                  {exportMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
-                      <button
-                        onClick={handleExportCSV}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Export as CSV
-                      </button>
-                      <button
-                        onClick={handleExportExcel}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Export as Excel
-                      </button>
-                      <button
-                        onClick={() => handleExportPDF()}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Export as PDF
-                      </button>
+          ) : event ? (
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="h-48 bg-gray-100 flex items-center justify-center">
+                {imgUrl ? (
+                  <>
+                    <img
+                      src={imgUrl}
+                      alt={event.name || event.title}
+                      className="h-full w-full object-cover"
+                      crossOrigin="anonymous"
+                      onError={(e) => {
+                        console.error('Image failed to load:', e.target.src);
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div className="h-full w-full flex items-center justify-center" style={{ display: 'none' }}>
+                      <Calendar className="h-12 w-12 text-primary-600" />
                     </div>
-                  )}
-                </div>
+                  </>
+                ) : (
+                  <Calendar className="h-12 w-12 text-primary-600" />
+                )}
               </div>
-            </div>
-            <div className="p-6 overflow-x-auto">
-              {loadingRegs ? (
-                <div className="text-center text-gray-600">Loading...</div>
-              ) : (
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount Paid</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Registered At</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Attendance</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {paginatedRegistrations.map((r, idx) => (
-                      <tr key={idx}>
-                        <td className="px-6 py-4 text-sm text-gray-900">{r.name || r.memberName}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{r.phone}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">₹ {parseFloat(r.amountPaid) || 0}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{r.registeredAt ? new Date(r.registeredAt).toLocaleString() : '-'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          <label className="inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              className="sr-only peer"
-                              checked={!!r.attendedAt}
-                              onChange={(e) => onToggleAttendance(r, e.target.checked)}
-                            />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-green-500 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
-                            <span className="ml-3 text-sm text-gray-700">{r.attendedAt ? 'Checked-in' : 'Not attended'}</span>
-                          </label>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-            
-            {/* Pagination Controls */}
-            {!loadingRegs && registrations.length > itemsPerPage && (
-              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                <div className="text-sm text-gray-600">
-                  Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, registrations.length)} of {registrations.length} registrations
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 2)
-                      .map((page, idx, arr) => (
-                        <React.Fragment key={page}>
-                          {idx > 0 && arr[idx - 1] !== page - 1 && <span className="px-2">...</span>}
-                          <button
-                            onClick={() => handlePageChange(page)}
-                            className={`px-3 py-1 rounded-lg ${currentPage === page ? 'bg-primary-600 text-white' : 'border border-gray-300 hover:bg-gray-50'}`}
-                          >
-                            {page}
-                          </button>
-                        </React.Fragment>
-                      ))}
+              <div className="p-6 space-y-3">
+                <h2 className="text-xl font-semibold text-gray-900">{event.name || event.title}</h2>
+                <p className="text-gray-700">{event.description}</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                  <div className="flex items-center"><Calendar className="h-4 w-4 mr-2" />
+                    <div>
+                      <div className="font-medium">From:</div>
+                      <div>{formatDateTime(event.startDateTime || event.startDate)}</div>
+                      {event.endDateTime || event.endDate ? (
+                        <>
+                          <div className="font-medium mt-1">To:</div>
+                          <div>{formatDateTime(event.endDateTime || event.endDate)}</div>
+                        </>
+                      ) : null}
+                    </div>
                   </div>
-                  <button
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center"><MapPin className="h-4 w-4 mr-2" />{event.address}{event.city ? `, ${event.city}` : ''}</div>
+                  <div className="flex items-center"><IndianRupee className="h-4 w-4 mr-2" />₹ {parseFloat(event.registrationFee ?? event.fee) || 0}</div>
                 </div>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* Exhibitors */}
-        {activeTab === 'exhibitors' && (
-          <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">Exhibitors</h3>
-              <button onClick={() => setShowExhibitorModal(true)} className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2">
-                <Plus className="h-4 w-4" /> Add Exhibitor
-              </button>
             </div>
-            <div className="p-6 overflow-x-auto">
-              {loadingExh ? (
-                <div className="text-center text-gray-600">Loading...</div>
-              ) : exhibitors.length === 0 ? (
-                <div className="text-center text-gray-600">No exhibitors yet</div>
-              ) : (
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {exhibitors.map((ex) => (
-                      <tr key={ex.id}>
-                        <td className="px-6 py-4 text-sm text-gray-900">{ex.name}</td>
-                        <td className="px-6 py-4 text-sm">
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                            {ex.businessCategory || 'Other'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{ex.phone || '-'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{ex.description || '-'}</td>
+          ) : null}
+
+          {/* Tabs */}
+          <div className="flex items-center gap-2">
+            <TabButton active={activeTab === 'registrations'} onClick={() => setActiveTab('registrations')}>Registrations</TabButton>
+            <TabButton active={activeTab === 'exhibitors'} onClick={() => setActiveTab('exhibitors')}>Exhibitors</TabButton>
+          </div>
+
+          {/* Registrations */}
+          {activeTab === 'registrations' && (
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <h3 className="font-semibold text-gray-900">Registrations</h3>
+                  <span className="text-sm text-gray-600">({registrations.length} registered)</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Total Fees Collected</p>
+                    <p className="text-lg font-bold text-green-600">₹ {totalFees.toFixed(2)}</p>
+                  </div>
+                  <button onClick={loadRegistrations} className="text-sm text-primary-600 hover:underline">Refresh</button>
+                  <div className="relative">
+                    <button
+                      onClick={() => setExportMenuOpen(!exportMenuOpen)}
+                      className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 flex items-center gap-2"
+                    >
+                      <Download className="h-4 w-4" /> Export
+                    </button>
+                    {exportMenuOpen && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
+                        <button
+                          onClick={handleExportCSV}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          Export as CSV
+                        </button>
+                        <button
+                          onClick={handleExportExcel}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          Export as Excel
+                        </button>
+                        <button
+                          onClick={() => handleExportPDF()}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          Export as PDF
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 overflow-x-auto">
+                {loadingRegs ? (
+                  <div className="text-center text-gray-600">Loading...</div>
+                ) : (
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount Paid</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Registered At</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Attendance</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paginatedRegistrations.map((r, idx) => (
+                        <tr key={idx}>
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            <div>{r.name || r.memberName}</div>
+                            {!r.memberId && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-100 uppercase tracking-tight mt-1">
+                                Member Deleted
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{r.phone}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">₹ {parseFloat(r.amountPaid) || 0}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{r.registeredAt ? new Date(r.registeredAt).toLocaleString() : '-'}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">
+                            <label className="inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={!!r.attendedAt}
+                                onChange={(e) => onToggleAttendance(r, e.target.checked)}
+                              />
+                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-green-500 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+                              <span className="ml-3 text-sm text-gray-700">{r.attendedAt ? 'Checked-in' : 'Not attended'}</span>
+                            </label>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* Pagination Controls */}
+              {!loadingRegs && registrations.length > itemsPerPage && (
+                <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, registrations.length)} of {registrations.length} registrations
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 2)
+                        .map((page, idx, arr) => (
+                          <React.Fragment key={page}>
+                            {idx > 0 && arr[idx - 1] !== page - 1 && <span className="px-2">...</span>}
+                            <button
+                              onClick={() => handlePageChange(page)}
+                              className={`px-3 py-1 rounded-lg ${currentPage === page ? 'bg-primary-600 text-white' : 'border border-gray-300 hover:bg-gray-50'}`}
+                            >
+                              {page}
+                            </button>
+                          </React.Fragment>
+                        ))}
+                    </div>
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
-          </div>
-        )}
+          )}
 
-        <ExhibitorModal
-          isOpen={showExhibitorModal}
-          onClose={() => setShowExhibitorModal(false)}
-          onSubmit={onAddExhibitor}
-        />
-      </div>
-    </Layout>
+          {/* Exhibitors */}
+          {activeTab === 'exhibitors' && (
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="font-semibold text-gray-900">Exhibitors</h3>
+                <button onClick={() => setShowExhibitorModal(true)} className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2">
+                  <Plus className="h-4 w-4" /> Add Exhibitor
+                </button>
+              </div>
+              <div className="p-6 overflow-x-auto">
+                {loadingExh ? (
+                  <div className="text-center text-gray-600">Loading...</div>
+                ) : exhibitors.length === 0 ? (
+                  <div className="text-center text-gray-600">No exhibitors yet</div>
+                ) : (
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {exhibitors.map((ex) => (
+                        <tr key={ex.id}>
+                          <td className="px-6 py-4 text-sm text-gray-900">{ex.name}</td>
+                          <td className="px-6 py-4 text-sm">
+                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                              {ex.businessCategory || 'Other'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{ex.phone || '-'}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{ex.description || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
+
+          <ExhibitorModal
+            isOpen={showExhibitorModal}
+            onClose={() => setShowExhibitorModal(false)}
+            onSubmit={onAddExhibitor}
+          />
+        </div>
+      </Layout>
     </>
   );
 };
