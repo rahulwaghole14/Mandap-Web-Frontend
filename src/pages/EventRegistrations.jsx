@@ -25,7 +25,9 @@ import {
   Send,
   X,
   DollarSign,
-  Clock
+  Clock,
+  FileText,
+  Table
 } from 'lucide-react';
 
 const statusColors = {
@@ -411,6 +413,77 @@ const downloadQr = (detail, eventId) => {
   document.body.removeChild(link);
 };
 
+// Export functions for manager panel
+const handleExportCSV = async (eventId, registrations) => {
+  if (!eventId || registrations.length === 0) {
+    toast.error('No registrations to export');
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/events/manager/${eventId}/export/registrations/csv`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to export CSV');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `event-${eventId}-registrations.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    toast.success('CSV exported successfully');
+  } catch (error) {
+    console.error('Error exporting CSV:', error);
+    toast.error('Failed to export CSV');
+  }
+};
+
+const handleExportExcel = async (eventId, registrations) => {
+  if (!eventId || registrations.length === 0) {
+    toast.error('No registrations to export');
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/events/manager/${eventId}/export/registrations/excel`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to export Excel');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `event-${eventId}-registrations.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    toast.success('Excel exported successfully');
+  } catch (error) {
+    console.error('Error exporting Excel:', error);
+    toast.error('Failed to export Excel');
+  }
+};
+
 const EventRegistrations = () => {
   const [events, setEvents] = useState([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
@@ -433,6 +506,7 @@ const EventRegistrations = () => {
   const [cancellingRegistrationId, setCancellingRegistrationId] = useState(null);
   const [cancelConfirmationModal, setCancelConfirmationModal] = useState(false);
   const [registrationToCancel, setRegistrationToCancel] = useState(null);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const memberCacheRef = useRef({});
 
   useEffect(() => {
@@ -451,6 +525,18 @@ const EventRegistrations = () => {
 
     return () => clearTimeout(timer);
   }, [recentlyUpdatedImages]);
+
+  // Close export menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (exportMenuOpen && !event.target.closest('.relative')) {
+        setExportMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [exportMenuOpen]);
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -1441,13 +1527,52 @@ const EventRegistrations = () => {
             <h1 className="text-3xl font-bold text-gray-900">Event Registrations (Manager)</h1>
             <p className="text-gray-600 mt-2">Review event registrations and verify attendee photos/QR codes.</p>
           </div>
-          <button
-            onClick={refresh}
-            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Export Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setExportMenuOpen(!exportMenuOpen)}
+                disabled={!selectedEventId || registrations.length === 0}
+                className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </button>
+              
+              {exportMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                  <button
+                    onClick={() => {
+                      handleExportCSV(selectedEventId, registrations);
+                      setExportMenuOpen(false);
+                    }}
+                    className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as CSV
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleExportExcel(selectedEventId, registrations);
+                      setExportMenuOpen(false);
+                    }}
+                    className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <Table className="h-4 w-4 mr-2" />
+                    Export as Excel
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            <button
+              onClick={refresh}
+              className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
