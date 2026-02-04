@@ -39,17 +39,19 @@ const EventForm = () => {
           
           // Parse datetime properly from backend response
           // Backend returns ISO strings like "2025-01-06T05:00:00.000Z"
-          // Convert to datetime-local format (YYYY-MM-DDTHH:MM)
+          // Convert to datetime-local format (YYYY-MM-DDTHH:MM) preserving exact time
           const formatDateTimeForInput = (dateTimeStr) => {
             if (!dateTimeStr) return '';
             try {
               const date = new Date(dateTimeStr);
-              // Convert to local time and format as YYYY-MM-DDTHH:MM
-              const year = date.getFullYear();
-              const month = String(date.getMonth() + 1).padStart(2, '0');
-              const day = String(date.getDate()).padStart(2, '0');
-              const hours = String(date.getHours()).padStart(2, '0');
-              const minutes = String(date.getMinutes()).padStart(2, '0');
+              
+              // Use UTC methods to preserve the exact time from backend
+              const year = date.getUTCFullYear();
+              const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+              const day = String(date.getUTCDate()).padStart(2, '0');
+              const hours = String(date.getUTCHours()).padStart(2, '0');
+              const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+              
               return `${year}-${month}-${day}T${hours}:${minutes}`;
             } catch (err) {
               console.error('Error parsing datetime:', err);
