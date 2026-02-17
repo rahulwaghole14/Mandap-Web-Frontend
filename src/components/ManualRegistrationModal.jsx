@@ -437,22 +437,7 @@ const ManualRegistrationModal = ({ isOpen, onClose, eventId, event, onSuccess })
             </button>
           </div>
           
-          {/* Cash Receipt Number - Only show for cash payment */}
-          {paymentMethod === 'cash' && (
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Cash Receipt Number
-              </label>
-              <input
-                type="text"
-                {...register('cashReceiptNumber')}
-                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
-                placeholder="Enter cash receipt number (optional)"
-              />
-              <p className="text-xs text-gray-500 mt-1">Reference number for cash payment records</p>
-            </div>
-          )}
-        </div>
+                  </div>
         
         {/* Registration Fee Display */}
         {!isFree && (
@@ -622,7 +607,7 @@ const ManualRegistrationModal = ({ isOpen, onClose, eventId, event, onSuccess })
           </div>
           
           {/* Association */}
-          <div className="md:col-span-2">
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Association (Optional)
             </label>
@@ -652,6 +637,22 @@ const ManualRegistrationModal = ({ isOpen, onClose, eventId, event, onSuccess })
               </select>
             )}
           </div>
+          
+          {/* Cash Receipt Number - Only show for cash payment */}
+          {paymentMethod === 'cash' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Cash Receipt Number
+              </label>
+              <input
+                type="text"
+                {...register('cashReceiptNumber')}
+                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 border-gray-300"
+                placeholder="Enter cash receipt number (optional)"
+              />
+              <p className="text-xs text-gray-500 mt-1">Reference number for cash payment records</p>
+            </div>
+          )}
           
           {/* Photo Upload */}
           <div className="md:col-span-2">
