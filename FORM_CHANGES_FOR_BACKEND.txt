@@ -1,0 +1,110 @@
+MANUAL REGISTRATION FORM CHANGES - BACKEND API UPDATES REQUIRED
+===============================================================
+
+FORM CHANGES MADE:
+==================
+
+1. Business Type Field - Changed from Required to Optional
+   - Previous: Required field with validation
+   - Now: Optional field with no validation
+   - Frontend: Label changed to "Business Type (Optional)"
+
+2. Profile Photo Field - Changed from Required to Optional  
+   - Previous: Required field with validation
+   - Now: Optional field with no validation
+   - Frontend: Label changed to "Profile Photo (Optional)"
+
+3. NEW FIELD: Cash Receipt Number
+   - Type: Text input
+   - Required: No
+   - Only appears when payment method is "cash"
+   - Purpose: Reference number for cash payment records
+
+BACKEND API CHANGES REQUIRED:
+=============================
+
+1. Registration API Endpoint Update
+   - Endpoint: POST /api/events/{eventId}/registrations (manual registration)
+   - Changes needed in request body:
+
+   BEFORE:
+   {
+     "name": "string",
+     "phone": "string", 
+     "email": "string (optional)",
+     "businessName": "string",
+     "businessType": "string (required)",
+     "city": "string (optional)",
+     "associationId": "number (optional)",
+     "photo": "string (optional)",
+     "paymentMethod": "string"
+   }
+
+   AFTER:
+   {
+     "name": "string",
+     "phone": "string",
+     "email": "string (optional)", 
+     "businessName": "string",
+     "businessType": "string (optional)", // CHANGED: No longer required
+     "city": "string (optional)",
+     "associationId": "number (optional)",
+     "photo": "string (optional)", // CHANGED: No longer required
+     "paymentMethod": "string",
+     "cashReceiptNumber": "string (optional)" // NEW FIELD: Only for cash payments
+   }
+
+2. Database Schema Changes (if applicable)
+   - Add new column: cashReceiptNumber (nullable string) to registrations table
+   - Modify businessType column to allow NULL values
+   - Modify photo column to allow NULL values (if not already nullable)
+
+3. Validation Changes
+   - Remove required validation for businessType field
+   - Remove required validation for photo field  
+   - Add cashReceiptNumber field (optional, string, max length recommended: 100)
+
+4. Response Format
+   - Include cashReceiptNumber in API response if provided
+   - Ensure backward compatibility with existing registrations
+
+5. Business Logic Considerations
+   - Handle cases where businessType is null/empty
+   - Handle cases where photo is null/empty
+   - Store cashReceiptNumber only when paymentMethod is "cash"
+   - Ensure existing registrations continue to work without these fields
+
+FRONTEND IMPLEMENTATION DETAILS:
+================================
+
+1. Business Type Field
+   - HTML: <select name="businessType" />
+   - Validation: No longer required
+   - Default: Empty string when not selected
+
+2. Profile Photo Field  
+   - HTML: <input type="file" name="photo" />
+   - Validation: No longer required
+   - Default: null when no photo uploaded
+
+3. Cash Receipt Number Field
+   - HTML: <input type="text" name="cashReceiptNumber" />
+   - Validation: Optional
+   - Only sent when paymentMethod === "cash"
+   - Default: null
+
+TESTING SCENARIOS:
+=================
+
+1. Test registration with all fields filled
+2. Test registration without business type
+3. Test registration without profile photo
+4. Test registration with cash payment and receipt number
+5. Test registration with cash payment without receipt number
+6. Test registration with online payment (should ignore receipt number)
+7. Verify existing registrations still work
+
+PRIORITY: High - These changes are already implemented in frontend and need backend support to function properly.
+
+DATE: 2026-02-17
+CONTACT: Frontend Development Team

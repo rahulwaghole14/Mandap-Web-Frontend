@@ -1,0 +1,5 @@
+[33m96b39f8[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m)[m Fix Top Associations display issues and reduce to top 5
+[33m7b74886[m feat: Add Maharashtra districts and cities functionality to association forms
+[33mdf0c78e[m Fix member delete error - handle both id and _id fields
+[33mc2b5b38[m Fix Association Members page data display issues
+[33m76b0116[m Fix BOD position and phone display issues

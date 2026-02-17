@@ -1,0 +1,12 @@
+# SPA routing support for Render
+# This file must be in the dist folder after build
+# Render will automatically use this for routing
+
+# Serve static assets directly (optional - Render handles this automatically)
+/assets/* 200
+
+# API routes - don't redirect (if proxied through Render)
+/api/* 200
+
+# SPA fallback - all other routes go to index.html
+/*    /index.html   200
