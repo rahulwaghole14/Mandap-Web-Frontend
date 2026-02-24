@@ -1514,6 +1514,8 @@ const EventRegistrations = () => {
     registrations.forEach((item) => {
       if (item.paymentStatus) set.add(item.paymentStatus.toLowerCase());
     });
+    // Always include 'refunded' status even if no current registrations have it
+    set.add('refunded');
     return Array.from(set);
   }, [registrations]);
 
