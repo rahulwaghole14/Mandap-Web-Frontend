@@ -27,7 +27,9 @@ import {
   DollarSign,
   Clock,
   FileText,
-  Table
+  Table,
+  CreditCard,
+  IndianRupee
 } from 'lucide-react';
 
 const statusColors = {
@@ -121,6 +123,37 @@ const getBadgeClass = (map, key) => {
   if (!key) return 'bg-gray-100 text-gray-600';
   const normalized = key.toLowerCase();
   return map[normalized] || 'bg-gray-100 text-gray-600';
+};
+
+const getPaymentMethodInfo = (registration) => {
+  // Use the paymentMethod field from backend API
+  const paymentMethod = registration?.paymentMethod || null;
+  
+  // First check for explicit online payment indicators (override backend if found)
+  if (registration?.razorpay_payment_id || 
+      registration?.razorpayOrderId || 
+      registration?.paymentId ||
+      registration?.transactionId) {
+    return { icon: CreditCard, text: 'Online', color: 'bg-blue-100 text-blue-700' };
+  }
+  
+  // If no explicit online indicators, use backend paymentMethod
+  if (!paymentMethod) {
+    return { icon: DollarSign, text: 'Unknown', color: 'bg-gray-100 text-gray-600' };
+  }
+  
+  const method = paymentMethod.toLowerCase();
+  switch (method) {
+    case 'cash':
+      return { icon: IndianRupee, text: 'Cash', color: 'bg-green-100 text-green-700' };
+    case 'razorpay':
+    case 'online':
+    case 'stripe':
+    case 'paypal':
+      return { icon: CreditCard, text: 'Online', color: 'bg-blue-100 text-blue-700' };
+    default:
+      return { icon: DollarSign, text: paymentMethod, color: 'bg-gray-100 text-gray-600' };
+  }
 };
 
 const getVerificationKey = (registration) => {
@@ -1715,6 +1748,7 @@ const EventRegistrations = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attendee</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registered At</th>
                     <th className="px-6 py-3"></th>
@@ -1772,6 +1806,25 @@ const EventRegistrations = () => {
                             {registration.paymentStatus ? registration.paymentStatus.charAt(0).toUpperCase() + registration.paymentStatus.slice(1) : 'Unknown'}
                           </span>
                           <div className="text-sm text-gray-500 mt-1">₹ {registration.amountPaid || 0}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {(() => {
+                            const paymentInfo = getPaymentMethodInfo(registration);
+                            const Icon = paymentInfo.icon;
+                            return (
+                              <div className="flex items-center space-x-2">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${paymentInfo.color}`}>
+                                  <Icon className="h-3 w-3 mr-1" />
+                                  {paymentInfo.text}
+                                </span>
+                                {registration.paymentMethod === 'cash' && registration.cashReceiptNumber && (
+                                  <span className="text-xs text-gray-500" title={`Receipt: ${registration.cashReceiptNumber}`}>
+                                    #{registration.cashReceiptNumber}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getBadgeClass(statusColors, registration.status)}`}>
@@ -2042,6 +2095,26 @@ const EventRegistrations = () => {
                     <span className={`inline-flex items-center px-2.5 py-0.5 mt-1 rounded-full text-xs font-medium ${getBadgeClass(paymentColors, detail.paymentStatus)}`}>
                       {detail.paymentStatus ? detail.paymentStatus.charAt(0).toUpperCase() + detail.paymentStatus.slice(1) : 'Unknown'}
                     </span>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Payment Method</p>
+                    {(() => {
+                      const paymentInfo = getPaymentMethodInfo(detail);
+                      const Icon = paymentInfo.icon;
+                      return (
+                        <div className="flex items-center space-x-2">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${paymentInfo.color}`}>
+                            <Icon className="h-3 w-3 mr-1" />
+                            {paymentInfo.text}
+                          </span>
+                          {detail.paymentMethod === 'cash' && detail.cashReceiptNumber && (
+                            <div className="text-xs text-gray-500">
+                              Receipt: {detail.cashReceiptNumber}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="flex flex-col">
                     <div>
