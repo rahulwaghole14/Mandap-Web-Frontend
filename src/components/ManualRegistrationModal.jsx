@@ -77,6 +77,7 @@ const ManualRegistrationModal = ({ isOpen, onClose, eventId, event, onSuccess })
       setIsAlreadyRegistered(false);
       setPhoneError('');
       setCheckingPhone(false);
+      setRegistering(false); // Reset registering state when modal closes
     }
   }, [isOpen, reset]);
 
@@ -238,6 +239,7 @@ const ManualRegistrationModal = ({ isOpen, onClose, eventId, event, onSuccess })
         if (onSuccess) {
           onSuccess(response);
         }
+        setRegistering(false); // Reset registering state
       } else {
         // For Razorpay, initiate payment flow
         const paymentData = await eventApi.initiatePublicRegistration(eventId, registrationPayload);
