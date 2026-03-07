@@ -526,6 +526,7 @@ const EventRegistrations = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('');
   const [verificationMap, setVerificationMap] = useState({});
   const [sendingPassIds, setSendingPassIds] = useState({});
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -1049,40 +1050,6 @@ const EventRegistrations = () => {
 
   const filteredRegistrations = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-
-    return registrations.filter((registration) => {
-      const cachedMember = memberCache[registration.memberId];
-      const statusOk =
-        statusFilter === 'all' ||
-        (registration.status && registration.status.toLowerCase() === statusFilter);
-      const paymentOk =
-        paymentFilter === 'all' ||
-        (registration.paymentStatus && registration.paymentStatus.toLowerCase() === paymentFilter);
-
-      const text = [
-        registration.name,
-        registration.memberName,
-        cachedMember?.name,
-        registration.phone,
-        cachedMember?.phone,
-        registration.businessName,
-        cachedMember?.businessName,
-        registration.email,
-        cachedMember?.email
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-
-      const searchOk = term === '' || text.includes(term);
-      return statusOk && paymentOk && searchOk;
-    });
-  }, [registrations, memberCache, searchTerm, statusFilter, paymentFilter]);
-
-  const totalPages = useMemo(() => {
-    return Math.max(1, Math.ceil(filteredRegistrations.length / pageSize));
-  }, [filteredRegistrations.length]);
-
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter, paymentFilter, selectedEventId]);
@@ -1701,6 +1668,16 @@ const EventRegistrations = () => {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Date</label>
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(event) => setDateFilter(event.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              />
             </div>
           </div>
         </div>
