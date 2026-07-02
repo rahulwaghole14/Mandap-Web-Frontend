@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Settings - Mandapam Admin</title>
+    <link rel="icon" type="image/png" href="assets/images/mandapam-logo.png" />
+    <link href="css/style.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+  </head>
+  <body class="bg-gray-100 font-sans antialiased text-gray-900">
+    <div class="flex">
+      <!-- Sidebar -->
+      <div class="w-64 bg-gray-900 text-white h-screen flex flex-col sticky top-0 flex-shrink-0" style="width: 256px; min-width: 256px; max-width: 256px;">
+        <div class="p-6 border-b border-gray-700">
+          <h2 class="text-xl font-semibold text-white">Mandapam Admin</h2>
+          <p class="text-sm text-gray-400 mt-1">Association Platform</p>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-2">
+          <a href="dashboard.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="layout-dashboard" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Dashboard</span>
+          </a>
+          <a href="vendors.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="users" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Vendors</span>
+          </a>
+          <a href="events.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="calendar" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Events</span>
+          </a>
+          <a href="nbod.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="award" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">NBOD</span>
+          </a>
+          <a href="members.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="building" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Members</span>
+          </a>
+          <a href="associations.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="map-pin" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Associations</span>
+          </a>
+        </nav>
+
+        <!-- Footer -->
+        <div class="p-4 border-t border-gray-700 space-y-2">
+          <a href="settings.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors bg-primary-600 text-white">
+            <i data-lucide="settings" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Settings</span>
+          </a>
+          <button id="logout-btn" class="w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors">
+            <i data-lucide="log-out" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Logout</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <main class="flex-1 p-8 bg-gray-100 min-h-screen overflow-x-auto relative">
+        <div class="max-w-4xl mx-auto space-y-6">
+          
+          <div>
+            <h1 class="text-3xl font-bold text-gray-900">Settings</h1>
+            <p class="text-gray-600 mt-2">Manage your account settings and preferences</p>
+          </div>
+
+          <!-- Tab Navigation -->
+          <div class="border-b border-gray-200">
+            <nav class="flex flex-wrap sm:flex-nowrap" aria-label="Tabs">
+              <button class="tab-btn flex-1 justify-center py-4 px-1 flex items-center space-x-2 border-b-2 font-medium text-sm border-primary-500 text-primary-600 transition-colors" data-target="profile-tab">
+                <i data-lucide="user" class="h-4 w-4"></i>
+                <span>Profile</span>
+              </button>
+              <button class="tab-btn flex-1 justify-center py-4 px-1 flex items-center space-x-2 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-target="security-tab">
+                <i data-lucide="lock" class="h-4 w-4"></i>
+                <span>Security</span>
+              </button>
+              <button class="tab-btn flex-1 justify-center py-4 px-1 flex items-center space-x-2 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-target="notifications-tab">
+                <i data-lucide="bell" class="h-4 w-4"></i>
+                <span>Notifications</span>
+              </button>
+              <button class="tab-btn flex-1 justify-center py-4 px-1 flex items-center space-x-2 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors" data-target="permissions-tab">
+                <i data-lucide="shield" class="h-4 w-4"></i>
+                <span>Permissions</span>
+              </button>
+            </nav>
+          </div>
+
+          <!-- Profile Tab -->
+          <div id="profile-tab" class="tab-content block bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-6">Profile Information</h3>
+            <form id="profile-form" class="space-y-6">
+              
+              <div class="flex items-center space-x-6">
+                <div class="h-20 w-20 rounded-full bg-primary-600 flex items-center justify-center">
+                  <i data-lucide="user" class="h-10 w-10 text-white"></i>
+                </div>
+                <div>
+                  <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2">
+                    <i data-lucide="camera" class="h-4 w-4"></i>
+                    <span>Change Photo</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                  <input type="text" value="Admin User" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <input type="email" value="admin@mandapam.com" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                  <input type="tel" value="9876543210" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                  <input type="text" value="admin" disabled class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">District</label>
+                  <input type="text" value="Pune" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                </div>
+              </div>
+
+              <div class="flex justify-end pt-4">
+                <button type="submit" class="submit-btn px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2">
+                  <i data-lucide="save" class="h-4 w-4"></i>
+                  <span>Save Changes</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Security Tab -->
+          <div id="security-tab" class="tab-content hidden bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-6">Security Settings</h3>
+            <form id="security-form" class="space-y-6 max-w-lg">
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                <input type="password" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                <input type="password" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                <input type="password" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+              </div>
+
+              <div class="flex justify-end pt-4">
+                <button type="submit" class="submit-btn px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2">
+                  <i data-lucide="lock" class="h-4 w-4"></i>
+                  <span>Change Password</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Notifications Tab -->
+          <div id="notifications-tab" class="tab-content hidden bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-6">Notification Preferences</h3>
+            <form id="notifications-form" class="space-y-4">
+              
+              <!-- Toggle Item -->
+              <div class="flex items-center justify-between py-3 border-b border-gray-200">
+                <div>
+                  <h4 class="text-sm font-medium text-gray-900">Email Notifications</h4>
+                  <p class="text-sm text-gray-500">Receive notifications via email</p>
+                </div>
+                <button type="button" class="toggle-btn relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2" role="switch" aria-checked="true">
+                  <span class="translate-x-5 pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+                </button>
+              </div>
+
+              <!-- Toggle Item -->
+              <div class="flex items-center justify-between py-3 border-b border-gray-200">
+                <div>
+                  <h4 class="text-sm font-medium text-gray-900">WhatsApp Notifications</h4>
+                  <p class="text-sm text-gray-500">Receive alerts via WhatsApp</p>
+                </div>
+                <button type="button" class="toggle-btn relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2" role="switch" aria-checked="true">
+                  <span class="translate-x-5 pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+                </button>
+              </div>
+
+              <!-- Toggle Item -->
+              <div class="flex items-center justify-between py-3 border-b border-gray-200">
+                <div>
+                  <h4 class="text-sm font-medium text-gray-900">Membership Expiry Alerts</h4>
+                  <p class="text-sm text-gray-500">Reminders for renewing membership</p>
+                </div>
+                <button type="button" class="toggle-btn relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2" role="switch" aria-checked="true">
+                  <span class="translate-x-5 pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+                </button>
+              </div>
+
+              <!-- Toggle Item -->
+              <div class="flex items-center justify-between py-3 border-b border-gray-200">
+                <div>
+                  <h4 class="text-sm font-medium text-gray-900">Event Reminders</h4>
+                  <p class="text-sm text-gray-500">Alerts for upcoming association events</p>
+                </div>
+                <button type="button" class="toggle-btn relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out bg-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2" role="switch" aria-checked="false">
+                  <span class="translate-x-0 pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+                </button>
+              </div>
+
+              <div class="flex justify-end pt-6">
+                <button type="submit" class="submit-btn px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2">
+                  <i data-lucide="save" class="h-4 w-4"></i>
+                  <span>Save Settings</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Permissions Tab -->
+          <div id="permissions-tab" class="tab-content hidden bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-6">Role & Permissions</h3>
+            
+            <div class="space-y-6">
+              <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <h4 class="text-sm font-medium text-gray-900 mb-2">Current Role</h4>
+                <p class="text-sm text-gray-600 capitalize">admin</p>
+              </div>
+
+              <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <h4 class="text-sm font-medium text-gray-900 mb-3">Permissions</h4>
+                <div class="space-y-3">
+                  <div class="flex items-center space-x-2">
+                    <div class="h-2 w-2 bg-green-500 rounded-full"></div>
+                    <span class="text-sm text-gray-600">Vendors: Read, Write, Delete</span>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <div class="h-2 w-2 bg-green-500 rounded-full"></div>
+                    <span class="text-sm text-gray-600">Events: Read, Write, Delete</span>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <div class="h-2 w-2 bg-green-500 rounded-full"></div>
+                    <span class="text-sm text-gray-600">BOD: Read, Write, Delete</span>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <div class="h-2 w-2 bg-green-500 rounded-full"></div>
+                    <span class="text-sm text-gray-600">Members: Read, Write, Delete</span>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <div class="h-2 w-2 bg-green-500 rounded-full"></div>
+                    <span class="text-sm text-gray-600">Associations: Read, Write, Delete</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-yellow-50 rounded-lg p-4 border border-yellow-200 flex items-start space-x-3">
+                <i data-lucide="info" class="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5"></i>
+                <div>
+                  <h4 class="text-sm font-medium text-yellow-800 mb-1">Note</h4>
+                  <p class="text-sm text-yellow-700">Role and permissions are managed by the system administrator. Contact your admin to request changes.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </main>
+    </div>
+
+    <script>
+      lucide.createIcons();
+    </script>
+    <script src="js/pages/settings.js"></script>
+  </body>
+</html>

@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Association Members - Mandapam Admin</title>
+    <link rel="icon" type="image/png" href="assets/images/mandapam-logo.png" />
+    <link href="css/style.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+  </head>
+  <body class="bg-gray-100 font-sans antialiased text-gray-900">
+    <div class="flex">
+      <!-- Sidebar -->
+      <div class="w-64 bg-gray-900 text-white h-screen flex flex-col sticky top-0 flex-shrink-0" style="width: 256px; min-width: 256px; max-width: 256px;">
+        <div class="p-6 border-b border-gray-700">
+          <h2 class="text-xl font-semibold text-white">Mandapam Admin</h2>
+          <p class="text-sm text-gray-400 mt-1">Association Platform</p>
+        </div>
+        <nav class="flex-1 p-4 space-y-2">
+          <a href="dashboard.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="layout-dashboard" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Dashboard</span>
+          </a>
+          <a href="vendors.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="users" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Vendors</span>
+          </a>
+          <a href="events.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="calendar" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Events</span>
+          </a>
+          <a href="nbod.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="award" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">NBOD</span>
+          </a>
+          <a href="members.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="building" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Members</span>
+          </a>
+          <a href="associations.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors bg-primary-600 text-white">
+            <i data-lucide="map-pin" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Associations</span>
+          </a>
+        </nav>
+
+        <!-- Footer -->
+        <div class="p-4 border-t border-gray-700 space-y-2">
+          <a href="settings.html" class="flex items-center space-x-3 px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors">
+            <i data-lucide="settings" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Settings</span>
+          </a>
+          <button id="logout-btn" class="w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors">
+            <i data-lucide="log-out" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Logout</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <main class="flex-1 p-8 bg-gray-100 min-h-screen overflow-x-auto relative">
+        <div class="space-y-6">
+          
+          <!-- Header -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center space-x-4">
+              <a href="association-detail.html?id=1" class="p-2 hover:bg-gray-200 rounded-lg transition-colors">
+                <i data-lucide="arrow-left" class="h-5 w-5 text-gray-600"></i>
+              </a>
+              <div>
+                <h1 class="text-2xl font-bold text-gray-900">Pune Mandapam Association</h1>
+                <p class="text-gray-600 flex items-center mt-1">
+                  <i data-lucide="users" class="h-4 w-4 mr-1"></i>
+                  Manage Members & Board of Directors
+                </p>
+              </div>
+            </div>
+            
+            <div class="flex space-x-3">
+              <button id="open-import-modal" class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center space-x-2">
+                <i data-lucide="upload" class="h-4 w-4"></i>
+                <span>Import CSV</span>
+              </button>
+              <button id="open-add-member-modal" class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center space-x-2">
+                <i data-lucide="plus" class="h-4 w-4"></i>
+                <span id="add-btn-text">Add Member</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div class="border-b border-gray-200">
+              <nav class="flex -mb-px px-6" aria-label="Tabs">
+                <button class="tab-btn w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm border-primary-500 text-primary-600" data-target="members-tab">
+                  <div class="flex items-center justify-center space-x-2">
+                    <i data-lucide="users" class="h-5 w-5"></i>
+                    <span>Association Members</span>
+                  </div>
+                </button>
+                <button class="tab-btn w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300" data-target="bod-tab">
+                  <div class="flex items-center justify-center space-x-2">
+                    <i data-lucide="crown" class="h-5 w-5"></i>
+                    <span>Board of Directors</span>
+                  </div>
+                </button>
+              </nav>
+            </div>
+
+            <div class="p-6">
+              
+              <!-- Members Tab Content -->
+              <div id="members-tab" class="tab-content block">
+                
+                <!-- Filters -->
+                <div class="flex flex-wrap gap-4 items-center mb-6">
+                  <div class="flex-1 min-w-64">
+                    <div class="relative">
+                      <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4"></i>
+                      <input type="text" placeholder="Search members by name or phone..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                    </div>
+                  </div>
+                  <select class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                    <option value="">All Cities</option>
+                    <option value="Pune">Pune</option>
+                    <option value="Pimpri">Pimpri</option>
+                  </select>
+                  <select class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                    <option value="">All Business Types</option>
+                    <option value="catering">Catering</option>
+                    <option value="decorator">Decorator</option>
+                  </select>
+                </div>
+
+                <div class="overflow-x-auto rounded-lg border border-gray-200">
+                  <table class="w-full">
+                    <thead class="bg-gray-50">
+                      <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Member</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Business Info</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                      <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                          <div class="flex items-center">
+                            <div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                              <span class="text-sm font-medium text-gray-700">JD</span>
+                            </div>
+                            <div class="ml-4">
+                              <div class="text-sm font-medium text-gray-900">John Doe</div>
+                              <div class="text-sm text-gray-500">ID: AM-001</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                          <div class="text-sm text-gray-900">Doe Catering</div>
+                          <div class="text-sm text-gray-500">+91 9876543210</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                          <div class="text-sm text-gray-900">Pune</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                          <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Catering</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- BOD Tab Content -->
+              <div id="bod-tab" class="tab-content hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  
+                  <!-- BOD Card -->
+                  <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                    <div class="p-6 relative">
+                      <div class="absolute top-4 right-4 flex space-x-2">
+                        <button class="text-gray-400 hover:text-blue-600"><i data-lucide="edit" class="h-4 w-4"></i></button>
+                        <button class="text-gray-400 hover:text-red-600"><i data-lucide="trash-2" class="h-4 w-4"></i></button>
+                      </div>
+                      <div class="flex flex-col items-center">
+                        <div class="h-20 w-20 rounded-full bg-primary-100 flex items-center justify-center mb-4">
+                          <i data-lucide="user" class="h-10 w-10 text-primary-600"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-900">Michael Smith</h3>
+                        <span class="inline-flex px-3 py-1 mt-2 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">President</span>
+                        
+                        <div class="mt-6 w-full space-y-3">
+                          <div class="flex items-center text-sm text-gray-600">
+                            <i data-lucide="phone" class="h-4 w-4 mr-3"></i>
+                            +91 9988776655
+                          </div>
+                          <div class="flex items-center text-sm text-gray-600">
+                            <i data-lucide="calendar" class="h-4 w-4 mr-3"></i>
+                            Term: 2023 - 2025
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Modals Container -->
+    <div id="modal-container" class="fixed inset-0 z-50 hidden">
+      <div id="modal-overlay" class="absolute inset-0 bg-black bg-opacity-50 transition-opacity"></div>
+      
+      <div class="absolute inset-0 overflow-y-auto">
+        <div class="flex min-h-full items-center justify-center p-4">
+          
+          <!-- 1. Add Association Member Modal -->
+          <div id="add-member-modal" class="relative bg-white rounded-lg shadow-xl w-full max-w-2xl hidden flex-col">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h3 class="text-lg font-medium text-gray-900">Add Association Member</h3>
+              <button class="text-gray-400 hover:text-gray-500 close-modal-btn">
+                <i data-lucide="x" class="h-5 w-5"></i>
+              </button>
+            </div>
+            <div class="p-6">
+              <form id="member-form" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                    <input type="text" required class="w-full p-2 border border-gray-300 rounded-lg">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+                    <input type="tel" required class="w-full p-2 border border-gray-300 rounded-lg">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Business Name *</label>
+                    <input type="text" required class="w-full p-2 border border-gray-300 rounded-lg">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Business Type *</label>
+                    <select required class="w-full p-2 border border-gray-300 rounded-lg">
+                      <option value="catering">Catering</option>
+                      <option value="decorator">Decorator</option>
+                    </select>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end space-x-3 rounded-b-lg">
+              <button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 close-modal-btn">Cancel</button>
+              <button id="save-member-btn" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Save</button>
+            </div>
+          </div>
+
+          <!-- 2. Import CSV Modal -->
+          <div id="import-modal" class="relative bg-white rounded-lg shadow-xl w-full max-w-lg hidden flex-col">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h3 class="text-lg font-medium text-gray-900">Import Members</h3>
+              <button class="text-gray-400 hover:text-gray-500 close-modal-btn">
+                <i data-lucide="x" class="h-5 w-5"></i>
+              </button>
+            </div>
+            <div class="p-6">
+              <div class="border-2 border-dashed border-gray-300 rounded-lg p-10 text-center hover:border-primary-500 transition-colors">
+                <i data-lucide="upload-cloud" class="h-10 w-10 text-gray-400 mx-auto mb-3"></i>
+                <p class="text-gray-600 mb-2">Drag and drop your CSV file here</p>
+                <input type="file" accept=".csv" class="hidden" id="csv-upload-input">
+                <button onclick="document.getElementById('csv-upload-input').click()" class="px-4 py-2 bg-primary-50 text-primary-600 rounded-lg border border-primary-200 hover:bg-primary-100 transition-colors">
+                  Select File
+                </button>
+              </div>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end space-x-3 rounded-b-lg">
+              <button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 close-modal-btn">Cancel</button>
+              <button id="process-import-btn" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">Upload</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <script>
+      lucide.createIcons();
+    </script>
+    <script src="js/pages/association-members.js"></script>
+  </body>
+</html>

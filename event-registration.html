@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Event Registration - Mandapam</title>
+    <link rel="icon" type="image/png" href="assets/images/mandapam-logo.png" />
+    <link href="css/style.css" rel="stylesheet">
+    
+    <!-- Fallback Tailwind CSS in case custom CSS doesn't cover all React-used classes -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                50: '#f0f9ff',
+                100: '#e0f2fe',
+                200: '#bae6fd',
+                300: '#7dd3fc',
+                400: '#38bdf8',
+                500: '#0ea5e9',
+                600: '#0284c7',
+                700: '#0369a1',
+                800: '#075985',
+                900: '#0c4a6e',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Razorpay SDK -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  </head>
+  <body class="bg-gray-50 font-sans antialiased text-gray-900">
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col space-y-2"></div>
+    
+    <div class="min-h-screen bg-gray-50">
+      <!-- Header -->
+      <header class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div class="flex items-center justify-between">
+            <img src="assets/images/mandapam-logo.png" alt="Mandapam Logo" class="h-10 w-auto" />
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content Area -->
+      <div id="main-content" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 hidden">
+        
+        <!-- Event Details Section -->
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
+          <div id="event-image-container" class="h-64 md:h-96 bg-gray-200 relative overflow-hidden hidden">
+            <img id="event-image" class="h-full w-full object-contain" crossorigin="anonymous" />
+            <div id="event-image-fallback" class="h-full w-full flex items-center justify-center bg-gray-100 hidden">
+              <i data-lucide="calendar" class="h-16 w-16 text-gray-400"></i>
+            </div>
+          </div>
+
+          <div class="p-6 md:p-8">
+            <h1 id="event-title" class="text-3xl md:text-4xl font-bold text-gray-900 mb-4"></h1>
+            <p id="event-description" class="text-gray-700 text-lg mb-6 leading-relaxed hidden"></p>
+
+            <!-- Postponement Notice -->
+            <div id="postponed-notice" class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 hidden">
+              <div class="flex items-start">
+                <i data-lucide="alert-triangle" class="h-5 w-5 text-amber-600 mt-0.5 mr-3 flex-shrink-0"></i>
+                <div>
+                  <h3 class="text-amber-800 font-semibold">Event Update - Postponed</h3>
+                  <p id="postponed-text" class="text-amber-700 text-sm mt-1"></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div class="flex items-start">
+                <i data-lucide="calendar" class="h-5 w-5 mr-3 text-primary-600 mt-1"></i>
+                <div>
+                  <div class="font-medium text-gray-900">Date</div>
+                  <div id="event-date" class="text-gray-600"></div>
+                </div>
+              </div>
+
+              <div id="time-container" class="flex items-start hidden">
+                <i data-lucide="clock" class="h-5 w-5 mr-3 text-primary-600 mt-1"></i>
+                <div>
+                  <div class="font-medium text-gray-900">Time</div>
+                  <div id="event-time" class="text-gray-600"></div>
+                </div>
+              </div>
+
+              <div id="location-container" class="flex items-start hidden">
+                <i data-lucide="map-pin" class="h-5 w-5 mr-3 text-primary-600 mt-1"></i>
+                <div>
+                  <div class="font-medium text-gray-900">Location</div>
+                  <div id="event-location" class="text-gray-600"></div>
+                </div>
+              </div>
+
+              <div class="flex items-center">
+                <i data-lucide="indian-rupee" class="h-5 w-5 mr-3 text-primary-600"></i>
+                <div>
+                  <div class="font-medium text-gray-900">Registration Fee</div>
+                  <div id="event-fee" class="text-gray-600"></div>
+                </div>
+              </div>
+
+              <div id="attendees-container" class="flex items-center hidden">
+                <i data-lucide="users" class="h-5 w-5 mr-3 text-primary-600"></i>
+                <div>
+                  <div class="font-medium text-gray-900">Attendees</div>
+                  <div id="event-attendees" class="text-gray-600"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Registration Form Section -->
+        <div id="registration-section" class="bg-white rounded-lg shadow-lg p-6 md:p-8">
+          <h2 class="text-2xl font-bold text-gray-900 mb-6">Register for this Event</h2>
+          
+          <div id="status-checking" class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg hidden">
+            <div class="flex items-center">
+              <div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+              <p class="text-blue-700">Checking if you're already registered...</p>
+            </div>
+          </div>
+          
+          <div id="form-error" class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg hidden">
+            <div class="flex items-center">
+              <i data-lucide="alert-circle" class="h-5 w-5 text-red-500 mr-2"></i>
+              <p id="form-error-text" class="text-red-700"></p>
+            </div>
+          </div>
+
+          <form id="registration-form" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              <!-- Full Name -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  <i data-lucide="user" class="h-4 w-4 inline mr-1"></i> Full Name *
+                </label>
+                <input type="text" id="name" required minlength="2" maxlength="100" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter your full name" />
+                <p id="name-error" class="text-red-500 text-sm mt-1 hidden">Name is required and must be at least 2 characters</p>
+              </div>
+
+              <!-- Phone Number -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  <i data-lucide="phone" class="h-4 w-4 inline mr-1"></i> Phone Number *
+                </label>
+                <input type="tel" id="phone" required maxlength="10" pattern="[0-9]{10}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="9876543210" />
+                <p id="phone-error" class="text-red-500 text-sm mt-1 hidden">Phone must be exactly 10 digits</p>
+              </div>
+
+              <!-- Email -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  <i data-lucide="mail" class="h-4 w-4 inline mr-1"></i> Email (Optional)
+                </label>
+                <input type="email" id="email" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="your@email.com" />
+                <p id="email-error" class="text-red-500 text-sm mt-1 hidden">Invalid email address</p>
+              </div>
+
+              <!-- Business Name -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  <i data-lucide="building-2" class="h-4 w-4 inline mr-1"></i> Business Name *
+                </label>
+                <input type="text" id="businessName" required minlength="2" maxlength="200" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Your business name" />
+                <p id="businessName-error" class="text-red-500 text-sm mt-1 hidden">Business name is required and must be at least 2 characters</p>
+              </div>
+
+              <!-- Business Type -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Business Type *</label>
+                <select id="businessType" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                  <option value="">Select business type</option>
+                  <option value="catering">Catering</option>
+                  <option value="sound">Sound</option>
+                  <option value="mandap">Mandap</option>
+                  <option value="light">Light</option>
+                  <option value="decorator">Decorator</option>
+                  <option value="photography">Photography</option>
+                  <option value="videography">Videography</option>
+                  <option value="transport">Transport</option>
+                  <option value="other">Other</option>
+                </select>
+                <p id="businessType-error" class="text-red-500 text-sm mt-1 hidden">Business type is required</p>
+              </div>
+
+              <!-- City -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  <i data-lucide="map-pin" class="h-4 w-4 inline mr-1"></i> City (Optional)
+                </label>
+                <input type="text" id="city" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter city name (optional)" />
+                <p id="city-error" class="text-red-500 text-sm mt-1 hidden">City must be at least 2 characters</p>
+              </div>
+
+              <!-- Association -->
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Association (Optional)</label>
+                <div id="assoc-loading" class="flex items-center p-3 border border-gray-300 rounded-lg hidden">
+                  <div class="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                  <span class="text-gray-600">Loading associations...</span>
+                </div>
+                <select id="associationId" disabled class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-gray-100">
+                  <option value="">Enter city to view associations (optional)</option>
+                </select>
+                <p id="associationId-error" class="text-red-500 text-sm mt-1 hidden">Please select a valid association</p>
+              </div>
+
+              <!-- Photo Upload -->
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  <i data-lucide="camera" class="h-4 w-4 inline mr-1"></i> Profile Photo *
+                </label>
+                <div id="photo-dropzone" class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-lg transition-colors border-gray-300 hover:border-primary-400">
+                  <div class="space-y-1 text-center w-full">
+                    
+                    <div id="photo-upload-ui">
+                      <label for="photo" class="cursor-pointer flex flex-col items-center space-y-2 text-gray-600 hover:text-primary-600 focus-within:outline-none">
+                        <i data-lucide="camera" class="h-10 w-10"></i>
+                        <span class="bg-white rounded-md font-medium">Capture Photo from Camera</span>
+                      </label>
+                      <input id="photo" type="file" class="sr-only" accept="image/*" capture="user" />
+                      <p class="text-xs text-gray-500 mt-2">Max 30MB - JPG, PNG, GIF, WEBP</p>
+                    </div>
+
+                    <div id="photo-preview-ui" class="relative inline-block hidden">
+                      <img id="photo-preview-img" class="h-32 w-32 object-cover rounded-lg border-2 border-gray-200" />
+                      <button type="button" id="remove-photo-btn" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors">
+                        <i data-lucide="x" class="h-4 w-4"></i>
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+                <p id="photo-error" class="text-red-500 text-sm mt-2 hidden">Profile photo is required</p>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+              <div class="text-gray-600">
+                <span class="font-semibold">Registration Fee: </span>
+                <span id="submit-fee-display" class="text-gray-900"></span>
+              </div>
+              <button type="submit" id="submit-btn" class="inline-flex items-center px-6 py-3 text-lg font-semibold rounded-lg transition-all bg-primary-600 text-white hover:bg-primary-700 shadow-lg hover:shadow-xl">
+                <div id="submit-loader" class="hidden w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                <i id="submit-icon" data-lucide="credit-card" class="h-5 w-5 mr-2"></i>
+                <span id="submit-text">Register Now</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Success Section (Hidden initially) -->
+        <div id="success-section" class="bg-white rounded-lg shadow-lg p-6 md:p-8 hidden">
+          <div class="flex flex-col items-center text-center mb-6">
+            <img src="assets/images/mandapam-logo.png" class="h-16 w-auto mb-4" />
+            <span class="inline-block px-4 py-1 bg-primary-50 text-primary-700 font-semibold uppercase tracking-wide rounded-full mb-4">
+              Visitor Pass
+            </span>
+            
+            <div id="success-photo-container" class="mb-4 hidden">
+              <img id="success-photo" class="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg" />
+            </div>
+
+            <div class="flex items-start">
+              <i data-lucide="check-circle" class="h-8 w-8 text-green-500 mr-4 mt-1"></i>
+              <div class="text-left">
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Registration Confirmed!</h2>
+                <p class="text-gray-600">You are successfully registered for this event. Please save your QR code for event entry.</p>
+                
+                <div id="whatsapp-success" class="mt-3 flex items-center text-green-600 hidden">
+                  <i data-lucide="check-circle" class="h-4 w-4 mr-2"></i>
+                  <span class="text-sm font-medium">Visitor pass will be sent to your WhatsApp shortly.</span>
+                </div>
+                <div id="whatsapp-error" class="mt-3 flex items-center text-amber-600 hidden">
+                  <i data-lucide="alert-circle" class="h-4 w-4 mr-2"></i>
+                  <span class="text-sm font-medium">Pass sending failed. You can download it manually.</span>
+                </div>
+
+                <p id="success-name" class="mt-3 text-lg font-semibold text-gray-900"></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-gray-200 pt-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <div class="text-sm text-gray-500 mb-1">Registration ID</div>
+                <div id="success-reg-id" class="font-semibold text-gray-900"></div>
+              </div>
+              <div>
+                <div class="text-sm text-gray-500 mb-1">Payment Status</div>
+                <div id="success-payment-status" class="font-semibold text-green-600 capitalize"></div>
+              </div>
+              <div>
+                <div class="text-sm text-gray-500 mb-1">Amount Paid</div>
+                <div id="success-amount" class="font-semibold text-gray-900"></div>
+              </div>
+              <div>
+                <div class="text-sm text-gray-500 mb-1">Registered On</div>
+                <div id="success-date" class="font-semibold text-gray-900"></div>
+              </div>
+            </div>
+
+            <!-- QR Code Section -->
+            <div id="qr-section" class="border-t border-gray-200 pt-6 hidden">
+              <div class="text-center">
+                <div class="text-lg font-semibold text-gray-900 mb-4">Your Event QR Code</div>
+                <div class="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
+                  <img id="qr-image" alt="Event QR Code" class="w-48 h-48" />
+                </div>
+                <div class="mt-4 flex items-center justify-center">
+                  <button id="download-pass-btn" class="flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+                    <div id="download-loader" class="hidden w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <i id="download-icon" data-lucide="file-down" class="h-4 w-4 mr-2"></i>
+                    <span id="download-text">Download Pass (PDF)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Loading / Error States -->
+      <div id="page-loader" class="min-h-screen flex items-center justify-center">
+        <div class="text-center">
+          <div class="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p class="text-gray-600">Loading event details...</p>
+        </div>
+      </div>
+
+      <div id="page-error" class="min-h-screen flex items-center justify-center hidden">
+        <div class="text-center max-w-md">
+          <i data-lucide="alert-circle" class="h-12 w-12 text-red-500 mx-auto mb-4"></i>
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">Event Not Found</h2>
+          <p id="page-error-msg" class="text-gray-600 mb-6"></p>
+          <a href="/" class="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 inline-block">Go to Home</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/utils/config.js"></script>
+    <script src="js/utils/api.js"></script>
+    <script src="js/pages/event-registration.js"></script>
+  </body>
+</html>

@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Event Details - Mandapam Admin</title>
+    <link rel="icon" type="image/png" href="assets/images/mandapam-logo.png" />
+    <link rel="apple-touch-icon" href="assets/images/mandapam-logo.png" />
+    <link href="css/style.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+  </head>
+  <body class="bg-gray-100 font-sans antialiased text-gray-900">
+    <div class="flex">
+      <!-- Sidebar -->
+      <div class="w-64 bg-gray-900 text-white h-screen flex flex-col sticky top-0 flex-shrink-0" style="width: 256px; min-width: 256px; max-width: 256px;">
+        <!-- Header -->
+        <div class="p-6 border-b border-gray-700">
+          <h2 class="text-xl font-semibold text-white">Mandapam Admin</h2>
+          <p class="text-sm text-gray-400 mt-1">Association Platform</p>
+        </div>
+
+        <!-- User Info -->
+        <div class="p-4 border-b border-gray-700">
+          <div class="flex items-center space-x-3">
+            <div class="h-10 w-10 bg-primary-600 rounded-full flex items-center justify-center">
+              <i data-lucide="user" class="h-5 w-5 text-white"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-white truncate" id="user-name">
+                Admin User
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 p-4 space-y-2">
+          <a href="dashboard.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="layout-dashboard" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Dashboard</span>
+          </a>
+          <a href="vendors.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="users" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Vendors</span>
+          </a>
+          <a href="events.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors bg-primary-600 text-white">
+            <i data-lucide="calendar" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Events</span>
+          </a>
+          <a href="nbod.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="award" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">NBOD</span>
+          </a>
+          <a href="members.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="building" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Members</span>
+          </a>
+          <a href="associations.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="map-pin" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Associations</span>
+          </a>
+        </nav>
+
+        <!-- Footer -->
+        <div class="p-4 border-t border-gray-700 space-y-2">
+          <a href="settings.html" class="flex items-center space-x-3 px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors">
+            <i data-lucide="settings" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Settings</span>
+          </a>
+          <button id="logout-btn" class="w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors">
+            <i data-lucide="log-out" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Logout</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <main class="flex-1 p-8 bg-gray-100 min-h-screen overflow-x-auto">
+        
+        <div class="flex items-center mb-6 space-x-4">
+          <a href="events.html" class="p-2 bg-white rounded-lg shadow-sm text-gray-600 hover:text-primary-600 transition-colors">
+            <i data-lucide="arrow-left" class="h-5 w-5"></i>
+          </a>
+          <div class="flex-1">
+            <h1 class="text-3xl font-bold text-gray-900" id="event-title">Annual General Meeting 2026</h1>
+            <p class="text-gray-600 mt-1" id="event-subtitle">Pune, Maharashtra</p>
+          </div>
+          <a href="event-form.html?id=1" class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center space-x-2">
+            <i data-lucide="edit" class="h-4 w-4"></i>
+            <span>Edit Event</span>
+          </a>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <!-- Event Summary Info -->
+          <div class="bg-white p-6 rounded-lg shadow lg:col-span-1 space-y-6">
+            <div class="aspect-video bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
+              <i data-lucide="image" class="h-16 w-16 text-gray-400"></i>
+            </div>
+            
+            <div class="space-y-4">
+              <div class="flex items-start">
+                <i data-lucide="calendar" class="h-5 w-5 text-primary-600 mt-1 mr-3"></i>
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Date & Time</p>
+                  <p class="text-sm text-gray-600">Jan 15, 2026 - Jan 16, 2026</p>
+                </div>
+              </div>
+              <div class="flex items-start">
+                <i data-lucide="map-pin" class="h-5 w-5 text-primary-600 mt-1 mr-3"></i>
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Location</p>
+                  <p class="text-sm text-gray-600">Shivaji Nagar, Pune, Maharashtra</p>
+                </div>
+              </div>
+              <div class="flex items-start">
+                <i data-lucide="indian-rupee" class="h-5 w-5 text-primary-600 mt-1 mr-3"></i>
+                <div>
+                  <p class="text-sm font-medium text-gray-900">Registration Fee</p>
+                  <p class="text-sm text-gray-600">₹ 500</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-4 border-t border-gray-100">
+              <h4 class="text-sm font-medium text-gray-900 mb-2">Description</h4>
+              <p class="text-sm text-gray-600 leading-relaxed">Join us for the Annual General Meeting to discuss our progress and future plans for the association.</p>
+            </div>
+          </div>
+
+          <!-- Tabs Area -->
+          <div class="bg-white rounded-lg shadow lg:col-span-2 flex flex-col">
+            
+            <div class="border-b border-gray-200 p-4">
+              <div class="flex space-x-2">
+                <button class="tab-btn px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white" data-target="registrations-tab">
+                  Registrations
+                </button>
+                <button class="tab-btn px-4 py-2 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-100" data-target="exhibitors-tab">
+                  Exhibitors
+                </button>
+              </div>
+            </div>
+
+            <!-- Registrations Tab Content -->
+            <div id="registrations-tab" class="p-6 flex-1 tab-content">
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold text-gray-900">Registrations Overview</h3>
+                <div class="relative group">
+                  <button class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center">
+                    <i data-lucide="download" class="h-4 w-4 mr-2"></i>
+                    Export
+                  </button>
+                  <!-- Dropdown Menu -->
+                  <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg hidden group-hover:block z-10 border border-gray-100">
+                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export CSV</a>
+                    <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export PDF</a>
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                <div class="bg-gray-50 p-4 rounded-lg text-center">
+                  <p class="text-sm text-gray-500 mb-1">Total</p>
+                  <p class="text-2xl font-bold text-gray-900">125</p>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg text-center">
+                  <p class="text-sm text-green-600 mb-1">Attended</p>
+                  <p class="text-2xl font-bold text-green-700">80</p>
+                </div>
+                <div class="bg-yellow-50 p-4 rounded-lg text-center">
+                  <p class="text-sm text-yellow-600 mb-1">Pending</p>
+                  <p class="text-2xl font-bold text-yellow-700">45</p>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-lg text-center">
+                  <p class="text-sm text-blue-600 mb-1">Total Fees</p>
+                  <p class="text-2xl font-bold text-blue-700">₹62.5k</p>
+                </div>
+              </div>
+
+              <!-- Registrations Table -->
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    <tr>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                          <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                            <span class="text-xs font-medium text-gray-600">JD</span>
+                          </div>
+                          <div>
+                            <div class="text-sm font-medium text-gray-900">John Doe</div>
+                            <div class="text-xs text-gray-500">M-001</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">+91 9876543210</td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                          Attended
+                        </span>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹500</td>
+                    </tr>
+                    <tr>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                          <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                            <span class="text-xs font-medium text-gray-600">SM</span>
+                          </div>
+                          <div>
+                            <div class="text-sm font-medium text-gray-900">Sarah Smith</div>
+                            <div class="text-xs text-gray-500">M-042</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">+91 9988776655</td>
+                      <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                          Registered
+                        </span>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹500</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Exhibitors Tab Content -->
+            <div id="exhibitors-tab" class="p-6 flex-1 tab-content hidden">
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold text-gray-900">Event Exhibitors</h3>
+                <button id="add-exhibitor-btn" class="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 flex items-center">
+                  <i data-lucide="plus" class="h-4 w-4 mr-1"></i>
+                  Add Exhibitor
+                </button>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="border border-gray-200 p-4 rounded-lg">
+                  <h4 class="font-bold text-gray-900">Tech Solutions Inc.</h4>
+                  <p class="text-sm text-gray-500 mb-2">Stall #12 • Tech Zone</p>
+                  <p class="text-sm text-gray-700">Contact: Alice Brown</p>
+                </div>
+                <div class="border border-gray-200 p-4 rounded-lg">
+                  <h4 class="font-bold text-gray-900">Decor Masters</h4>
+                  <p class="text-sm text-gray-500 mb-2">Stall #45 • Decor Area</p>
+                  <p class="text-sm text-gray-700">Contact: Bob White</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </main>
+    </div>
+
+    <!-- Modals Background Overlay (Hidden by default) -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden flex items-center justify-center">
+      <!-- Add Exhibitor Modal -->
+      <div id="exhibitor-modal" class="bg-white rounded-lg shadow-xl w-full max-w-md hidden overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+          <h3 class="text-lg font-medium text-gray-900">Add Exhibitor</h3>
+          <button id="close-exhibitor-modal" class="text-gray-400 hover:text-gray-500">
+            <i data-lucide="x" class="h-5 w-5"></i>
+          </button>
+        </div>
+        <div class="p-6">
+          <form id="add-exhibitor-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+              <input type="text" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Stall Number / Details</label>
+              <input type="text" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Contact Person</label>
+              <input type="text" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <div class="pt-4 flex justify-end space-x-3">
+              <button type="button" id="cancel-exhibitor-btn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                Cancel
+              </button>
+              <button type="submit" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
+                Add
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Initialize Lucide Icons -->
+    <script>
+      lucide.createIcons();
+    </script>
+    <script src="js/pages/event-details.js"></script>
+  </body>
+</html>

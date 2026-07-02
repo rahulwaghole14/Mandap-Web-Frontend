@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Event Form - Mandapam Admin</title>
+    <link rel="icon" type="image/png" href="assets/images/mandapam-logo.png" />
+    <link rel="apple-touch-icon" href="assets/images/mandapam-logo.png" />
+    <link href="css/style.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+  </head>
+  <body class="bg-gray-100 font-sans antialiased text-gray-900">
+    <div class="flex">
+      <!-- Sidebar -->
+      <div class="w-64 bg-gray-900 text-white h-screen flex flex-col sticky top-0 flex-shrink-0" style="width: 256px; min-width: 256px; max-width: 256px;">
+        <!-- Header -->
+        <div class="p-6 border-b border-gray-700">
+          <h2 class="text-xl font-semibold text-white">Mandapam Admin</h2>
+          <p class="text-sm text-gray-400 mt-1">Association Platform</p>
+        </div>
+
+        <!-- User Info -->
+        <div class="p-4 border-b border-gray-700">
+          <div class="flex items-center space-x-3">
+            <div class="h-10 w-10 bg-primary-600 rounded-full flex items-center justify-center">
+              <i data-lucide="user" class="h-5 w-5 text-white"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-white truncate" id="user-name">
+                Admin User
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 p-4 space-y-2">
+          <a href="dashboard.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="layout-dashboard" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Dashboard</span>
+          </a>
+          <a href="vendors.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="users" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Vendors</span>
+          </a>
+          <a href="events.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors bg-primary-600 text-white">
+            <i data-lucide="calendar" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Events</span>
+          </a>
+          <a href="nbod.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="award" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">NBOD</span>
+          </a>
+          <a href="members.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="building" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Members</span>
+          </a>
+          <a href="associations.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="map-pin" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Associations</span>
+          </a>
+        </nav>
+
+        <!-- Footer -->
+        <div class="p-4 border-t border-gray-700 space-y-2">
+          <a href="settings.html" class="flex items-center space-x-3 px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors">
+            <i data-lucide="settings" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Settings</span>
+          </a>
+          <button id="logout-btn" class="w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors">
+            <i data-lucide="log-out" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Logout</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <main class="flex-1 p-8 bg-gray-100 min-h-screen overflow-x-auto">
+        <div class="max-w-4xl mx-auto space-y-6">
+          
+          <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center space-x-4">
+              <a href="events.html" class="p-2 bg-white rounded-lg shadow-sm text-gray-600 hover:text-primary-600 transition-colors">
+                <i data-lucide="arrow-left" class="h-5 w-5"></i>
+              </a>
+              <div>
+                <h1 class="text-2xl font-bold text-gray-900" id="form-title">Add Event</h1>
+                <p class="text-gray-600">Fill in the event details below</p>
+              </div>
+            </div>
+          </div>
+
+          <form id="event-form" class="bg-white p-6 rounded-lg shadow space-y-5">
+            <!-- Basic Info -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Name *</label>
+              <input type="text" id="event-name" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Event name">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+              <textarea id="event-desc" required rows="4" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Describe the event"></textarea>
+            </div>
+
+            <!-- Date and Time -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Start date/time *</label>
+                <input type="datetime-local" id="event-start" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">End date/time *</label>
+                <input type="datetime-local" id="event-end" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+              </div>
+            </div>
+
+            <!-- Location -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Address *</label>
+              <input type="text" id="event-address" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Full address">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">City *</label>
+                <input type="text" id="event-city" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">District *</label>
+                <select id="event-district" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                  <option value="">Select District</option>
+                  <option value="Pune">Pune</option>
+                  <option value="Mumbai">Mumbai</option>
+                  <option value="Thane">Thane</option>
+                  <option value="Nashik">Nashik</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">State *</label>
+                <input type="text" id="event-state" required value="Maharashtra" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Pincode *</label>
+                <input type="text" id="event-pincode" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+              </div>
+            </div>
+
+            <!-- Event Image -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Event Image</label>
+              
+              <div id="image-upload-container" class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-primary-500 transition-colors cursor-pointer relative overflow-hidden bg-gray-50">
+                <input type="file" id="event-image" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*">
+                
+                <div id="upload-prompt" class="space-y-1 text-center">
+                  <i data-lucide="upload" class="mx-auto h-12 w-12 text-gray-400"></i>
+                  <div class="flex text-sm text-gray-600 justify-center">
+                    <span class="relative font-medium text-primary-600 hover:text-primary-500">
+                      Upload a file
+                    </span>
+                    <p class="pl-1">or drag and drop</p>
+                  </div>
+                  <p class="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
+                </div>
+
+                <div id="image-preview-container" class="hidden absolute inset-0 w-full h-full bg-black flex items-center justify-center">
+                  <img id="image-preview" src="" alt="Preview" class="max-h-full max-w-full object-contain">
+                  <button type="button" id="remove-image-btn" class="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 z-10">
+                    <i data-lucide="x" class="h-4 w-4"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Additional Details -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Registration Fee (₹)</label>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">₹</span>
+                <input type="number" id="event-fee" min="0" class="w-full pl-8 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="0 for free events">
+              </div>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="pt-4 flex justify-end space-x-3 border-t border-gray-200">
+              <a href="events.html" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                Cancel
+              </a>
+              <button type="submit" id="submit-btn" class="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center">
+                <span id="submit-text">Save Event</span>
+                <i id="submit-spinner" data-lucide="loader-2" class="h-4 w-4 ml-2 animate-spin hidden"></i>
+              </button>
+            </div>
+          </form>
+
+        </div>
+      </main>
+    </div>
+
+    <!-- Initialize Lucide Icons -->
+    <script>
+      lucide.createIcons();
+    </script>
+    <script src="js/pages/event-form.js"></script>
+  </body>
+</html>

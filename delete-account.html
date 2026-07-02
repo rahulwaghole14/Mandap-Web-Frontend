@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Account Deletion - Mandapam</title>
+    <link rel="icon" type="image/png" href="assets/images/mandapam-logo.png" />
+    <link href="css/style.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                50: '#f0f9ff',
+                100: '#e0f2fe',
+                200: '#bae6fd',
+                300: '#7dd3fc',
+                400: '#38bdf8',
+                500: '#0ea5e9',
+                600: '#0284c7',
+                700: '#0369a1',
+                800: '#075985',
+                900: '#0c4a6e',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+  </head>
+  <body class="bg-gray-50 font-sans antialiased text-gray-900">
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col space-y-2"></div>
+    
+    <div class="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+      <div class="max-w-md mx-auto">
+        <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+          <div class="bg-red-600 px-6 py-4">
+            <h1 class="text-2xl font-bold text-white">Account Deletion</h1>
+            <p class="text-red-100 text-sm mt-1">Delete your Mandap Association account</p>
+          </div>
+
+          <div class="p-6">
+            <!-- Step 1: Mobile Number Input -->
+            <div id="step-1" class="step-container">
+              <div class="mb-6">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                  <div class="flex">
+                    <div class="flex-shrink-0">
+                      <i data-lucide="alert-triangle" class="h-5 w-5 text-yellow-400"></i>
+                    </div>
+                    <div class="ml-3">
+                      <h3 class="text-sm font-medium text-yellow-800">Important Notice</h3>
+                      <div class="mt-2 text-sm text-yellow-700">
+                        <p>This action will permanently delete your account after a 15-day waiting period. This action cannot be undone.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <form id="mobile-form">
+                <div class="mb-4">
+                  <label for="mobileNumber" class="block text-sm font-medium text-gray-700 mb-2">
+                    Mobile Number
+                  </label>
+                  <input
+                    type="tel"
+                    id="mobileNumber"
+                    placeholder="Enter 10-digit mobile number"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    required
+                    maxlength="10"
+                    pattern="[0-9]{10}"
+                  />
+                  <p class="mt-1 text-sm text-gray-500">
+                    Enter the mobile number registered with your account
+                  </p>
+                </div>
+
+                <button
+                  type="submit"
+                  id="send-otp-btn"
+                  disabled
+                  class="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex justify-center items-center"
+                >
+                  <span class="btn-text">Send OTP</span>
+                  <div class="btn-loader hidden w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                </button>
+              </form>
+            </div>
+
+            <!-- Step 2: OTP Verification -->
+            <div id="step-2" class="step-container hidden">
+              <div class="mb-6">
+                <div class="bg-blue-50 border border-blue-200 rounded-md p-4">
+                  <div class="flex">
+                    <div class="flex-shrink-0">
+                      <i data-lucide="info" class="h-5 w-5 text-blue-400"></i>
+                    </div>
+                    <div class="ml-3">
+                      <h3 class="text-sm font-medium text-blue-800">OTP Sent</h3>
+                      <div class="mt-2 text-sm text-blue-700">
+                        <p>We've sent a 6-digit OTP to your WhatsApp number ending in <span id="display-mobile-last4"></span></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <form id="otp-form">
+                <div class="mb-4">
+                  <label for="otp" class="block text-sm font-medium text-gray-700 mb-2">
+                    Enter OTP
+                  </label>
+                  <input
+                    type="text"
+                    id="otp"
+                    placeholder="Enter 6-digit OTP"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-lg"
+                    required
+                    maxlength="6"
+                    pattern="[0-9]{6}"
+                  />
+                </div>
+
+                <div class="mb-4">
+                  <button
+                    type="submit"
+                    id="verify-otp-btn"
+                    disabled
+                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex justify-center items-center"
+                  >
+                    <span class="btn-text">Verify OTP</span>
+                    <div class="btn-loader hidden w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  </button>
+                </div>
+
+                <div class="flex justify-between items-center">
+                  <button
+                    type="button"
+                    id="back-to-step1-btn"
+                    class="text-gray-600 hover:text-gray-800 text-sm"
+                  >
+                    &larr; Back
+                  </button>
+                  <button
+                    type="button"
+                    id="resend-otp-btn"
+                    disabled
+                    class="text-blue-600 hover:text-blue-800 text-sm disabled:text-gray-400 flex items-center"
+                  >
+                    <span class="btn-text">Resend OTP</span>
+                    <div class="btn-loader hidden ml-2 w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Step 3: Confirmation -->
+            <div id="step-3" class="step-container hidden">
+              <div class="mb-6">
+                <div class="bg-green-50 border border-green-200 rounded-md p-4">
+                  <div class="flex">
+                    <div class="flex-shrink-0">
+                      <i data-lucide="check-circle" class="h-5 w-5 text-green-400"></i>
+                    </div>
+                    <div class="ml-3">
+                      <h3 id="confirmation-title" class="text-sm font-medium text-green-800">
+                        Deletion Request Confirmed
+                      </h3>
+                      <div class="mt-2 text-sm text-green-700">
+                        <p id="confirmation-msg">
+                          Your account deletion request has been confirmed and scheduled.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                <h3 class="font-semibold text-gray-900 mb-3">Deletion Details</h3>
+                <div class="space-y-2">
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Mobile Number:</span>
+                    <span id="detail-mobile" class="font-medium"></span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Status:</span>
+                    <span class="font-medium text-orange-600">Pending Deletion</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Deletion Date:</span>
+                    <span id="detail-date" class="font-medium"></span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
+                <h3 class="text-sm font-medium text-yellow-800 mb-2">Important Information</h3>
+                <ul class="text-sm text-yellow-700 space-y-1">
+                  <li>&bull; Your account will be permanently deleted on <span id="info-date"></span></li>
+                  <li>&bull; You can cancel this request anytime before the deletion date</li>
+                  <li>&bull; All your data will be permanently removed and cannot be recovered</li>
+                  <li>&bull; You will lose access to all Mandap Association services</li>
+                </ul>
+              </div>
+
+              <div class="flex space-x-3">
+                <button
+                  id="cancel-deletion-btn"
+                  class="flex-1 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex justify-center items-center"
+                >
+                  <span class="btn-text">Cancel Deletion</span>
+                  <div class="btn-loader hidden w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                </button>
+                <a
+                  href="/"
+                  class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors text-center flex items-center justify-center"
+                >
+                  Go to Homepage
+                </a>
+              </div>
+            </div>
+
+            <!-- Step 4: Cancellation Confirmation -->
+            <div id="step-4" class="step-container hidden">
+              <div class="mb-6">
+                <div class="bg-green-50 border border-green-200 rounded-md p-4">
+                  <div class="flex">
+                    <div class="flex-shrink-0">
+                      <i data-lucide="check-circle" class="h-5 w-5 text-green-400"></i>
+                    </div>
+                    <div class="ml-3">
+                      <h3 class="text-sm font-medium text-green-800">Deletion Request Cancelled</h3>
+                      <div class="mt-2 text-sm text-green-700">
+                        <p>Your account deletion request has been successfully cancelled. Your account remains active.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                <h3 class="font-semibold text-gray-900 mb-3">Cancellation Details</h3>
+                <div class="space-y-2">
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Mobile Number:</span>
+                    <span id="cancel-mobile" class="font-medium"></span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Status:</span>
+                    <span class="font-medium text-green-600">Cancelled</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-600">Cancelled At:</span>
+                    <span id="cancel-time" class="font-medium"></span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
+                <h3 class="text-sm font-medium text-blue-800 mb-2">What's Next?</h3>
+                <ul class="text-sm text-blue-700 space-y-1">
+                  <li>&bull; Your account remains active and accessible</li>
+                  <li>&bull; You can request deletion again in the future if needed</li>
+                  <li>&bull; All your data and services remain available</li>
+                  <li>&bull; You can continue using Mandap Association services normally</li>
+                </ul>
+              </div>
+
+              <div class="flex space-x-3">
+                <a
+                  href="login.html"
+                  class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors text-center flex items-center justify-center"
+                >
+                  Go to Login
+                </a>
+                <a
+                  href="/"
+                  class="flex-1 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 transition-colors text-center flex items-center justify-center"
+                >
+                  Go to Homepage
+                </a>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      lucide.createIcons();
+    </script>
+    <script src="js/pages/delete-account.js"></script>
+  </body>
+</html>
