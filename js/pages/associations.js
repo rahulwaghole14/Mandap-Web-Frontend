@@ -35,6 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     let allAssociations = [];
+    let filteredAssociations = [];
+    let currentPage = 1;
+    const itemsPerPage = 10;
     const tableBody = document.getElementById('associations-table-body');
     
     const loadData = async () => {
@@ -79,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cityFilter = document.getElementById('filter-city')?.value || '';
         const statusFilter = document.getElementById('filter-status')?.value || '';
         
-        const filtered = allAssociations.filter(a => {
+        filteredAssociations = allAssociations.filter(a => {
             const matchesSearch = 
                 (a.name || '').toLowerCase().includes(searchTerm) || 
                 (a.code || '').toLowerCase().includes(searchTerm) ||
@@ -91,7 +94,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return matchesSearch && matchesCity && matchesStatus;
         });
         
-        renderAssociations(filtered);
+        currentPage = 1;
+        renderAssociations();
     };
 
     // Attach Filter Listeners
@@ -135,14 +139,23 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.removeChild(link);
     });
     
-    const renderAssociations = (list) => {
+    const renderAssociations = () => {
         if (!tableBody) return;
-        if (list.length === 0) {
+        if (filteredAssociations.length === 0) {
             tableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">No associations found.</td></tr>`;
+            updatePaginationUI(1, 1);
             return;
         }
         
-        tableBody.innerHTML = list.map(a => {
+        const totalPages = Math.ceil(filteredAssociations.length / itemsPerPage) || 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+        
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageData = filteredAssociations.slice(startIndex, endIndex);
+
+        tableBody.innerHTML = pageData.map(a => {
             const name = a.name || 'Unnamed Association';
             const code = a.code || 'N/A';
             const city = a.city || 'N/A';
@@ -197,8 +210,34 @@ document.addEventListener('DOMContentLoaded', () => {
             </tr>`;
         }).join('');
         
+        updatePaginationUI(currentPage, totalPages);
         if (window.lucide) lucide.createIcons();
     };
+
+    const updatePaginationUI = (current, total) => {
+        const prevBtn = document.getElementById('prev-page-btn');
+        const nextBtn = document.getElementById('next-page-btn');
+        const indicator = document.getElementById('page-indicator');
+        
+        if (prevBtn) prevBtn.disabled = current <= 1;
+        if (nextBtn) nextBtn.disabled = current >= total;
+        if (indicator) indicator.textContent = `Page ${current} of ${total}`;
+    };
+
+    document.getElementById('prev-page-btn')?.addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            renderAssociations();
+        }
+    });
+
+    document.getElementById('next-page-btn')?.addEventListener('click', () => {
+        const totalPages = Math.ceil(filteredAssociations.length / itemsPerPage) || 1;
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderAssociations();
+        }
+    });
 
     // Row Actions via Event Delegation
     if (tableBody) {
@@ -267,17 +306,31 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const editId = form.dataset.editId;
                 
-                if (editId && window.api && window.api.updateAssociation) {
+                if (editId) {
                     // Update existing (PUT)
-                    const res = await window.api.updateAssociation(editId, payload);
-                    if (res.success) {
+                    const API_BASE = window.CONFIG.API_BASE_URL;
+                    const token = localStorage.getItem('token');
+                    
+                    const res = await fetch(`${API_BASE}/associations/${editId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const json = await res.json();
+                    
+                    if (res.ok && json.success) {
                         alert('Association updated successfully!');
                         closeAllModals();
                         loadData(); // Refresh the table
                     } else {
-                        let errMsg = res.message || 'Failed to update association.';
-                        if (res.errors) {
-                            errMsg += '\n' + Object.values(res.errors).flat().join('\n');
+                        let errMsg = json.message || 'Failed to update association.';
+                        if (json.errors) {
+                            errMsg += '\n' + Object.values(json.errors).flat().join('\n');
                         }
                         alert(errMsg);
                     }
