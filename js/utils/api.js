@@ -167,6 +167,20 @@ window.api = {
         return await response.json();
     },
 
+    getAssociationById: async (id) => {
+        const token = localStorage.getItem('token');
+        const headers = { 'Accept': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${API_BASE_URL}/associations/${id}`, {
+            headers: headers
+        });
+        if (!response.ok) {
+            throw new Error('Failed to load association details');
+        }
+        return await response.json();
+    },
+
     // --- Upload API ---
     optimizeImage: (file, options = {}) => {
         return new Promise((resolve, reject) => {
