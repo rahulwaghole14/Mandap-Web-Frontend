@@ -26,12 +26,10 @@ const getApiBaseUrl = () => {
     return window.location.origin + '/api';
 };
 
-const API_BASE_URL = getApiBaseUrl();
-
 // Legacy window.CONFIG kept for backward compatibility with
 // any page that still reads window.CONFIG.API_BASE_URL
 const CONFIG = {
-    API_BASE_URL: API_BASE_URL,
+    API_BASE_URL: getApiBaseUrl(),
 
     // Event slug to event ID mapping for public registration pages
     EVENT_SLUGS: {
