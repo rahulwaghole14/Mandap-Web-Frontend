@@ -86,4 +86,92 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('CSV Imported successfully!');
         closeAllModals();
     });
+
+    // ----------------------------------------------------
+    // Dynamic Data Loading
+    // ----------------------------------------------------
+    
+    // Get ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const associationId = urlParams.get('id');
+
+    const loadAssociationData = async () => {
+        if (!associationId) {
+            document.getElementById('assoc-name-header').textContent = "Unknown Association";
+            document.getElementById('members-table-body').innerHTML = `<tr><td colspan="4" class="text-center py-4 text-red-500">No Association ID provided.</td></tr>`;
+            return;
+        }
+
+        try {
+            // Fetch association details for the header
+            if (window.api && window.api.getAssociationById) {
+                const assocRes = await window.api.getAssociationById(associationId);
+                if (assocRes.success && assocRes.data) {
+                    document.getElementById('assoc-name-header').textContent = assocRes.data.name;
+                }
+            }
+            
+            // Fetch association members
+            if (window.api && window.api.getAssociationMembers) {
+                const membersRes = await window.api.getAssociationMembers(associationId);
+                const tbody = document.getElementById('members-table-body');
+                
+                let members = [];
+                if (membersRes.success && membersRes.data && Array.isArray(membersRes.data.results)) {
+                    members = membersRes.data.results;
+                } else if (Array.isArray(membersRes)) {
+                    members = membersRes;
+                }
+
+                if (members.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-500">No members found for this association.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = members.map(m => {
+                    const firstName = m.first_name || '';
+                    const lastName = m.last_name || '';
+                    const initials = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase() || 'NA';
+                    const fullName = `${firstName} ${lastName}`.trim();
+                    const memId = m.membership_number || 'N/A';
+                    const business = m.business || 'N/A';
+                    const mobile = m.mobile || 'N/A';
+                    const location = m.address || 'N/A';
+                    const type = m.type || 'Standard';
+
+                    return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                                    <span class="text-sm font-medium text-primary-700">${initials}</span>
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">${fullName}</div>
+                                    <div class="text-sm text-gray-500">ID: ${memId}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">${business}</div>
+                            <div class="text-sm text-gray-500">${mobile}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">${location}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">${type}</span>
+                        </td>
+                    </tr>`;
+                }).join('');
+            }
+            
+        } catch (err) {
+            console.error('Error fetching association data:', err);
+            document.getElementById('members-table-body').innerHTML = `<tr><td colspan="4" class="text-center py-4 text-red-500">Failed to load members.</td></tr>`;
+        }
+    };
+
+    loadAssociationData();
+
 });
