@@ -102,6 +102,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const tbody = document.getElementById('members-table-body');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500"><i data-lucide="loader-2" class="h-6 w-6 animate-spin mx-auto mb-2"></i> Loading members...</td></tr>`;
+            if (window.lucide) lucide.createIcons();
+        }
+
         try {
             // Fetch association details for the header
             if (window.api && window.api.getAssociationById) {
@@ -114,7 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Fetch association members
             if (window.api && window.api.getAssociationMembers) {
                 const membersRes = await window.api.getAssociationMembers(associationId);
-                const tbody = document.getElementById('members-table-body');
                 
                 let members = [];
                 if (membersRes.success && membersRes.data && Array.isArray(membersRes.data.results)) {
@@ -164,6 +169,71 @@ document.addEventListener('DOMContentLoaded', () => {
                         </td>
                     </tr>`;
                 }).join('');
+            }
+
+            // Fetch Association BOD
+            if (window.api && window.api.getAssociationBOD) {
+                const bodGrid = document.getElementById('bod-grid');
+                if (bodGrid) {
+                    bodGrid.innerHTML = `<div class="col-span-full text-center text-gray-500 py-8"><i data-lucide="loader-2" class="h-6 w-6 animate-spin mx-auto mb-2"></i> Loading Board of Directors...</div>`;
+                    if (window.lucide) lucide.createIcons();
+
+                    const bodRes = await window.api.getAssociationBOD(associationId);
+                    let bodMembers = [];
+                    if (bodRes.success && Array.isArray(bodRes.data)) {
+                        bodMembers = bodRes.data;
+                    }
+
+                    if (bodMembers.length === 0) {
+                        bodGrid.innerHTML = `<div class="col-span-full text-center text-gray-500 py-8">No Board of Directors found for this association.</div>`;
+                    } else {
+                        bodGrid.innerHTML = bodMembers.map(bod => {
+                            const designation = bod.designation || 'Member';
+                            const memberInfo = bod.member || {};
+                            
+                            const firstName = memberInfo.first_name || '';
+                            const lastName = memberInfo.last_name || '';
+                            let fullName = `${firstName} ${lastName}`.trim();
+                            if (!fullName) fullName = bod.name || 'Unknown Member';
+                            
+                            const mobile = memberInfo.mobile || bod.contact_number || 'N/A';
+                            
+                            const startDate = bod.start_date ? new Date(bod.start_date).getFullYear() : 'N/A';
+                            const endDate = bod.end_date ? new Date(bod.end_date).getFullYear() : 'Present';
+                            const term = `${startDate} - ${endDate}`;
+
+                            return `
+                            <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                                <div class="p-6 relative">
+                                <div class="absolute top-4 right-4 flex space-x-2">
+                                    <button class="text-gray-400 hover:text-blue-600"><i data-lucide="edit" class="h-4 w-4"></i></button>
+                                    <button class="text-gray-400 hover:text-red-600"><i data-lucide="trash-2" class="h-4 w-4"></i></button>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <div class="h-20 w-20 rounded-full bg-primary-100 flex items-center justify-center mb-4">
+                                    <i data-lucide="user" class="h-10 w-10 text-primary-600"></i>
+                                    </div>
+                                    <h3 class="text-lg font-bold text-gray-900">${fullName}</h3>
+                                    <span class="inline-flex px-3 py-1 mt-2 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">${designation}</span>
+                                    
+                                    <div class="mt-6 w-full space-y-3">
+                                    <div class="flex items-center text-sm text-gray-600">
+                                        <i data-lucide="phone" class="h-4 w-4 mr-3"></i>
+                                        ${mobile}
+                                    </div>
+                                    <div class="flex items-center text-sm text-gray-600">
+                                        <i data-lucide="calendar" class="h-4 w-4 mr-3"></i>
+                                        Term: ${term}
+                                    </div>
+                                    </div>
+                                </div>
+                                </div>
+                            </div>`;
+                        }).join('');
+                        
+                        if (window.lucide) lucide.createIcons();
+                    }
+                }
             }
             
         } catch (err) {

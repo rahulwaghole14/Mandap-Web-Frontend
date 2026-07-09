@@ -195,6 +195,20 @@ window.api = {
         return await response.json();
     },
 
+    getAssociationBOD: async (associationId) => {
+        const token = localStorage.getItem('token');
+        const headers = { 'Accept': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${API_BASE_URL}/bod/association/${associationId}`, {
+            headers: headers
+        });
+        if (!response.ok) {
+            throw new Error('Failed to load association BOD');
+        }
+        return await response.json();
+    },
+
     updateAssociation: async (id, data) => {
         const token = localStorage.getItem('token');
         const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
