@@ -7,7 +7,7 @@
     <link rel="icon" type="image/png" href="assets/images/mandapam-logo.png" />
     <link rel="apple-touch-icon" href="assets/images/mandapam-logo.png" />
     <link href="css/style.css" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
+
   </head>
   <body class="bg-gray-100 font-sans antialiased text-gray-900">
     <div class="flex">
@@ -22,13 +22,13 @@
         <!-- User Info -->
         <div class="p-4 border-b border-gray-700">
           <div class="flex items-center space-x-3">
-            <div class="h-10 w-10 bg-primary-600 rounded-full flex items-center justify-center">
+            <div class="h-10 w-10 bg-primary-600 rounded-full flex items-center justify-center flex-shrink-0">
               <i data-lucide="user" class="h-5 w-5 text-white"></i>
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-white truncate" id="user-name">
-                Admin User
-              </p>
+              <p class="text-sm font-medium text-white truncate" id="user-name">Admin User</p>
+              <p class="text-xs text-gray-400 truncate" id="user-email"></p>
+              <span class="text-xs bg-primary-700 text-primary-200 px-2 py-0.5 rounded-full" id="user-role">Admin</span>
             </div>
           </div>
         </div>
@@ -82,12 +82,37 @@
           <div class="flex items-center justify-between">
             <div>
               <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
-              <p class="text-gray-600 mt-2">Welcome to the Mandapam Association Admin Portal</p>
+              <p class="text-gray-600 mt-2" id="welcome-subtitle">Welcome to the Mandapam Association Admin Portal</p>
             </div>
-            <button class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2">
+            <button onclick="window.location.reload()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2">
               <i data-lucide="refresh-cw" class="h-4 w-4"></i>
               <span>Refresh</span>
             </button>
+          </div>
+
+          <!-- Admin Info Card -->
+          <div class="bg-white rounded-lg shadow p-6 border-l-4 border-primary-500">
+            <div class="flex items-center space-x-4">
+              <div class="h-14 w-14 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <i data-lucide="shield-check" class="h-7 w-7 text-primary-600"></i>
+              </div>
+              <div class="flex-1">
+                <h2 class="text-lg font-semibold text-gray-900" id="admin-card-name">Jaypal Admin</h2>
+                <p class="text-sm text-gray-500" id="admin-card-email">admin@mandapam.com</p>
+                <div class="flex items-center space-x-3 mt-1">
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800" id="admin-card-role">Admin</span>
+                  <span class="text-xs text-gray-400">Logged in: <span id="admin-card-login">—</span></span>
+                </div>
+              </div>
+              <div class="text-right text-xs text-gray-400">
+                <div class="flex items-center space-x-1 text-green-600">
+                  <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span>
+                  <span class="font-medium">Active Session</span>
+                </div>
+                <p class="mt-1" id="api-display">API: connecting...</p>
+                <script>document.getElementById('api-display').textContent = 'API: ' + (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL.replace('http://', '') : '192.168.1.42:8000');</script>
+              </div>
+            </div>
           </div>
 
           <!-- Statistics Cards -->
@@ -252,10 +277,17 @@
       </main>
     </div>
 
-    <!-- Initialize Lucide Icons -->
+    <!-- Scripts -->
+    <script src="https://unpkg.com/lucide@latest" defer></script>
+    <script src="js/config.js" defer></script>
+    <script src="js/pages/dashboard.js" defer></script>
     <script>
-      lucide.createIcons();
+      // Initialize icons after script loads
+      window.addEventListener('load', () => {
+        if (window.lucide) {
+          lucide.createIcons();
+        }
+      });
     </script>
-    <script src="js/pages/dashboard.js"></script>
   </body>
 </html>

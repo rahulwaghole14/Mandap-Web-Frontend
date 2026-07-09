@@ -84,15 +84,15 @@
               <p class="text-gray-600 mt-2">Manage all registered vendors in the association</p>
             </div>
             <div class="flex space-x-3">
-              <button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2">
+              <button type="button" id="refresh-vendors-btn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2">
                 <i data-lucide="refresh-cw" class="h-4 w-4"></i>
                 <span>Refresh</span>
               </button>
-              <button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2">
+              <button type="button" id="export-vendors-btn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2">
                 <i data-lucide="download" class="h-4 w-4"></i>
                 <span>Export</span>
               </button>
-              <button id="add-vendor-btn" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2">
+              <button type="button" id="add-vendor-btn" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2">
                 <i data-lucide="plus" class="h-4 w-4"></i>
                 <span>Add Vendor</span>
               </button>
@@ -106,6 +106,7 @@
                 <div class="relative">
                   <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4"></i>
                   <input
+                    id="search-vendor"
                     type="text"
                     placeholder="Search by name or business name"
                     class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -113,20 +114,22 @@
                 </div>
               </div>
               
-              <select class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+              <select id="filter-city" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                 <option value="">All Cities</option>
                 <option value="Mumbai">Mumbai</option>
                 <option value="Delhi">Delhi</option>
+                <option value="Jaipur">Jaipur</option>
+                <option value="Ahmedabad">Ahmedabad</option>
               </select>
               
-              <select class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+              <select id="filter-category" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                 <option value="">All Categories</option>
                 <option value="Catering">Catering</option>
                 <option value="Decoration">Decoration</option>
                 <option value="Photography">Photography</option>
               </select>
               
-              <select class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+              <select id="filter-status" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                 <option value="">All Status</option>
                 <option value="Pending">Pending</option>
                 <option value="Active">Active</option>
@@ -139,7 +142,7 @@
           <!-- Results Summary -->
           <div class="flex justify-between items-center">
             <p class="text-gray-600">
-              Showing <span class="font-semibold">2</span> of <span class="font-semibold">2</span> vendors
+              Showing <span id="showing-count" class="font-semibold">0</span> of <span id="total-count" class="font-semibold">0</span> vendors
             </p>
           </div>
 
@@ -158,105 +161,15 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                  <!-- Sample Data row 1 -->
-                  <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div class="text-sm font-medium text-gray-900">Ravi Kumar</div>
-                        <div class="text-sm text-gray-500">Royal Caterers</div>
-                      </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div class="text-sm text-gray-900">+91 9876543210</div>
-                        <div class="text-sm text-gray-500">ravi@royalcaterers.com</div>
-                      </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div class="text-sm text-gray-900">Mumbai</div>
-                        <div class="text-sm text-gray-500">Mumbai, Maharashtra</div>
-                      </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                        Catering
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                        Active
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div>Joined: 01/15/2023</div>
-                      <div>Expires: 01/15/2024</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div class="flex space-x-2">
-                        <button class="text-blue-600 hover:text-blue-900 p-1" title="View Details">
-                          <i data-lucide="eye" class="h-4 w-4"></i>
-                        </button>
-                        <button class="text-yellow-600 hover:text-yellow-900 p-1" title="Edit Vendor">
-                          <i data-lucide="edit" class="h-4 w-4"></i>
-                        </button>
-                        <button class="text-red-600 hover:text-red-900 p-1" title="Delete Vendor">
-                          <i data-lucide="trash-2" class="h-4 w-4"></i>
-                        </button>
+                <tbody id="vendors-table-body" class="bg-white divide-y divide-gray-200">
+                  <tr>
+                    <td colspan="7" class="px-6 py-10 text-center text-gray-500">
+                      <div class="flex flex-col items-center justify-center">
+                        <i data-lucide="loader-2" class="h-8 w-8 animate-spin text-primary-600 mb-2"></i>
+                        <p>Loading vendors...</p>
                       </div>
                     </td>
                   </tr>
-
-                  <!-- Sample Data row 2 -->
-                  <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div class="text-sm font-medium text-gray-900">Priya Sharma</div>
-                        <div class="text-sm text-gray-500">Elegant Decor</div>
-                      </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div class="text-sm text-gray-900">+91 9988776655</div>
-                        <div class="text-sm text-gray-500">priya@elegantdecor.com</div>
-                      </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div class="text-sm text-gray-900">Delhi</div>
-                        <div class="text-sm text-gray-500">New Delhi, Delhi</div>
-                      </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                        Decoration
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                        Pending
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div>Joined: 05/20/2023</div>
-                      <div>Expires: 05/20/2024</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div class="flex space-x-2">
-                        <button class="text-blue-600 hover:text-blue-900 p-1" title="View Details">
-                          <i data-lucide="eye" class="h-4 w-4"></i>
-                        </button>
-                        <button class="text-yellow-600 hover:text-yellow-900 p-1" title="Edit Vendor">
-                          <i data-lucide="edit" class="h-4 w-4"></i>
-                        </button>
-                        <button class="text-red-600 hover:text-red-900 p-1" title="Delete Vendor">
-                          <i data-lucide="trash-2" class="h-4 w-4"></i>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-
                 </tbody>
               </table>
             </div>
@@ -267,12 +180,25 @@
     </div>
 
     <!-- Modals Background Overlay (Hidden by default) -->
-    <div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden flex items-center justify-center">
+    <div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden flex items-center justify-center p-4">
       
+      <!-- View Vendor Modal (Hidden by default) -->
+      <div id="view-vendor-modal" class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto hidden">
+        <div class="flex justify-between items-center p-6 border-b border-gray-200">
+          <h2 class="text-xl font-semibold text-gray-900">Vendor Details</h2>
+          <button id="close-view-vendor" type="button" class="text-gray-400 hover:text-gray-500 transition-colors">
+            <i data-lucide="x" class="h-6 w-6"></i>
+          </button>
+        </div>
+        <div class="p-6 space-y-4" id="view-vendor-content">
+           <!-- Populated by JS -->
+        </div>
+      </div>
+
       <!-- Add Vendor Modal (Hidden by default) -->
       <div id="add-vendor-modal" class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto hidden">
         <div class="flex justify-between items-center p-6 border-b border-gray-200">
-          <h2 class="text-xl font-semibold text-gray-900">Add New Vendor</h2>
+          <h2 id="vendor-modal-title" class="text-xl font-semibold text-gray-900">Add New Vendor</h2>
           <button id="close-add-vendor" class="text-gray-400 hover:text-gray-500 transition-colors">
             <i data-lucide="x" class="h-6 w-6"></i>
           </button>
@@ -280,24 +206,25 @@
         
         <!-- Form Content -->
         <div class="p-6">
-          <p class="text-gray-600 mb-6">Register a new vendor in the Mandapam Association</p>
+          <p id="vendor-modal-subtitle" class="text-gray-600 mb-6">Register a new vendor in the Mandapam Association</p>
           
-          <form id="add-vendor-form" class="space-y-6">
+          <form id="add-vendor-form" action="javascript:void(0)" class="space-y-6">
+            <input type="hidden" id="vendor-id-input" value="" />
             <!-- Basic Information -->
             <div class="border-b border-gray-200 pb-6">
               <h3 class="text-lg font-medium text-gray-900 mb-4">Basic Information</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
-                  <input required type="text" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter full name" />
+                  <input name="name" required type="text" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter full name" />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Business Name *</label>
-                  <input required type="text" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter business name" />
+                  <input name="business_name" required type="text" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter business name" />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Category *</label>
-                  <select required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                  <select name="business_type" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                     <option value="">Select category</option>
                     <option value="Catering">Catering</option>
                     <option value="Decoration">Decoration</option>
@@ -306,7 +233,7 @@
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Status *</label>
-                  <select required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                  <select name="status" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                     <option value="">Select status</option>
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
@@ -316,11 +243,11 @@
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Date of Joining</label>
-                  <input type="date" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
+                  <input name="created_at" type="date" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Membership Expiry *</label>
-                  <input required type="date" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
+                  <input name="membership_expiry" required type="date" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
                 </div>
               </div>
             </div>
@@ -331,15 +258,15 @@
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number *</label>
-                  <input required type="tel" pattern="[0-9]{10}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter 10-digit phone number" />
+                  <input name="phone" required type="tel" pattern="[0-9]{10}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter 10-digit phone number" />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">WhatsApp Number</label>
-                  <input type="tel" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter WhatsApp number (optional)" />
+                  <input name="whatsapp" type="tel" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter WhatsApp number (optional)" />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
-                  <input required type="email" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter email address" />
+                  <input name="email" required type="email" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter email address" />
                 </div>
               </div>
             </div>
@@ -350,31 +277,23 @@
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="md:col-span-2">
                   <label class="block text-sm font-medium text-gray-700 mb-2">Street Address *</label>
-                  <input required type="text" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter street address" />
+                  <input name="address" required type="text" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter street address" />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">State *</label>
-                  <select required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                    <option value="">Select state</option>
-                    <option value="Maharashtra">Maharashtra</option>
-                    <option value="Delhi">Delhi</option>
-                  </select>
+                  <input name="state" required type="text" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter state name" />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">District *</label>
-                  <select required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                    <option value="">Select district</option>
-                    <option value="Mumbai">Mumbai</option>
-                    <option value="New Delhi">New Delhi</option>
-                  </select>
+                  <input name="district" required type="text" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter district name" />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">City *</label>
-                  <input required type="text" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter city name" />
+                  <input name="city" required type="text" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter city name" />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Pincode *</label>
-                  <input required type="text" pattern="[0-9]{6}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter 6-digit pincode" />
+                  <input name="pincode" required type="text" pattern="[0-9]{6}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter 6-digit pincode" />
                 </div>
               </div>
             </div>
@@ -385,11 +304,11 @@
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="md:col-span-2">
                   <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                  <textarea rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter business description (optional)"></textarea>
+                  <textarea name="description" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter business description (optional)"></textarea>
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Starting Price (₹)</label>
-                  <input type="number" min="0" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter starting price" />
+                  <input name="starting_price" type="number" min="0" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter starting price" />
                 </div>
               </div>
             </div>
@@ -423,9 +342,9 @@
               <button type="button" id="cancel-vendor-btn" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
                 Cancel
               </button>
-              <button type="submit" class="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2">
+              <button type="submit" id="vendor-submit-btn" class="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2">
                 <i data-lucide="check-circle" class="h-4 w-4"></i>
-                <span>Add Vendor</span>
+                <span id="vendor-submit-text">Add Vendor</span>
               </button>
             </div>
           </form>
@@ -438,6 +357,7 @@
     <script>
       lucide.createIcons();
     </script>
+    <script src="js/config.js"></script>
     <script src="js/pages/vendors.js"></script>
   </body>
 </html>

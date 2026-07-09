@@ -2,20 +2,55 @@
 const API_BASE_URL = window.CONFIG.API_BASE_URL;
 
 window.api = {
+    // --- Auth API ---
+    logout: async () => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            try {
+                // Production-ready logout request
+                await fetch(`${window.CONFIG.API_BASE_URL}/auth/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+            } catch (error) {
+                console.error('[Logout API] Error:', error);
+            }
+        }
+        
+        // Securely clear all user-related data from local storage
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        localStorage.removeItem('userEmail');
+        localStorage.removeItem('userName');
+        localStorage.removeItem('userRole');
+        
+        // Redirect to login
+        window.location.href = 'login.html';
+    },
+
     // --- Event API ---
     getPublicEvent: async (eventId) => {
-        const response = await fetch(`${API_BASE_URL}/public/events/${eventId}`);
+        const response = await fetch(`${API_BASE_URL}/events/${eventId}`);
         if (!response.ok) {
             if (response.status === 404) {
                 throw new Error('Event not found');
             }
             throw new Error('Failed to load event details');
         }
-        return await response.json();
+        const json = await response.json();
+        return json.data || json.event || json;
     },
 
     checkPublicRegistrationStatus: async (eventId, phone) => {
-        const response = await fetch(`${API_BASE_URL}/public/events/${eventId}/registration-status?phone=${phone}`);
+        // Endpoint matches React: /check-registration?phone=... (not /registration-status)
+        const response = await fetch(
+            `${API_BASE_URL}/events/${eventId}/check-registration?phone=${encodeURIComponent(phone)}`
+        );
         if (!response.ok) {
             throw new Error('Failed to verify registration status');
         }
@@ -23,10 +58,12 @@ window.api = {
     },
 
     initiatePublicRegistration: async (eventId, payload) => {
-        const response = await fetch(`${API_BASE_URL}/public/events/${eventId}/register`, {
+        // Correct endpoint: /register-payment (not /register)
+        const response = await fetch(`${API_BASE_URL}/events/${eventId}/register-payment`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify(payload)
         });
@@ -37,23 +74,84 @@ window.api = {
         return data;
     },
 
-    confirmPublicPayment: async (eventId, payload) => {
-        const response = await fetch(`${API_BASE_URL}/public/events/${eventId}/confirm-payment`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload)
-        });
-        const data = await response.json();
-        if (!response.ok) {
-            throw { response: { data, status: response.status } };
+    /**
+     * Confirm payment with retry logic + exponential backoff.
+     * Mirrors the React confirmPublicPayment implementation.
+     * Retries only on network errors (ECONNRESET, etc.) – not on 4xx/5xx.
+     */
+    confirmPublicPayment: async (eventId, payload, maxRetries = 5) => {
+        const retryDelays = [2000, 3000, 5000, 7000, 10000];
+
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            console.log(`[Payment Confirmation] Attempt ${attempt + 1}/${maxRetries} for event ${eventId}`);
+            console.log(`[Payment Confirmation] Payment ID: ${payload.razorpay_payment_id}`);
+            console.log(`[Payment Confirmation] Order ID: ${payload.razorpay_order_id}`);
+
+            try {
+                const response = await fetch(
+                    `${API_BASE_URL}/events/${eventId}/confirm-payment`,
+                    {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    }
+                );
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    // 4xx/5xx are non-retryable – throw immediately
+                    console.error(`[Payment Confirmation] ❌ Non-retryable HTTP ${response.status}`);
+                    throw { response: { data, status: response.status } };
+                }
+
+                console.log(`[Payment Confirmation] ✅ Success on attempt ${attempt + 1}`);
+                return data;
+
+            } catch (error) {
+                const isLastAttempt = attempt === maxRetries - 1;
+
+                // Non-retryable: has an HTTP response (4xx/5xx already thrown above)
+                if (error.response) {
+                    throw error;
+                }
+
+                // Network-level error (TypeError: Failed to fetch, AbortError, etc.)
+                const isNetworkError = error instanceof TypeError ||
+                                       error.name === 'AbortError' ||
+                                       error.name === 'NetworkError';
+
+                console.error(`[Payment Confirmation] ❌ Attempt ${attempt + 1}/${maxRetries} failed:`, {
+                    message: error.message,
+                    isNetworkError,
+                    isLastAttempt
+                });
+
+                if (isLastAttempt) {
+                    console.error(`[Payment Confirmation] ❌ All ${maxRetries} attempts failed`);
+                    throw error;
+                }
+
+                if (isNetworkError) {
+                    const delay = retryDelays[attempt] || 10000;
+                    console.log(`[Payment Confirmation] ⏳ Network error. Retrying in ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                }
+
+                // Any other unknown error – don't retry
+                throw error;
+            }
         }
-        return data;
+
+        throw new Error('Payment confirmation failed after all retries');
     },
 
     downloadRegistrationPdf: async (eventId, registrationId) => {
-        const response = await fetch(`${API_BASE_URL}/public/events/${eventId}/registrations/${registrationId}/pdf`);
+        const response = await fetch(`${API_BASE_URL}/events/${eventId}/registrations/${registrationId}/pdf`);
         if (!response.ok) {
             throw new Error('Failed to generate PDF');
         }
@@ -62,7 +160,7 @@ window.api = {
 
     // --- Association API ---
     getAssociationsByCity: async (city) => {
-        const response = await fetch(`${API_BASE_URL}/public/associations/city/${city}`);
+        const response = await fetch(`${API_BASE_URL}/associations/city/${city}`);
         if (!response.ok) {
             throw new Error('Failed to load associations');
         }
@@ -156,10 +254,25 @@ window.api = {
     },
 
     uploadProfileImage: async (file) => {
+        // Optimize image before upload (mirrors React's uploadApi.optimizeImage)
+        let fileToUpload = file;
+        try {
+            fileToUpload = await window.api.optimizeImage(file, {
+                maxWidth: 800,
+                maxHeight: 800,
+                quality: 0.85,
+                maxSizeMB: 1
+            });
+            console.log(`[Upload] Image optimized: ${file.size} bytes → ${fileToUpload.size} bytes`);
+        } catch (optimizeErr) {
+            console.warn('[Upload] Image optimization failed, using original file:', optimizeErr);
+            fileToUpload = file;
+        }
+
         // Use Cloudinary if configured
         if (window.CONFIG.CLOUDINARY.USE_CLOUDINARY) {
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', fileToUpload);
             formData.append('upload_preset', window.CONFIG.CLOUDINARY.UPLOAD_PRESET);
             formData.append('folder', 'mandap-profiles');
             formData.append('resource_type', 'auto');
@@ -184,7 +297,7 @@ window.api = {
         } else {
             // Fallback to backend API upload
             const formData = new FormData();
-            formData.append('image', file);
+            formData.append('image', fileToUpload);
 
             const token = localStorage.getItem('token');
             const headers = {};

@@ -17,11 +17,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // Logout functionality
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = 'login.html';
+        logoutBtn.addEventListener('click', async () => {
+    const token = localStorage.getItem('token');
+    const API_BASE = window.CONFIG.API_BASE_URL;
+    
+    if (token) {
+      try {
+        await fetch(`${API_BASE}/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         });
+      } catch (error) {
+        console.error('[Logout] Error:', error);
+      }
+    }
+    
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userRole');
+    window.location.href = 'login.html';
+  });
     }
 
     // Tab Switching Logic

@@ -85,14 +85,14 @@
           <div class="flex justify-between items-center">
             <div>
               <h1 class="text-3xl font-bold text-gray-900">Event Registrations</h1>
-              <p class="text-gray-600 mt-2">Manage and monitor all event registrations globally</p>
+              <p class="text-gray-600 mt-2">Showing <span id="showing-count">0</span> of <span id="total-count">0</span> registrations</p>
             </div>
             <div class="flex space-x-3">
-              <button class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2">
+              <button id="refresh-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2">
                 <i data-lucide="refresh-cw" class="h-4 w-4"></i>
                 <span>Refresh</span>
               </button>
-              <button class="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center space-x-2">
+              <button id="export-btn" class="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center space-x-2">
                 <i data-lucide="download" class="h-4 w-4"></i>
                 <span>Export CSV</span>
               </button>
@@ -107,6 +107,7 @@
                 <div class="relative">
                   <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4"></i>
                   <input
+                    id="search-registrations"
                     type="text"
                     placeholder="Name, Phone, Email..."
                     class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -116,16 +117,14 @@
               
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Event</label>
-                <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                <select id="filter-event" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                   <option value="">All Events</option>
-                  <option value="1">Annual General Meeting 2026</option>
-                  <option value="2">Vendor Training Session</option>
                 </select>
               </div>
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                <select id="filter-status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                   <option value="">All Statuses</option>
                   <option value="registered">Registered</option>
                   <option value="attended">Attended</option>
@@ -135,7 +134,7 @@
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Payment</label>
-                <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                <select id="filter-payment" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                   <option value="">All Payments</option>
                   <option value="paid">Paid</option>
                   <option value="pending">Pending</option>
@@ -158,80 +157,8 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                   </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                  
-                  <tr>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="flex items-center">
-                        <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-                          <span class="text-sm font-medium text-gray-600">JD</span>
-                        </div>
-                        <div>
-                          <div class="text-sm font-medium text-gray-900">John Doe</div>
-                          <div class="text-xs text-gray-500 flex items-center mt-1">
-                            <i data-lucide="phone" class="h-3 w-3 mr-1"></i>
-                            +91 9876543210
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="text-sm text-gray-900">Annual General Meeting 2026</div>
-                      <div class="text-xs text-gray-500">REG-00105</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                        Registered
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="text-sm font-medium text-gray-900">₹500</div>
-                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 mt-1">
-                        Paid
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      Jan 01, 2026<br>
-                      <span class="text-xs">10:30 AM</span>
-                    </td>
-                  </tr>
-
-                  <tr>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="flex items-center">
-                        <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-                          <span class="text-sm font-medium text-gray-600">SM</span>
-                        </div>
-                        <div>
-                          <div class="text-sm font-medium text-gray-900">Sarah Smith</div>
-                          <div class="text-xs text-gray-500 flex items-center mt-1">
-                            <i data-lucide="phone" class="h-3 w-3 mr-1"></i>
-                            +91 9988776655
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="text-sm text-gray-900">Vendor Training Session</div>
-                      <div class="text-xs text-gray-500">REG-00106</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                        Attended
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="text-sm font-medium text-gray-900">₹0</div>
-                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 mt-1">
-                        Free
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      Dec 01, 2025<br>
-                      <span class="text-xs">02:15 PM</span>
-                    </td>
-                  </tr>
-
+                <tbody id="registrations-table-body" class="bg-white divide-y divide-gray-200">
+                  <!-- Populated dynamically by event-registrations.js -->
                 </tbody>
               </table>
             </div>
@@ -272,10 +199,12 @@
       </main>
     </div>
 
-    <!-- Initialize Lucide Icons -->
-    <script>
-      lucide.createIcons();
-    </script>
+    <!-- config must load first so API_BASE_URL is available to page scripts -->
+    <script src="js/config.js"></script>
     <script src="js/pages/event-registrations.js"></script>
+    <script>
+      // Init sidebar/filter icons (table icons are created by the JS module)
+      if (window.lucide) lucide.createIcons();
+    </script>
   </body>
 </html>

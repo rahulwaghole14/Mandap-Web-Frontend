@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isLoading = true;
     let isRegistering = false;
     let isCheckingStatus = false;
+    let isPaymentConfirming = false; // Dedup guard: prevents double-confirmation if Razorpay fires handler twice
     
     // --- Elements ---
     const el = {
@@ -89,14 +90,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const showToast = (message, type = 'success') => {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
-        const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+        const bgColor = type === 'success' ? 'bg-green-500' : type === 'info' ? 'bg-blue-500' : 'bg-red-500';
         toast.className = `transform transition-all duration-300 translate-x-full opacity-0 flex items-center w-full max-w-xs p-4 space-x-3 text-white ${bgColor} rounded-lg shadow`;
-        toast.innerHTML = `
-            <div class="text-sm font-normal">${message}</div>
-            <button class="ml-auto -mx-1.5 -my-1.5 rounded-lg focus:ring-2 focus:ring-white p-1.5 inline-flex h-8 w-8 text-white hover:text-gray-200" onclick="this.parentElement.remove()">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
-        `;
+        
+        // Use textContent (not innerHTML) for message to prevent XSS from server error strings
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'text-sm font-normal flex-1';
+        msgDiv.textContent = message;
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'ml-auto -mx-1.5 -my-1.5 rounded-lg focus:ring-2 focus:ring-white p-1.5 inline-flex h-8 w-8 text-white hover:text-gray-200';
+        closeBtn.innerHTML = '<i data-lucide="x" class="w-5 h-5"></i>';
+        closeBtn.addEventListener('click', () => toast.remove());
+        
+        toast.appendChild(msgDiv);
+        toast.appendChild(closeBtn);
         container.appendChild(toast);
         lucide.createIcons();
         requestAnimationFrame(() => {
@@ -243,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Fallback for demo purposes if no slug is provided
         if (!slug) {
-            slug = 'kolhapur-2026';
+            slug = 'annual-decorators-expo-2026';
         }
 
         const normalizedSlug = slug.toLowerCase();
@@ -258,6 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
             eventData = await window.api.getPublicEvent(resolvedEventId);
             eventData = eventData.event || eventData; // Handle both wrapper and direct object
             renderEventDetails();
+            isLoading = false; // Clear loading flag after successful load
             el.pageLoader.classList.add('hidden');
             el.mainContent.classList.remove('hidden');
         } catch (error) {
@@ -600,10 +609,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isFree) {
                 registration = {
                     ...paymentData.registration,
+                    // Capture all QR code variants (matches paid-event path)
                     qrDataURL: paymentData.qrDataURL || paymentData.registration?.qrDataURL,
+                    qrCode: paymentData.qrCode || paymentData.registration?.qrCode,
+                    qrCodeUrl: paymentData.qrCodeUrl || paymentData.registration?.qrCodeUrl,
+                    qrCodeDataURL: paymentData.qrCodeDataURL || paymentData.registration?.qrCodeDataURL,
                     qrToken: paymentData.qrToken || paymentData.registration?.qrToken,
-                    memberName: payload.name,
-                    member: paymentData.member,
+                    memberName: paymentData.memberName ||
+                                paymentData.registration?.memberName ||
+                                paymentData.registration?.member?.name ||
+                                paymentData.registration?.name ||
+                                payload.name,
+                    phone: el.phone.value || paymentData.member?.phone || paymentData.registration?.phone,
+                    member: paymentData.member || paymentData.registration?.member,
                     photo: photoUrl
                 };
                 showToast('Registration successful! Your visitor pass will be sent to your WhatsApp shortly.');
@@ -619,35 +637,141 @@ document.addEventListener('DOMContentLoaded', () => {
             const options = {
                 ...paymentData.paymentOptions,
                 handler: async function (response) {
-                    try {
-                        const confirmData = await window.api.confirmPublicPayment(resolvedEventId, {
-                            memberId: paymentData.member.id,
-                            razorpay_order_id: response.razorpay_order_id,
-                            razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_signature: response.razorpay_signature
-                        });
+                    // --- Dedup guard (mirrors React's paymentConfirmingRef) ---
+                    if (isPaymentConfirming) {
+                        console.warn('[Payment] Confirmation already in progress – ignoring duplicate Razorpay callback');
+                        return;
+                    }
+                    isPaymentConfirming = true;
 
+                    try {
+                        // Step A: Attempt to confirm payment with retry + backoff
+                        let confirmData = null;
+                        let paymentConfirmed = false;
+
+                        try {
+                            console.log('[Payment] Starting confirmation...');
+                            console.log('[Payment] Payment ID:', response.razorpay_payment_id);
+                            console.log('[Payment] Order ID:', response.razorpay_order_id);
+
+                            confirmData = await window.api.confirmPublicPayment(resolvedEventId, {
+                                memberId: paymentData.member.id,
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature
+                            });
+                            paymentConfirmed = true;
+                            console.log('[Payment] Confirmed successfully');
+
+                        } catch (confirmError) {
+                            // Retry logic exhausted in api.confirmPublicPayment.
+                            // Network errors may still have succeeded on the server.
+                            console.error('[Payment] Confirmation failed after retries:', confirmError);
+
+                            const isNetworkError = confirmError instanceof TypeError ||
+                                                   confirmError.name === 'AbortError' ||
+                                                   confirmError.name === 'NetworkError';
+
+                            if (isNetworkError) {
+                                // Network error – payment may have succeeded on server, poll to verify
+                                showToast('Payment received! Verifying registration…', 'info');
+                                console.warn('[Payment] Network error – polling registration status as fallback...');
+
+                                const maxPollAttempts = 6;
+                                const pollInterval = 2000;
+                                let registrationFound = false;
+
+                                for (let attempt = 1; attempt <= maxPollAttempts; attempt++) {
+                                    console.log(`[Payment] Polling attempt ${attempt}/${maxPollAttempts}...`);
+                                    await new Promise(resolve => setTimeout(resolve, pollInterval));
+
+                                    try {
+                                        const statusData = await window.api.checkPublicRegistrationStatus(
+                                            resolvedEventId,
+                                            el.phone.value
+                                        );
+
+                                        if (statusData.isRegistered &&
+                                            statusData.registration?.paymentStatus === 'paid') {
+                                            console.log('[Payment] Registration confirmed via polling!');
+                                            registrationFound = true;
+                                            confirmData = {
+                                                success: true,
+                                                message: 'Registration confirmed',
+                                                registrationId: statusData.registration.id,
+                                                qrDataURL: statusData.registration.qrDataURL,
+                                                registration: statusData.registration,
+                                                member: statusData.member || paymentData.member
+                                            };
+                                            paymentConfirmed = true;
+                                            break;
+                                        }
+                                    } catch (pollError) {
+                                        console.error(`[Payment] Poll attempt ${attempt} failed:`, pollError);
+                                    }
+                                }
+
+                                if (!registrationFound) {
+                                    throw new Error(
+                                        'Payment was successful, but we could not verify the registration. ' +
+                                        'Please check your registration status or contact support.'
+                                    );
+                                }
+                            } else {
+                                // Non-network error (server-side 4xx/5xx) – rethrow
+                                throw confirmError;
+                            }
+                        }
+
+                        if (!confirmData || !paymentConfirmed) {
+                            throw new Error('Payment confirmation failed');
+                        }
+
+                        // Step B: Build registration object
                         registration = {
                             ...confirmData.registration,
                             qrDataURL: confirmData.qrDataURL || confirmData.registration?.qrDataURL,
+                            qrCode: confirmData.qrCode || confirmData.registration?.qrCode,
+                            qrCodeUrl: confirmData.qrCodeUrl || confirmData.registration?.qrCodeUrl,
+                            qrCodeDataURL: confirmData.qrCodeDataURL || confirmData.registration?.qrCodeDataURL,
                             qrToken: confirmData.qrToken || confirmData.registration?.qrToken,
-                            memberName: confirmData.memberName || payload.name,
-                            member: confirmData.member,
+                            memberName: confirmData.memberName ||
+                                        confirmData.registration?.memberName ||
+                                        confirmData.registration?.member?.name ||
+                                        confirmData.registration?.name ||
+                                        payload.name,
+                            phone: el.phone.value ||
+                                   confirmData.member?.phone ||
+                                   confirmData.registration?.phone ||
+                                   paymentData.member?.phone,
+                            member: confirmData.member || confirmData.registration?.member || paymentData.member,
                             photo: photoUrl
                         };
 
                         const willSendWhatsApp = confirmData.shouldSendWhatsApp !== false;
-                        showToast(willSendWhatsApp ? 'Registration successful! Your visitor pass will be sent to your WhatsApp shortly.' : 'Registration confirmed. You can download your pass now.');
+                        showToast(
+                            willSendWhatsApp
+                                ? 'Registration successful! Your visitor pass will be sent to your WhatsApp shortly.'
+                                : 'Registration confirmed. You can download your pass now.'
+                        );
                         showSuccessSection(true, willSendWhatsApp);
 
                     } catch (err) {
-                        console.error('Payment confirmation error:', err);
+                        console.error('[Payment] Confirmation error:', err);
                         showToast(err.response?.data?.message || err.message || 'Payment confirmation failed', 'error');
+                    } finally {
+                        isRegistering = false;
+                        isPaymentConfirming = false; // Always reset dedup flag
+                        updateSubmitButtonState();
+                        el.submitLoader.classList.add('hidden');
+                        el.submitText.textContent = `Register & Pay ₹${fee.toFixed(2)}`;
                     }
                 },
                 modal: {
-                    ondismiss: function() {
+                    ondismiss: function () {
+                        console.log('[Payment] Modal dismissed by user');
                         isRegistering = false;
+                        isPaymentConfirming = false; // Reset dedup flag on cancel
                         updateSubmitButtonState();
                         el.submitLoader.classList.add('hidden');
                         el.submitText.textContent = `Register & Pay ₹${fee.toFixed(2)}`;
@@ -656,9 +780,11 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             const rzp = new window.Razorpay(options);
-            rzp.on('payment.failed', function (response) {
+            rzp.on('payment.failed', function (failResponse) {
+                console.error('[Payment] Failed:', failResponse);
                 showToast('Payment failed. Please try again.', 'error');
                 isRegistering = false;
+                isPaymentConfirming = false; // Reset dedup flag on failure
                 updateSubmitButtonState();
                 el.submitLoader.classList.add('hidden');
                 el.submitText.textContent = `Register & Pay ₹${fee.toFixed(2)}`;

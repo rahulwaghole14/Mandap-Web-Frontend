@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setLoading(elements.sendOtpBtn, 'Sending OTP...', 'Send OTP');
 
         try {
-            const response = await fetch('http://localhost:3001/api/account/request-deletion', {
+            const response = await fetch('http://192.168.0.119:8000/api/account/request-deletion', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -192,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setLoading(elements.verifyOtpBtn, 'Verifying...', 'Verify OTP');
 
         try {
-            const response = await fetch('http://localhost:3001/api/account/confirm-deletion', {
+            const response = await fetch('http://192.168.0.119:8000/api/account/confirm-deletion', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -237,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setLoading(elements.resendOtpBtn, 'Sending...', 'Resend OTP');
 
         try {
-            const response = await fetch('http://localhost:3001/api/account/request-deletion', {
+            const response = await fetch('http://192.168.0.119:8000/api/account/request-deletion', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -278,7 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setLoading(elements.cancelDeletionBtn, 'Cancelling...', 'Cancel Deletion');
 
         try {
-            const response = await fetch('http://localhost:3001/api/account/cancel-deletion', {
+            const response = await fetch('http://192.168.0.119:8000/api/account/cancel-deletion', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

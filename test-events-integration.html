@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Events Integration</title>
+    <!-- Load styles from actual app -->
+    <link href="css/style.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <h1 class="text-2xl font-bold mb-4">Integration Test for Events API</h1>
+    
+    <!-- DOM elements expected by events.js -->
+    <div id="events-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+    <script>
+        // 1. Mock LocalStorage
+        localStorage.setItem('token', 'mock-token-123');
+        localStorage.setItem('user', JSON.stringify({name: 'Test User'}));
+
+        // 2. Mock window.CONFIG
+        window.CONFIG = { API_BASE_URL: 'http://mock-api.local' };
+
+        // 3. Mock fetch
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            const url = args[0];
+            if (typeof url === 'string' && url.includes('/events')) {
+                console.log('Mocked fetch called for:', url);
+                return {
+                    ok: true,
+                    json: async () => ({
+                        "status": "success",
+                        "message": "Events retrieved successfully.",
+                        "currentPage": 1,
+                        "totalPages": 1,
+                        "totalRecords": 6,
+                        "recordsPerPage": 15,
+                        "results": [
+                            {
+                                "id": 2,
+                                "title": "National Cataering Summit 2026",
+                                "slug": "national-cataering-summit-2026",
+                                "description": "A three-day summit...",
+                                "venue": "Hyderabad International Convention Centre",
+                                "address": "IT City, PCMC, Maharashtra",
+                                "start_date": "2026-09-18",
+                                "end_date": "2026-09-20",
+                                "capacity": "750",
+                                "status": "active"
+                            },
+                            {
+                                "id": 1,
+                                "title": "Annual Decorators Expo 2026",
+                                "venue": "Jio World Convention Centre",
+                                "address": "Kopa Mall KP Parak, Pune",
+                                "start_date": "2026-12-10",
+                                "end_date": "2026-12-12",
+                                "capacity": "500",
+                                "status": "active"
+                            }
+                        ]
+                    })
+                };
+            }
+            return originalFetch.apply(this, args);
+        };
+    </script>
+    
+    <!-- Load actual events.js to test its integration -->
+    <script src="js/pages/events.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

@@ -84,7 +84,7 @@
               <p class="text-gray-600 mt-2">Manage the association's national board members</p>
             </div>
             <div class="flex space-x-3">
-              <button class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2">
+              <button id="refresh-nbod-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2">
                 <i data-lucide="refresh-cw" class="h-4 w-4"></i>
                 <span>Refresh</span>
               </button>
@@ -109,7 +109,7 @@
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody id="nbod-table-body" class="bg-white divide-y divide-gray-200">
                   <!-- Sample Data row 1 -->
                   <tr class="hover:bg-gray-50">
                     <td class="px-6 py-4 whitespace-nowrap">
@@ -230,13 +230,16 @@
           <form id="add-nbod-form" class="space-y-4">
             
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Member Name *</label>
-              <input required type="text" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter member name" />
+              <label class="block text-sm font-medium text-gray-700 mb-2">Member *</label>
+              <select id="form-member-id" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                <option value="">Select a member</option>
+                <!-- Populated via JS -->
+              </select>
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Position *</label>
-              <select required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Position / Designation *</label>
+              <select id="form-designation" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
                 <option value="">Select position</option>
                 <option value="President">President</option>
                 <option value="Vice President">Vice President</option>
@@ -245,17 +248,32 @@
                 <option value="Treasurer">Treasurer</option>
                 <option value="Joint Treasurer">Joint Treasurer</option>
                 <option value="Executive Member">Executive Member</option>
+                <option value="Counsil President">Counsil President</option>
+                <option value="Counsil Vice President">Counsil Vice President</option>
               </select>
             </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Association ID *</label>
+                  <input id="form-association-id" type="number" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="e.g. 1" />
+                </div>
+            </div>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Bio</label>
-              <textarea rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Brief description about the member..."></textarea>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Start Date *</label>
+                  <input id="form-start-date" type="date" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">End Date *</label>
+                  <input id="form-end-date" type="date" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
+                </div>
             </div>
 
             <div class="flex items-center space-x-2">
-              <input type="checkbox" id="memberIsActive" checked class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded" />
-              <label for="memberIsActive" class="text-sm text-gray-700">Active NBOD Member</label>
+              <input type="checkbox" id="form-status" checked class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded" />
+              <label for="form-status" class="text-sm text-gray-700">Active NBOD Member</label>
             </div>
 
             <div class="flex justify-end space-x-3 pt-4">
@@ -270,12 +288,59 @@
           </form>
         </div>
       </div>
+
+      <!-- View NBOD Modal -->
+      <div id="view-nbod-modal" class="bg-white rounded-lg shadow-xl w-full max-w-lg hidden">
+        <div class="flex justify-between items-center p-6 border-b border-gray-200">
+          <h2 class="text-xl font-semibold text-gray-900">Board Member Details</h2>
+          <button id="close-view-nbod" class="text-gray-400 hover:text-gray-500 transition-colors">
+            <i data-lucide="x" class="h-6 w-6"></i>
+          </button>
+        </div>
+        <div class="p-6 space-y-4">
+          <div class="flex items-center space-x-4 mb-6">
+            <div class="h-16 w-16 rounded-full bg-primary-100 flex items-center justify-center">
+              <span id="view-initials" class="text-xl font-bold text-primary-700">--</span>
+            </div>
+            <div>
+              <h3 id="view-name" class="text-lg font-semibold text-gray-900">Name</h3>
+              <p id="view-designation" class="text-primary-600 font-medium">Designation</p>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <p class="text-sm text-gray-500">Contact</p>
+              <p id="view-mobile" class="font-medium text-gray-900">--</p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">Email</p>
+              <p id="view-email" class="font-medium text-gray-900">--</p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">Added Date</p>
+              <p id="view-added" class="font-medium text-gray-900">--</p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">Status</p>
+              <span id="view-status" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">--</span>
+            </div>
+          </div>
+          
+          <div class="flex justify-end pt-6 mt-4 border-t border-gray-200">
+            <button id="close-view-btn-bottom" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Initialize Lucide Icons -->
     <script>
       lucide.createIcons();
     </script>
-    <script src="js/pages/nbod.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/pages/nbod.js?v=2"></script>
   </body>
 </html>

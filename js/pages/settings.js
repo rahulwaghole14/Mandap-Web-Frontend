@@ -72,4 +72,78 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+    // Load Admin Profile
+    async function loadAdminProfile() {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+    const API_BASE = window.CONFIG.API_BASE_URL;
+        
+        try {
+            const res = await fetch(`${API_BASE}/auth/profile`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (res.ok) {
+                const json = await res.json();
+                const user = json.data?.user;
+                if (user) {
+                    const nameInput = document.getElementById('profile-name');
+                    const emailInput = document.getElementById('profile-email');
+                    const roleInput = document.getElementById('profile-role');
+
+                    if (nameInput) nameInput.value = user.name || '';
+                    if (emailInput) emailInput.value = user.email || '';
+                    if (roleInput) roleInput.value = user.role || '';
+                    
+                    // Update role text in permissions tab
+                    const roleText = document.querySelector('#permissions-tab .capitalize');
+                    if (roleText) roleText.textContent = user.role || 'admin';
+
+                    // Update localStorage so other parts of the app have the freshest data
+                    localStorage.setItem('user', JSON.stringify(user));
+                    localStorage.setItem('userName', user.name || '');
+                    localStorage.setItem('userEmail', user.email || '');
+                    localStorage.setItem('userRole', user.role || '');
+                }
+            }
+        } catch (error) {
+            console.error('[Settings] Error loading admin profile:', error);
+        }
+    }
+
+    loadAdminProfile();
+    // ── Logout ─────────────────────────────────────────────────────────────────
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            const token = localStorage.getItem('token');
+    const API_BASE = window.CONFIG.API_BASE_URL;
+            
+            if (token) {
+                try {
+                    await fetch(`${API_BASE}/auth/logout`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                } catch (error) {
+                    console.error('[Logout] Error:', error);
+                }
+            }
+            
+            localStorage.removeItem('token');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('user');
+            localStorage.removeItem('userEmail');
+            localStorage.removeItem('userName');
+            localStorage.removeItem('userRole');
+            window.location.href = 'login.html';
+        });
+    }
+
 });

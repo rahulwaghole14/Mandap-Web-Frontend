@@ -1,0 +1,147 @@
+# Frontend Audit & API Communication Report
+
+## 1. Executive Summary
+This audit evaluated the frontend API communication layer of the Mandapam Admin application (`Mandapam_HTML`). The primary focus was verifying the correctness of the API Base URL generation, ensuring exactly one `/api` segment is present, tracing network requests, and assessing the overall architecture of API integrations. 
+
+Overall, the core Base URL configuration is robust and dynamically resolves based on the environment. However, significant architectural debt was identified regarding decentralized API calls. Most critically, **hardcoded localhost URLs were found bypassing the centralized configuration**, and **API logic (including authentication checks and logout) is duplicated across almost every page script** instead of relying on a unified API client.
+
+## 2. Project Structure Review
+- The application uses vanilla JavaScript, HTML, and Tailwind CSS.
+- Configuration is centralized in `js/config.js`.
+- A utility script `js/utils/api.js` exists, intended to wrap API calls.
+- Individual page logic resides in `js/pages/*.js`.
+
+## 3. API Communication Analysis
+API communication is currently fragmented. While `js/utils/api.js` exists and contains some wrapped functions (like `logout`, `getPublicEvent`, `uploadProfileImage`), the vast majority of the application bypasses this utility and invokes raw `fetch()` directly within page scripts (e.g., `dashboard.js`, `events.js`, `event-form.js`, `vendors.js`, `login.js`).
+This lack of a centralized API client (like an Axios instance or a global fetch wrapper) forces every page to manually:
+- Retrieve the JWT token from `localStorage`.
+- Append the `Authorization` header.
+- Construct the endpoint URL using `${API_BASE}`.
+- Handle HTTP errors independently.
+
+## 4. API Hit Verification
+API requests are correctly triggered by user actions across the platform. 
+- Form submissions prevent default browser behavior (`e.preventDefault()`) and reliably hit `fetch`.
+- `await` is properly used to pause execution.
+- Early returns correctly block execution when validation fails (e.g., missing email/password in `login.js`).
+
+## 5. Base URL Audit
+The application maintains a single source of truth for the API Base URL in `js/config.js` via the `getApiBaseUrl()` function.
+
+Environments resolved:
+- **Filesystem (`file://`)**: `http://192.168.1.42:8000/api`
+- **Localhost (`localhost`, `127.0.0.1`)**: `http://localhost:8000/api`
+- **LAN (`192.168.1.42`)**: `http://192.168.1.42:8000/api`
+- **Production (Fallback)**: `window.location.origin + '/api'`
+
+The URL is correctly exported to `window.CONFIG.API_BASE_URL`.
+
+## 6. `/api` Path Verification
+**Status: VERIFIED (Mostly)**
+The configuration in `js/config.js` guarantees that `API_BASE_URL` contains exactly one `/api` segment.
+Examples:
+- ✅ `http://192.168.1.42:8000/api`
+- ✅ `http://localhost:8000/api`
+
+Page scripts dynamically construct endpoints using `${API_BASE}/route` (e.g., `${API_BASE}/events`). Since the base URL does not have a trailing slash and the routes begin with a slash, exactly one `/api` segment is preserved. 
+
+*Exception found in `delete-account.js` (see Code Quality Findings).*
+
+## 7. Final URL Generation Audit
+Typical Generation Flow:
+- Configured Base: `http://192.168.1.42:8000/api`
+- Request Script: `const endpoint = \`\${API_BASE}/events\`;`
+- Final Generated URL: `http://192.168.1.42:8000/api/events`
+- Number of `/api` segments: 1
+- Match backend contract: Yes.
+
+## 8. Authentication Flow Analysis
+**Login (`login.js`)**:
+- Triggered on form submit.
+- Validates inputs.
+- Executes `fetch` to `${API_BASE}/auth/login` (POST).
+- Handles errors properly (catches 401, 403, and network errors).
+- Safely stores JWT tokens in `localStorage`.
+- Defers navigation until after local storage updates.
+
+**Logout**:
+- **Critical Flaw**: Logout logic is duplicated in `dashboard.js`, `events.js`, `members.js`, `nbod.js`, `settings.js`, `vendors.js`, `event-registrations.js`, and `event-details.js`.
+- Each file independently triggers a `fetch` to `${API_BASE}/auth/logout`.
+- Expected Behavior: All scripts should call the centralized `window.api.logout()` defined in `js/utils/api.js`.
+
+## 9. Network Request Trace
+**Example Trace (Create Event in `event-form.js`)**:
+1. User Action: Click "Save Event"
+2. Button Click / Event: `form.addEventListener('submit')`
+3. Validation: Date comparison check.
+4. Function Call: Inline async function execution.
+5. API Service: Bypassed. Raw `fetch` used.
+6. Base URL: `window.CONFIG.API_BASE_URL`
+7. Endpoint: `${API_BASE}/events`
+8. HTTP Request: POST with payload and Bearer token.
+9. Backend Route: `http://192.168.1.42:8000/api/events`
+10. Response Handling: Awaits response. Throws error if `!response.ok`.
+11. UI Update: Alerts success and redirects to `events.html`.
+
+## 10. Frontend–Backend Contract Verification
+Requests are mostly well-formed.
+- Methods: Correct (GET, POST, PUT, DELETE).
+- Headers: Correctly attach `application/json` and `Authorization: Bearer <token>`.
+- Payload Structure: Relies heavily on input extraction and formatting. 
+
+## 11. Environment Configuration Review
+The lack of `.env` files forces the application to rely entirely on `window.location` heuristics in `config.js` to determine the environment. While functional, it is fragile and requires hardcoded IP addresses (`192.168.1.42`) directly in the source code.
+
+## 12. Routing Analysis
+Since this is a multi-page application (MPA), navigation is handled via `window.location.href`. Protected routes perform primitive client-side checks for the presence of a token in `localStorage`. If missing, the user is redirected to `login.html`.
+
+## 13. Browser & Deployment Findings
+- `file://` execution is anticipated and handled via fallback in `config.js`.
+- CORS assumptions: The application correctly surfaces CORS / Network errors in the catch blocks (e.g., `login.js` line 142).
+
+## 14. Error Handling Review
+- Errors are not handled globally. 
+- While `login.js` possesses a robust error parser that attempts to extract server messages (`data?.message || data?.error || ...`), other scripts (e.g., `event-form.js`) rely on generic alerts or `console.error()`.
+- Expired tokens do not appear to trigger a global redirect to login, as there are no request/response interceptors.
+
+## 15. Code Quality Findings
+**Dead / Duplicate Logic:**
+- `window.api.logout` is largely unused, substituted by duplicated `fetch` calls in individual pages.
+
+**Hardcoded Endpoints (CRITICAL):**
+File: `js/pages/delete-account.js`
+- Line 152: `fetch('http://localhost:3001/api/account/request-deletion', ...)`
+- Line 195: `fetch('http://localhost:3001/api/account/confirm-deletion', ...)`
+- Line 240: `fetch('http://localhost:3001/api/account/request-deletion', ...)`
+- Line 281: `fetch('http://localhost:3001/api/account/cancel-deletion', ...)`
+This file entirely ignores `API_BASE_URL` and routes requests to a static `localhost:3001` server, ensuring failure in staging/production environments.
+
+## 16. Root Cause Analysis
+The fragmentation of API calls is rooted in the lack of a centralized HTTP client (e.g., Axios). Because vanilla `fetch` does not support interceptors out-of-the-box, developers opted to copy-paste request and authentication logic across pages.
+
+## 17. Risk Assessment
+- **Critical**: Hardcoded `localhost` URLs in `delete-account.js` (Breaks in production).
+- **High**: Lack of centralized error handling and 401 Unauthorized interceptors (Poor UX upon session expiration).
+- **Medium**: Duplicated `fetch` logic across all pages (Maintenance overhead).
+- **Medium**: Hardcoded LAN IPs in `config.js` (Deployment fragility).
+
+## 18. Prioritized Findings
+
+1. **Severity: CRITICAL**
+   - **File**: `js/pages/delete-account.js`
+   - **Function**: Multiple event listeners.
+   - **Line Numbers**: 152, 195, 240, 281
+   - **Root Cause**: Developer hardcoded endpoints during local testing and failed to migrate to dynamic `API_BASE` configuration.
+   - **Evidence**: `fetch('http://localhost:3001/api/account/request-deletion', ...)`
+   - **Expected Behavior**: Must use `${window.CONFIG.API_BASE_URL}/account/...`
+   - **Impact**: Account deletion is completely broken for any user not running a local server on port 3001.
+
+2. **Severity: MEDIUM**
+   - **File**: Multiple (`dashboard.js`, `events.js`, etc.)
+   - **Root Cause**: Duplicate logic instead of reusing `window.api.logout()`.
+   - **Evidence**: `fetch(`${API_BASE}/auth/logout`, ...)` appearing across 8+ files.
+   - **Expected Behavior**: Single invocation via unified API script.
+   - **Impact**: High technical debt and risk of inconsistent authentication state handling.
+
+## 19. Final Verdict
+The frontend successfully establishes API communication and properly dynamically resolves the Base URL with exactly one `/api` segment. However, the architecture suffers from heavily decentralized API calls, duplicated authentication logic, and critical hardcoded URLs in specific edge-case flows (account deletion). Addressing the hardcoded URLs is mandatory before production release.

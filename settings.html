@@ -108,23 +108,23 @@
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                  <input type="text" value="Admin User" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                  <input id="profile-name" type="text" value="Admin User" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                  <input type="email" value="admin@mandapam.com" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                  <input id="profile-email" type="email" value="admin@mandapam.com" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-                  <input type="tel" value="9876543210" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                  <input id="profile-phone" type="tel" value="" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
-                  <input type="text" value="admin" disabled class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+                  <input id="profile-role" type="text" value="admin" disabled class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">District</label>
-                  <input type="text" value="Pune" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                  <input id="profile-district" type="text" value="" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
                 </div>
               </div>
 
@@ -275,6 +275,7 @@
     <script>
       lucide.createIcons();
     </script>
+    <script src="js/config.js"></script>
     <script src="js/pages/settings.js"></script>
   </body>
 </html>

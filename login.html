@@ -7,6 +7,7 @@
   <link rel="icon" type="image/png" href="assets/images/mandapam-logo.png" />
   <link rel="apple-touch-icon" href="assets/images/mandapam-logo.png" />
   <link rel="stylesheet" href="css/style.css">
+
   
   <!-- Add EyeOff SVG to a template for easy toggling in JS -->
   <template id="eye-icon">
@@ -40,8 +41,8 @@
           <div class="text-sm text-blue-800">
             <p class="font-medium mb-2">Backend Connected:</p>
             <p class="text-blue-700">
-              ✅ API running on https://mandapam-backend-97mi.onrender.com<br/>
-              ✅ MongoDB Atlas connected<br/>
+              <span id="displayApiBase">✅ API: Dynamic IP (Local or Network)</span><br/>
+              ✅ Endpoint: POST /auth/login<br/>
               ✅ JWT authentication enabled
             </p>
           </div>
@@ -137,6 +138,7 @@
     </div>
   </div>
 
-  <script src="./js/pages/login.js"></script>
+  <script src="js/config.js" defer></script>
+  <script src="./js/pages/login.js" defer></script>
 </body>
 </html>
