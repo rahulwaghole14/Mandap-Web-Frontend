@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('open-add-modal').addEventListener('click', () => {
         document.getElementById('form-modal-title').textContent = 'Add Association';
         document.getElementById('assoc-form').reset();
+        delete document.getElementById('assoc-form').dataset.editId;
         openModal('form');
     });
 
@@ -210,9 +211,21 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (btn.classList.contains('edit-btn')) {
                 document.getElementById('form-modal-title').textContent = 'Edit Association';
-                const name = tr.querySelector('.assoc-name').textContent;
-                document.getElementById('assoc-name-input').value = name;
-                // Note: Full edit logic to be implemented here
+                const assoc = allAssociations.find(a => a.id == id);
+                if (assoc) {
+                    if (document.getElementById('form-name')) document.getElementById('form-name').value = assoc.name || '';
+                    if (document.getElementById('form-code')) document.getElementById('form-code').value = assoc.code || '';
+                    if (document.getElementById('form-address')) document.getElementById('form-address').value = assoc.address || '';
+                    if (document.getElementById('form-city')) document.getElementById('form-city').value = assoc.city || '';
+                    if (document.getElementById('form-district')) document.getElementById('form-district').value = assoc.district || '';
+                    if (document.getElementById('form-state')) document.getElementById('form-state').value = assoc.state || '';
+                    if (document.getElementById('form-pincode')) document.getElementById('form-pincode').value = assoc.pincode || '';
+                    if (document.getElementById('form-contact-person')) document.getElementById('form-contact-person').value = assoc.contact_person || '';
+                    if (document.getElementById('form-mobile')) document.getElementById('form-mobile').value = assoc.mobile || '';
+                    if (document.getElementById('form-email')) document.getElementById('form-email').value = assoc.email || '';
+                    if (document.getElementById('form-status')) document.getElementById('form-status').value = assoc.status || 'Active';
+                }
+                document.getElementById('assoc-form').dataset.editId = id;
                 openModal('form');
             } else if (btn.classList.contains('delete-btn')) {
                 // Note: Full delete logic to be implemented here
@@ -252,31 +265,50 @@ document.addEventListener('DOMContentLoaded', () => {
             if (window.lucide) lucide.createIcons();
 
             try {
-                const API_BASE = window.CONFIG.API_BASE_URL;
-                const token = localStorage.getItem('token');
+                const editId = form.dataset.editId;
                 
-                const res = await fetch(`${API_BASE}/associations`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                const json = await res.json();
-                
-                if (res.ok && json.success) {
-                    alert('Association saved successfully!');
-                    closeAllModals();
-                    loadData(); // Refresh the table
-                } else {
-                    let errMsg = json.message || 'Failed to save association.';
-                    if (json.errors) {
-                        errMsg += '\n' + Object.values(json.errors).flat().join('\n');
+                if (editId && window.api && window.api.updateAssociation) {
+                    // Update existing (PUT)
+                    const res = await window.api.updateAssociation(editId, payload);
+                    if (res.success) {
+                        alert('Association updated successfully!');
+                        closeAllModals();
+                        loadData(); // Refresh the table
+                    } else {
+                        let errMsg = res.message || 'Failed to update association.';
+                        if (res.errors) {
+                            errMsg += '\n' + Object.values(res.errors).flat().join('\n');
+                        }
+                        alert(errMsg);
                     }
-                    alert(errMsg);
+                } else {
+                    // Create new (POST)
+                    const API_BASE = window.CONFIG.API_BASE_URL;
+                    const token = localStorage.getItem('token');
+                    
+                    const res = await fetch(`${API_BASE}/associations`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const json = await res.json();
+                    
+                    if (res.ok && json.success) {
+                        alert('Association saved successfully!');
+                        closeAllModals();
+                        loadData(); // Refresh the table
+                    } else {
+                        let errMsg = json.message || 'Failed to save association.';
+                        if (json.errors) {
+                            errMsg += '\n' + Object.values(json.errors).flat().join('\n');
+                        }
+                        alert(errMsg);
+                    }
                 }
             } catch (err) {
                 console.error('[Associations Form Error]', err);
