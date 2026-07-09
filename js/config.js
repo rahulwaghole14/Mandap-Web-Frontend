@@ -8,12 +8,12 @@ const getApiBaseUrl = () => {
 
     // If opening the HTML directly from the filesystem (file:///...)
     if (protocol === 'file:' || !hostname) {
-        return 'http://localhost:8000/api'; // Default fallback for local file testing
+        return 'http://192.168.0.119:8000/api'; // Default fallback for local file testing
     }
 
     // Local development (if accessing via localhost)
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        return 'http://localhost:8000/api';
+        return 'http://192.168.0.119:8000/api';
     }
 
     // Dynamic local network or production
