@@ -195,6 +195,20 @@ window.api = {
         return await response.json();
     },
 
+    updateAssociation: async (id, data) => {
+        const token = localStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${API_BASE_URL}/associations/${id}`, {
+            method: 'PUT',
+            headers: headers,
+            body: JSON.stringify(data)
+        });
+        
+        return await response.json();
+    },
+
     // --- Upload API ---
     optimizeImage: (file, options = {}) => {
         return new Promise((resolve, reject) => {
