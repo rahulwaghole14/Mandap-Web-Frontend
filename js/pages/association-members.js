@@ -95,6 +95,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const associationId = urlParams.get('id');
 
+    // Set back-button href immediately (synchronous — no race condition)
+    const backBtn = document.getElementById('back-to-detail-btn');
+    if (backBtn) {
+        backBtn.href = associationId ? `association-detail.html?id=${associationId}` : 'associations.html';
+    }
+
     const loadAssociationData = async () => {
         if (!associationId) {
             document.getElementById('assoc-name-header').textContent = "Unknown Association";

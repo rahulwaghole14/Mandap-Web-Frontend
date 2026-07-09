@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    // Set the View Members link immediately (synchronous — no race condition)
     const viewMembersBtn = document.getElementById('view-members-btn');
     if (viewMembersBtn) {
         viewMembersBtn.href = `association-members.html?id=${associationId}`;
