@@ -8,21 +8,21 @@ const getApiBaseUrl = () => {
 
     // If opening the HTML directly from the filesystem (file:///...)
     if (protocol === 'file:' || !hostname) {
-        return 'http://192.168.1.42:8000/api'; // Default fallback for local file testing
+        return 'http://localhost:8000/api'; // Default fallback for local file testing
     }
 
-    // Local development
+    // Local development (if accessing via localhost)
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        return 'http://192.168.0.119:8000/api';
+        return 'http://localhost:8000/api';
     }
 
-    // Local network / specific IP
-    if (hostname === '192.168.1.42') {
-        return 'http://192.168.1.42:8000/api';
+    // Dynamic local network or production
+    // If accessing via an IP like 192.168.X.X, this will construct the correct API URL dynamically
+    if (hostname.match(/^[0-9.]+$/)) {
+        return `http://${hostname}:8000/api`;
     }
 
-    // Production / Fallback - assumes backend is on the same origin 
-    // or replace with actual production API URL like 'https://api.mandapam.com'
+    // Production / Fallback - assumes backend is on the same origin
     return window.location.origin + '/api';
 };
 
