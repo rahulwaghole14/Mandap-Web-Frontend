@@ -94,11 +94,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Get ID from URL
     const urlParams = new URLSearchParams(window.location.search);
     const associationId = urlParams.get('id');
+    console.log('[Association Members] Page loaded — Association ID from URL:', associationId);
 
     // Set back-button href immediately (synchronous — no race condition)
     const backBtn = document.getElementById('back-to-detail-btn');
     if (backBtn) {
         backBtn.href = associationId ? `association-detail.html?id=${associationId}` : 'associations.html';
+        console.log('[Association Members] Back button href set to: association-detail.html?id=' + associationId);
     }
 
     const loadAssociationData = async () => {
@@ -115,18 +117,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // Fetch association details for the header
+            // Fetch association name for the header
             if (window.api && window.api.getAssociationById) {
                 const assocRes = await window.api.getAssociationById(associationId);
                 if (assocRes.success && assocRes.data) {
                     document.getElementById('assoc-name-header').textContent = assocRes.data.name;
                 }
             }
-            
-            // Fetch association members
-            if (window.api && window.api.getAssociationMembers) {
-                const membersRes = await window.api.getAssociationMembers(associationId);
-                
+
+            // Fire Members and BOD fetches in parallel — neither blocks the other
+            console.log('[Association Members] Fetching members AND BOD in parallel for association ID:', associationId);
+            const [membersRes, bodRes] = await Promise.all([
+                window.api && window.api.getAssociationMembers
+                    ? window.api.getAssociationMembers(associationId)
+                    : Promise.resolve(null),
+                window.api && window.api.getAssociationBOD
+                    ? window.api.getAssociationBOD(associationId)
+                    : Promise.resolve(null)
+            ]);
+
+            // ---- Render Members ----
+            console.log('[Association Members] Members API response:', membersRes);
+            if (membersRes) {
                 let members = [];
                 if (membersRes.success && membersRes.data && Array.isArray(membersRes.data.results)) {
                     members = membersRes.data.results;
@@ -136,112 +148,105 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (members.length === 0) {
                     tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-500">No members found for this association.</td></tr>`;
-                    return;
+                } else {
+                    tbody.innerHTML = members.map(m => {
+                        const firstName = m.first_name || '';
+                        const lastName = m.last_name || '';
+                        const initials = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase() || 'NA';
+                        const fullName = `${firstName} ${lastName}`.trim();
+                        const memId = m.membership_number || 'N/A';
+                        const business = m.business || 'N/A';
+                        const mobile = m.mobile || 'N/A';
+                        const location = m.address || 'N/A';
+                        const type = m.type || 'Standard';
+
+                        return `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                                        <span class="text-sm font-medium text-primary-700">${initials}</span>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="text-sm font-medium text-gray-900">${fullName}</div>
+                                        <div class="text-sm text-gray-500">ID: ${memId}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">${business}</div>
+                                <div class="text-sm text-gray-500">${mobile}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">${location}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">${type}</span>
+                            </td>
+                        </tr>`;
+                    }).join('');
                 }
-
-                tbody.innerHTML = members.map(m => {
-                    const firstName = m.first_name || '';
-                    const lastName = m.last_name || '';
-                    const initials = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase() || 'NA';
-                    const fullName = `${firstName} ${lastName}`.trim();
-                    const memId = m.membership_number || 'N/A';
-                    const business = m.business || 'N/A';
-                    const mobile = m.mobile || 'N/A';
-                    const location = m.address || 'N/A';
-                    const type = m.type || 'Standard';
-
-                    return `
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                                    <span class="text-sm font-medium text-primary-700">${initials}</span>
-                                </div>
-                                <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">${fullName}</div>
-                                    <div class="text-sm text-gray-500">ID: ${memId}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">${business}</div>
-                            <div class="text-sm text-gray-500">${mobile}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">${location}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">${type}</span>
-                        </td>
-                    </tr>`;
-                }).join('');
             }
 
-            // Fetch Association BOD
-            if (window.api && window.api.getAssociationBOD) {
-                const bodGrid = document.getElementById('bod-grid');
-                if (bodGrid) {
-                    bodGrid.innerHTML = `<div class="col-span-full text-center text-gray-500 py-8"><i data-lucide="loader-2" class="h-6 w-6 animate-spin mx-auto mb-2"></i> Loading Board of Directors...</div>`;
-                    if (window.lucide) lucide.createIcons();
+            // ---- Render BOD ----
+            console.log('[Association Members] BOD API response:', bodRes);
+            const bodGrid = document.getElementById('bod-grid');
+            if (bodRes && bodGrid) {
+                let bodMembers = [];
+                if (bodRes.success && Array.isArray(bodRes.data)) {
+                    bodMembers = bodRes.data;
+                }
 
-                    const bodRes = await window.api.getAssociationBOD(associationId);
-                    let bodMembers = [];
-                    if (bodRes.success && Array.isArray(bodRes.data)) {
-                        bodMembers = bodRes.data;
-                    }
+                if (bodMembers.length === 0) {
+                    bodGrid.innerHTML = `<div class="col-span-full text-center text-gray-500 py-8">No Board of Directors found for this association.</div>`;
+                } else {
+                    bodGrid.innerHTML = bodMembers.map(bod => {
+                        const designation = bod.designation || 'Member';
+                        const memberInfo = bod.member || {};
 
-                    if (bodMembers.length === 0) {
-                        bodGrid.innerHTML = `<div class="col-span-full text-center text-gray-500 py-8">No Board of Directors found for this association.</div>`;
-                    } else {
-                        bodGrid.innerHTML = bodMembers.map(bod => {
-                            const designation = bod.designation || 'Member';
-                            const memberInfo = bod.member || {};
-                            
-                            const firstName = memberInfo.first_name || '';
-                            const lastName = memberInfo.last_name || '';
-                            let fullName = `${firstName} ${lastName}`.trim();
-                            if (!fullName) fullName = bod.name || 'Unknown Member';
-                            
-                            const mobile = memberInfo.mobile || bod.contact_number || 'N/A';
-                            
-                            const startDate = bod.start_date ? new Date(bod.start_date).getFullYear() : 'N/A';
-                            const endDate = bod.end_date ? new Date(bod.end_date).getFullYear() : 'Present';
-                            const term = `${startDate} - ${endDate}`;
+                        const firstName = memberInfo.first_name || '';
+                        const lastName = memberInfo.last_name || '';
+                        let fullName = `${firstName} ${lastName}`.trim();
+                        if (!fullName) fullName = bod.name || 'Unknown Member';
 
-                            return `
-                            <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-                                <div class="p-6 relative">
+                        const mobile = memberInfo.mobile || bod.contact_number || 'N/A';
+
+                        const startDate = bod.start_date ? new Date(bod.start_date).getFullYear() : 'N/A';
+                        const endDate = bod.end_date ? new Date(bod.end_date).getFullYear() : 'Present';
+                        const term = `${startDate} – ${endDate}`;
+
+                        return `
+                        <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                            <div class="p-6 relative">
                                 <div class="absolute top-4 right-4 flex space-x-2">
                                     <button class="text-gray-400 hover:text-blue-600"><i data-lucide="edit" class="h-4 w-4"></i></button>
                                     <button class="text-gray-400 hover:text-red-600"><i data-lucide="trash-2" class="h-4 w-4"></i></button>
                                 </div>
                                 <div class="flex flex-col items-center">
                                     <div class="h-20 w-20 rounded-full bg-primary-100 flex items-center justify-center mb-4">
-                                    <i data-lucide="user" class="h-10 w-10 text-primary-600"></i>
+                                        <i data-lucide="user" class="h-10 w-10 text-primary-600"></i>
                                     </div>
                                     <h3 class="text-lg font-bold text-gray-900">${fullName}</h3>
                                     <span class="inline-flex px-3 py-1 mt-2 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">${designation}</span>
-                                    
                                     <div class="mt-6 w-full space-y-3">
-                                    <div class="flex items-center text-sm text-gray-600">
-                                        <i data-lucide="phone" class="h-4 w-4 mr-3"></i>
-                                        ${mobile}
-                                    </div>
-                                    <div class="flex items-center text-sm text-gray-600">
-                                        <i data-lucide="calendar" class="h-4 w-4 mr-3"></i>
-                                        Term: ${term}
-                                    </div>
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="phone" class="h-4 w-4 mr-3"></i>
+                                            ${mobile}
+                                        </div>
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="calendar" class="h-4 w-4 mr-3"></i>
+                                            Term: ${term}
+                                        </div>
                                     </div>
                                 </div>
-                                </div>
-                            </div>`;
-                        }).join('');
-                        
-                        if (window.lucide) lucide.createIcons();
-                    }
+                            </div>
+                        </div>`;
+                    }).join('');
+
+                    if (window.lucide) lucide.createIcons();
                 }
             }
-            
+
         } catch (err) {
             console.error('Error fetching association data:', err);
             document.getElementById('members-table-body').innerHTML = `<tr><td colspan="4" class="text-center py-4 text-red-500">Failed to load members.</td></tr>`;

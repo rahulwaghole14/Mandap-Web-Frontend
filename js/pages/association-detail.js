@@ -33,8 +33,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // API Integration
     const urlParams = new URLSearchParams(window.location.search);
     const associationId = urlParams.get('id');
+    console.log('[Association Detail] Page loaded — Association ID from URL:', associationId);
 
     if (!associationId) {
+        console.error('[Association Detail] No association ID found in URL — redirecting.');
         alert('No association ID provided.');
         window.location.href = 'associations.html';
         return;
@@ -44,6 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const viewMembersBtn = document.getElementById('view-members-btn');
     if (viewMembersBtn) {
         viewMembersBtn.href = `association-members.html?id=${associationId}`;
+        console.log('[Association Detail] “View Members” href set to: association-members.html?id=' + associationId);
     }
 
     try {

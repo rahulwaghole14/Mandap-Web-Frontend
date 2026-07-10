@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div class="flex space-x-2">
-                    <a href="association-detail.html?id=${a.id}" class="text-blue-600 hover:text-blue-900 p-1" title="View Details">
+                    <a href="association-detail.html?id=${a.id}" class="text-blue-600 hover:text-blue-900 p-1 view-btn" title="View Details" data-assoc-id="${a.id}">
                         <i data-lucide="eye" class="h-4 w-4"></i>
                     </a>
                     <button class="text-yellow-600 hover:text-yellow-900 p-1 edit-btn" title="Edit Association">
@@ -242,6 +242,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Row Actions via Event Delegation
     if (tableBody) {
         tableBody.addEventListener('click', (e) => {
+            // Log when the View (eye) button is clicked
+            const viewLink = e.target.closest('a.view-btn');
+            if (viewLink) {
+                const assocId = viewLink.getAttribute('data-assoc-id');
+                console.log('[Associations] View button clicked — navigating to association ID:', assocId);
+                // Allow default navigation (href) to proceed
+                return;
+            }
+
             const btn = e.target.closest('button');
             if (!btn) return;
             const tr = btn.closest('tr');

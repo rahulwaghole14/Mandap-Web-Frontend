@@ -43,6 +43,37 @@ document.addEventListener('DOMContentLoaded', () => {
   });
     }
 
+    // Custom Multi-select Dropdown Logic
+    const typeBtn = document.getElementById('member-type-btn');
+    const typeDropdown = document.getElementById('member-type-dropdown');
+    const typeText = document.getElementById('member-type-text');
+    const typeCheckboxes = document.querySelectorAll('.business-type-checkbox');
+
+    if (typeBtn && typeDropdown) {
+        typeBtn.addEventListener('click', () => {
+            typeDropdown.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!typeBtn.contains(e.target) && !typeDropdown.contains(e.target)) {
+                typeDropdown.classList.add('hidden');
+            }
+        });
+        
+        typeCheckboxes.forEach(cb => {
+            cb.addEventListener('change', () => {
+                const selected = Array.from(typeCheckboxes).filter(c => c.checked).map(c => c.value);
+                if (selected.length === 0) {
+                    typeText.textContent = 'Select Types';
+                } else if (selected.length <= 2) {
+                    typeText.textContent = selected.join(', ');
+                } else {
+                    typeText.textContent = `${selected.length} types selected`;
+                }
+            });
+        });
+    }
+
     // Modal System
     const modalContainer = document.getElementById('modal-container');
     const modals = {
@@ -79,6 +110,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('open-add-modal').addEventListener('click', () => {
         document.getElementById('form-modal-title').textContent = 'Add Member';
         document.getElementById('member-form').reset();
+        
+        // Reset custom multi-select
+        const typeCheckboxes = document.querySelectorAll('.business-type-checkbox');
+        typeCheckboxes.forEach(cb => cb.checked = false);
+        const typeText = document.getElementById('member-type-text');
+        if (typeText) typeText.textContent = 'Select Types';
+
         currentEditMemberId = null;
         openModal('form');
     });
@@ -88,6 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     let allMembers = [];
+    let allAssociations = [];
     const tableBody = document.getElementById('members-table-body');
 
     const loadMembers = async () => {
@@ -144,19 +183,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         tableBody.innerHTML = members.map(m => {
-            const initials = (m.first_name?.[0] || '') + (m.last_name?.[0] || '');
-            const fullName = `${m.first_name || ''} ${m.last_name || ''}`.trim();
+            const fullName = m.full_name || `${m.first_name || ''} ${m.last_name || ''}`.trim();
+            const initials = fullName ? fullName.substring(0, 2).toUpperCase() : '';
             const location = m.address || 'N/A';
             const status = m.status || 'Active';
             const badgeClass = status.toLowerCase() === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
+
+            const profileImage = m.profile_image || m.image;
+            const avatarHtml = profileImage 
+                ? `<img src="${window.api && window.api.getImageUrl ? window.api.getImageUrl(profileImage) : profileImage}" alt="${fullName}" class="h-10 w-10 rounded-full object-cover">`
+                : `<div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                    <span class="text-sm font-medium text-primary-700">${initials}</span>
+                   </div>`;
 
             return `
             <tr class="hover:bg-gray-50 transition-colors member-row" data-id="${m.id}">
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
-                    <div class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                        <span class="text-sm font-medium text-primary-700">${initials}</span>
-                    </div>
+                    ${avatarHtml}
                     <div class="ml-4">
                         <div class="text-sm font-medium text-gray-900">${fullName}</div>
                         <div class="text-sm text-gray-500">ID: ${m.membership_number || 'N/A'}</div>
@@ -174,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                    ${m.type || 'N/A'}
+                    ${Array.isArray(m.business_type) ? m.business_type.join(', ') : (m.business_type || m.type || 'N/A')}
                     </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
@@ -208,11 +252,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedType = typeFilter ? typeFilter.value.toLowerCase() : '';
 
         const filtered = allMembers.filter(m => {
-            const fullName = `${m.first_name || ''} ${m.last_name || ''}`.toLowerCase();
+            const fullName = (m.full_name || `${m.first_name || ''} ${m.last_name || ''}`).toLowerCase();
             const email = (m.email || '').toLowerCase();
             const mobile = (m.mobile || '').toLowerCase();
             const address = (m.address || '').toLowerCase();
-            const type = (m.type || '').toLowerCase();
+            const typeRaw = Array.isArray(m.business_type) ? m.business_type.join(',') : (m.business_type || m.type || '');
+            const type = typeRaw.toLowerCase();
 
             const matchesSearch = !searchTerm || 
                 fullName.includes(searchTerm) || 
@@ -220,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 mobile.includes(searchTerm);
             
             const matchesCity = !selectedCity || address.includes(selectedCity);
-            const matchesType = !selectedType || type === selectedType;
+            const matchesType = !selectedType || type.includes(selectedType);
 
             return matchesSearch && matchesCity && matchesType;
         });
@@ -258,31 +303,38 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (btn.classList.contains('edit-btn')) {
                 document.getElementById('form-modal-title').textContent = 'Edit Member';
                 currentEditMemberId = memberId;
-                document.getElementById('member-name').value = `${member.first_name || ''} ${member.last_name || ''}`.trim();
+                document.getElementById('member-name').value = member.full_name || `${member.first_name || ''} ${member.last_name || ''}`.trim();
                 document.getElementById('member-phone').value = member.mobile || '';
                 
                 const businessEl = document.getElementById('member-business');
                 if (businessEl) businessEl.value = member.business || '';
                 
-                const typeEl = document.getElementById('member-type');
-                if (typeEl) {
-                    // Check if the option exists, if not, create it
-                    let optionExists = Array.from(typeEl.options).some(opt => opt.value === member.type);
-                    if (!optionExists && member.type) {
-                        const newOpt = new Option(member.type, member.type);
-                        typeEl.add(newOpt);
+                const typeCheckboxes = document.querySelectorAll('.business-type-checkbox');
+                if (typeCheckboxes.length > 0) {
+                    const types = Array.isArray(member.business_type) ? member.business_type : (member.business_type ? member.business_type.split(',') : [member.type || '']);
+                    typeCheckboxes.forEach(cb => {
+                        cb.checked = types.includes(cb.value);
+                    });
+                    
+                    const selected = Array.from(typeCheckboxes).filter(c => c.checked).map(c => c.value);
+                    const typeText = document.getElementById('member-type-text');
+                    if (typeText) {
+                        if (selected.length === 0) typeText.textContent = 'Select Types';
+                        else if (selected.length <= 2) typeText.textContent = selected.join(', ');
+                        else typeText.textContent = `${selected.length} types selected`;
                     }
-                    typeEl.value = member.type || '';
                 }
                 
-                // Try parsing address to fill city/district roughly
-                const parts = (member.address || '').split(',');
-                if (parts.length >= 2) {
-                    document.getElementById('member-city').value = parts[parts.length - 2].trim();
-                    document.getElementById('member-district').value = parts[parts.length - 1].trim();
-                } else {
-                    document.getElementById('member-city').value = member.address || '';
-                }
+                document.getElementById('member-city').value = member.city || '';
+                document.getElementById('member-district').value = member.district || '';
+                
+                // Clear the file input in edit mode (since we only submit it if they select a new one)
+                const imgInput = document.getElementById('member-image');
+                if (imgInput) imgInput.value = '';
+
+                const assocEl = document.getElementById('member-association');
+                if (assocEl) assocEl.value = member.association_id || '';
+
                 openModal('form');
             } else if (btn.classList.contains('delete-btn')) {
                 currentDeleteMemberId = memberId;
@@ -291,8 +343,34 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const loadAssociations = async () => {
+        try {
+            const API_BASE = window.CONFIG.API_BASE_URL;
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_BASE}/associations`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+            });
+            const json = await res.json();
+            
+            if (json.success && json.data && Array.isArray(json.data.results)) {
+                allAssociations = json.data.results;
+            } else if (Array.isArray(json)) {
+                allAssociations = json;
+            }
+            
+            const assocSelect = document.getElementById('member-association');
+            if (assocSelect) {
+                const options = allAssociations.map(a => `<option value="${a.id}">${a.name || a.code || 'Association ' + a.id}</option>`).join('');
+                assocSelect.innerHTML = '<option value="">Select Association</option>' + options;
+            }
+        } catch (err) {
+            console.error('[Members] Failed to load associations:', err);
+        }
+    };
+
     // Load initial data
     loadMembers();
+    loadAssociations();
 
     // Form Submissions (Mock & Edit API Integration)
     let currentEditMemberId = null;
@@ -311,11 +389,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     // 1. Prepare Payload
                     const fullName = document.getElementById('member-name').value.trim();
-                    const nameParts = fullName.split(' ');
-                    const firstName = nameParts[0];
-                    const lastName = nameParts.slice(1).join(' ') || ' ';
+                    const mobile = document.getElementById('member-phone').value;
+                    const business = document.getElementById('member-business') ? document.getElementById('member-business').value : "";
                     
-                    const address = document.getElementById('member-city').value + ', ' + document.getElementById('member-district').value;
+                    const typeCheckboxes = document.querySelectorAll('.business-type-checkbox');
+                    const business_type = Array.from(typeCheckboxes).filter(c => c.checked).map(c => c.value);
+                    
+                    const city = document.getElementById('member-city').value;
+                    const district = document.getElementById('member-district').value;
+                    const address = `${city}, ${district}`;
+                    
+                    const assocSelectValue = document.getElementById('member-association') ? parseInt(document.getElementById('member-association').value) : null;
                     
                     const uniqueSuffix = Date.now().toString().slice(-6);
                     const isEdit = !!currentEditMemberId;
@@ -324,37 +408,64 @@ document.addEventListener('DOMContentLoaded', () => {
                         existingMember = allMembers.find(m => m.id.toString() === currentEditMemberId.toString());
                     }
                     
-                    const payload = {
-                        first_name: firstName,
-                        last_name: lastName,
-                        mobile: document.getElementById('member-phone').value,
-                        email: existingMember?.email || `user${uniqueSuffix}@example.com`,
-                        gender: existingMember?.gender || "Male",
-                        dob: existingMember?.dob || "1992-09-14",
-                        business: document.getElementById('member-business') ? document.getElementById('member-business').value : existingMember?.business || "",
-                        type: document.getElementById('member-type') ? document.getElementById('member-type').value : existingMember?.type || "",
-                        address: address,
-                        association_id: existingMember?.association_id || 5,
-                        membership_number: existingMember?.membership_number || `MEM-${uniqueSuffix}`,
-                        status: existingMember?.status || "Active"
-                    };
-
                     const API_BASE = window.CONFIG.API_BASE_URL;
                     const token = localStorage.getItem('token');
+                    
+                    const imageInput = document.getElementById('member-image');
+                    const hasNewImage = imageInput && imageInput.files.length > 0;
+                    
+                    const formData = new FormData();
+                    formData.append('full_name', fullName);
+                    formData.append('email', existingMember?.email || `user${uniqueSuffix}@example.com`);
+                    formData.append('mobile', mobile);
+                    formData.append('dob', existingMember?.dob || "1992-07-19");
+                    formData.append('gender', existingMember?.gender || "Male");
+                    formData.append('address', address);
+                    formData.append('association_id', assocSelectValue || existingMember?.association_id || 16);
+                    formData.append('membership_number', existingMember?.membership_number || `MEM-${uniqueSuffix}`);
+                    formData.append('status', existingMember?.status || "Active");
+                    formData.append('city', city);
+                    formData.append('district', district);
+                    formData.append('business', business || existingMember?.business || "");
+                    
+                    // Business Type Array joined as string for backend parsing
+                    let editBusinessType = business_type.length > 0 ? business_type : (existingMember?.business_type || ["Event"]);
+                    if (Array.isArray(editBusinessType)) {
+                        formData.append('business_type', editBusinessType.join(', '));
+                    } else if (typeof editBusinessType === 'string') {
+                        formData.append('business_type', editBusinessType);
+                    }
+                    
+                    if (hasNewImage) {
+                        formData.append('profile_image', imageInput.files[0]);
+                    }
 
-                    // 2. Determine Endpoint and Method
-                    const endpoint = isEdit ? `${API_BASE}/members/${currentEditMemberId}` : `${API_BASE}/members`;
-                    const method = isEdit ? 'PUT' : 'POST';
+                    // Use POST for both, but spoof PUT for edits to bypass PHP's FormData limitations
+                    let endpoint = isEdit ? `${API_BASE}/members/${currentEditMemberId}` : `${API_BASE}/members`;
+                    let method = 'POST';
 
-                    // 3. Make the API Call
-                    const res = await fetch(endpoint, {
+                    if (isEdit) {
+                        formData.append('_method', 'PUT');
+                        // Also append to URL to ensure Laravel intercepts it before body parsing
+                        endpoint += '?_method=PUT';
+                    }
+
+                    console.log('--- Debug: Sending FormData ---');
+                    console.log('Endpoint:', endpoint);
+                    console.log('Method:', method);
+                    for (let [key, value] of formData.entries()) {
+                        console.log(key + ':', value instanceof File ? `[File] ${value.name} (${value.size} bytes)` : value);
+                    }
+                    console.log('-------------------------------');
+
+                    let res = await fetch(endpoint, {
                         method: method,
                         headers: {
-                            'Content-Type': 'application/json',
                             'Accept': 'application/json',
                             'Authorization': `Bearer ${token}`
+                            // Content-Type omitted for boundary auto-generation
                         },
-                        body: JSON.stringify(payload)
+                        body: formData
                     });
 
                     const json = await res.json();

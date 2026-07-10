@@ -222,14 +222,38 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Business Name *</label>
                     <input type="text" id="member-business" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
                   </div>
-                  <div>
+                  <div class="relative">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Business Type *</label>
-                    <select id="member-type" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
-                      <option value="">Select Type</option>
-                      <option value="catering">Catering</option>
-                      <option value="decorator">Decorator</option>
-                      <option value="sound">Sound</option>
-                    </select>
+                    <div id="member-type-container" class="relative">
+                      <button type="button" id="member-type-btn" class="w-full p-2 border border-gray-300 rounded-lg bg-white text-left focus:ring-2 focus:ring-primary-500 focus:border-primary-500 flex justify-between items-center">
+                        <span id="member-type-text" class="truncate text-gray-500">Select Types</span>
+                        <i data-lucide="chevron-down" class="h-4 w-4 text-gray-400"></i>
+                      </button>
+                      <div id="member-type-dropdown" class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg hidden">
+                        <div class="p-2 max-h-48 overflow-y-auto space-y-1">
+                          <label class="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded cursor-pointer">
+                            <input type="checkbox" value="Event" class="business-type-checkbox rounded text-primary-600 focus:ring-primary-500">
+                            <span class="text-sm text-gray-700">Event</span>
+                          </label>
+                          <label class="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded cursor-pointer">
+                            <input type="checkbox" value="Decoration" class="business-type-checkbox rounded text-primary-600 focus:ring-primary-500">
+                            <span class="text-sm text-gray-700">Decoration</span>
+                          </label>
+                          <label class="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded cursor-pointer">
+                            <input type="checkbox" value="Photography" class="business-type-checkbox rounded text-primary-600 focus:ring-primary-500">
+                            <span class="text-sm text-gray-700">Photography</span>
+                          </label>
+                          <label class="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded cursor-pointer">
+                            <input type="checkbox" value="Catering" class="business-type-checkbox rounded text-primary-600 focus:ring-primary-500">
+                            <span class="text-sm text-gray-700">Catering</span>
+                          </label>
+                          <label class="flex items-center space-x-2 p-1 hover:bg-gray-50 rounded cursor-pointer">
+                            <input type="checkbox" value="Sound" class="business-type-checkbox rounded text-primary-600 focus:ring-primary-500">
+                            <span class="text-sm text-gray-700">Sound</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -243,12 +267,18 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">District *</label>
                     <input type="text" id="member-district" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
                   </div>
+                  <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Association *</label>
+                    <select id="member-association" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                      <option value="">Select Association</option>
+                    </select>
+                  </div>
                 </div>
 
                 <!-- Image Upload (Simplified) -->
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Profile Image</label>
-                  <input type="file" accept="image/*" class="w-full p-2 border border-gray-300 rounded-lg">
+                  <input type="file" id="member-image" accept="image/*" class="w-full p-2 border border-gray-300 rounded-lg">
                 </div>
 
               </form>
@@ -358,6 +388,7 @@
       lucide.createIcons();
     </script>
     <script src="js/config.js"></script>
+    <script src="js/utils/api.js"></script>
     <script src="js/pages/members.js?v=2"></script>
   </body>
 </html>
