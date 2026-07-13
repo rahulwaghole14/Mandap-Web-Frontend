@@ -23,6 +23,41 @@ document.addEventListener('DOMContentLoaded', () => {
     // Store original event data for unmodified fields
     let originalEventData = {};
 
+    // Load associations
+    const assocSelect = document.getElementById('event-association');
+    if (assocSelect) {
+        fetch(`${API_BASE}/associations`, {
+            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(json => {
+            let assocs = [];
+            if (json.success && json.data && Array.isArray(json.data.results)) {
+                assocs = json.data.results;
+            } else if (Array.isArray(json)) {
+                assocs = json;
+            } else if (json.data && Array.isArray(json.data)) {
+                assocs = json.data;
+            }
+
+            if (assocs.length > 0) {
+                assocSelect.innerHTML = '<option value="">Select Association</option>';
+                assocs.forEach(a => {
+                    const opt = document.createElement('option');
+                    opt.value = a.id;
+                    opt.textContent = a.name || a.title || `Association ${a.id}`;
+                    assocSelect.appendChild(opt);
+                });
+                
+                // If editing and we already loaded event data, set it now
+                if (isEdit && originalEventData.association_id) {
+                    assocSelect.value = originalEventData.association_id;
+                }
+            }
+        })
+        .catch(err => console.error('Failed to load associations:', err));
+    }
+
     if (isEdit) {
         document.getElementById('form-title').textContent = 'Edit Event';
         
@@ -78,6 +113,25 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('event-fee').value = evt.registration_fee || '0';
             document.getElementById('event-capacity').value = evt.capacity || '1200';
             document.getElementById('event-status').value = evt.status || 'active';
+            
+            const assocEl = document.getElementById('event-association');
+            if (assocEl && evt.association_id) assocEl.value = evt.association_id;
+            
+            const featEl = document.getElementById('event-featured');
+            if (featEl) featEl.checked = evt.featured == 1 || evt.featured == true;
+            
+            if (evt.event_image || evt.image) {
+                const imgUrl = evt.event_image || evt.image;
+                const previewContainer = document.getElementById('image-preview-container');
+                const imagePreview = document.getElementById('image-preview');
+                const uploadPrompt = document.getElementById('upload-prompt');
+                
+                if (imagePreview && previewContainer && uploadPrompt) {
+                    imagePreview.src = imgUrl.startsWith('http') ? imgUrl : `${API_BASE.replace('/api', '')}/storage/${imgUrl}`;
+                    uploadPrompt.classList.add('hidden');
+                    previewContainer.classList.remove('hidden');
+                }
+            }
         })
         .catch(err => {
             console.error('[Events API] Error loading event:', err);
@@ -96,6 +150,13 @@ document.addEventListener('DOMContentLoaded', () => {
         imageInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
+                // Validation: Max 5MB
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('Image size must be less than 5MB.');
+                    imageInput.value = ''; // clear input
+                    return;
+                }
+
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     imagePreview.src = e.target.result;
@@ -137,7 +198,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Construct payload
+            // Construct payload as FormData for direct image upload
+            const formData = new FormData();
+            
             const address = document.getElementById('event-address').value;
             const city = document.getElementById('event-city').value;
             const district = document.getElementById('event-district').value;
@@ -145,26 +208,40 @@ document.addEventListener('DOMContentLoaded', () => {
             
             let slug = document.getElementById('event-slug').value.trim();
             if (!slug) {
-                slug = document.getElementById('event-name').value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                slug = document.getElementById('event-name').value;
             }
+            // Strictly enforce slug format (lowercase, numbers, hyphens only)
+            slug = slug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
-            const payload = {
-                title: document.getElementById('event-name').value,
-                slug: slug,
-                description: document.getElementById('event-desc').value,
-                venue: document.getElementById('event-venue').value,
-                address: [address, city, state].filter(Boolean).join(', '),
-                start_date: startStr.substring(0, 10), // Extract YYYY-MM-DD for the API
-                end_date: endStr.substring(0, 10),
-                registration_open: document.getElementById('event-reg-open').value || startStr.substring(0, 10),
-                registration_close: document.getElementById('event-reg-close').value || startStr.substring(0, 10),
-                capacity: parseInt(document.getElementById('event-capacity').value, 10) || 1200,
-                status: document.getElementById('event-status').value || "active"
-            };
+            formData.append('title', document.getElementById('event-name').value);
+            formData.append('slug', slug);
+            formData.append('description', document.getElementById('event-desc').value);
+            formData.append('venue', document.getElementById('event-venue').value);
+            formData.append('address', [address, city, state].filter(Boolean).join(', '));
+            formData.append('start_date', startStr.substring(0, 10));
+            formData.append('end_date', endStr.substring(0, 10));
+            formData.append('registration_open', document.getElementById('event-reg-open').value || startStr.substring(0, 10));
+            formData.append('registration_close', document.getElementById('event-reg-close').value || startStr.substring(0, 10));
+            formData.append('capacity', parseInt(document.getElementById('event-capacity').value, 10) || 1200);
+            formData.append('status', document.getElementById('event-status').value || "active");
             
-            // Optionally add fee if it's not empty
+            formData.append('location', city);
+            
+            const assocId = document.getElementById('event-association')?.value;
+            if (assocId) formData.append('association_id', assocId);
+            
+            // Laravel boolean accepts 1 / 0. Using 1/0 instead of true/false string
+            formData.append('featured', document.getElementById('event-featured')?.checked ? 1 : 0);
+
             const fee = document.getElementById('event-fee').value;
-            if (fee) payload.registration_fee = fee;
+            if (fee) formData.append('registration_fee', fee);
+
+            // Append image
+            const imageInputEl = document.getElementById('event-image');
+            if (imageInputEl && imageInputEl.files.length > 0) {
+                // Send strictly the exact key the DB expects to prevent Postman validation discrepancies
+                formData.append('event_image', imageInputEl.files[0]);
+            }
 
             submitText.textContent = 'Saving...';
             submitSpinner.classList.remove('hidden');
@@ -172,21 +249,47 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
 
             try {
-                const endpoint = isEdit ? `${API_BASE}/events/${eventId}` : `${API_BASE}/events`;
-                const method = isEdit ? 'PUT' : 'POST';
+                // Use POST for both, but spoof PUT for edits to bypass PHP's FormData limitations
+                let endpoint = isEdit ? `${API_BASE}/events/${eventId}` : `${API_BASE}/events`;
+                let method = 'POST';
+
+                if (isEdit) {
+                    formData.append('_method', 'PUT');
+                    // Also append to URL to ensure Laravel intercepts it before body parsing
+                    endpoint += '?_method=PUT';
+                }
+
+                console.log('--- Debug: Sending FormData ---');
+                console.log('Endpoint:', endpoint);
+                console.log('Method:', method);
+                for (let [key, value] of formData.entries()) {
+                    console.log(key + ':', value instanceof File ? `[File] ${value.name} (${value.size} bytes)` : value);
+                }
+                console.log('-------------------------------');
 
                 const response = await fetch(endpoint, {
                     method: method,
                     headers: {
                         'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
                         'Accept': 'application/json'
+                        // Do NOT set Content-Type for FormData
                     },
-                    body: JSON.stringify(payload)
+                    body: formData
                 });
 
                 if (!response.ok) {
-                    throw new Error(`API returned status: ${response.status}`);
+                    let errMsg = `API returned status: ${response.status}`;
+                    try {
+                        const errData = await response.json();
+                        console.error('Validation Errors:', errData);
+                        if (errData.errors) {
+                            const messages = Object.values(errData.errors).flat().join('\n');
+                            errMsg = `Validation Failed:\n${messages}`;
+                        } else if (errData.message) {
+                            errMsg = errData.message;
+                        }
+                    } catch(e) {}
+                    throw new Error(errMsg);
                 }
 
                 alert(isEdit ? 'Event updated successfully!' : 'Event created successfully!');
@@ -194,7 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
             } catch (error) {
                 console.error('[Events API] Error saving event:', error);
-                alert('Failed to save event. Check console for details.');
+                alert(error.message || 'Failed to save event. Check console for details.');
                 
                 submitText.textContent = isEdit ? 'Update Event' : 'Create Event';
                 submitSpinner.classList.add('hidden');

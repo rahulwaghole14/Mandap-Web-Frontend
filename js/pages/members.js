@@ -21,13 +21,19 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (token) {
       try {
-        await fetch(`${API_BASE}/auth/logout`, {
+        const response = await fetch(`${API_BASE}/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
+        
+        // Parse the JSON response
+        const data = await response.json();
+        if (data.success) {
+          console.log(data.message); // Will log: "Logged out successfully. Please discard your token."
+        }
       } catch (error) {
         console.error('[Logout] Error:', error);
       }
@@ -120,6 +126,18 @@ document.addEventListener('DOMContentLoaded', () => {
         currentEditMemberId = null;
         openModal('form');
     });
+
+    // Validate Member Image Size (Max 5MB)
+    const memberImageInput = document.getElementById('member-image');
+    if (memberImageInput) {
+        memberImageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file && file.size > 5 * 1024 * 1024) {
+                alert('Image size must be less than 5MB.');
+                memberImageInput.value = ''; // clear input
+            }
+        });
+    }
 
     document.getElementById('open-import-modal').addEventListener('click', () => {
         openModal('import');

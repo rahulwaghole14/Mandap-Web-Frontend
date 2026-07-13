@@ -65,27 +65,190 @@ document.addEventListener('DOMContentLoaded', () => {
     openAddMemberModalBtn.addEventListener('click', () => openModal('addMember'));
     openImportModalBtn.addEventListener('click', () => openModal('import'));
 
-    // Mock Saves
-    document.getElementById('save-member-btn').addEventListener('click', (e) => {
+    // Add Member form submission
+    document.getElementById('save-member-btn').addEventListener('click', async (e) => {
         e.preventDefault();
+        
+        const fullName = document.getElementById('member-fullname').value.trim();
+        const phone = document.getElementById('member-phone').value.trim();
+        const businessName = document.getElementById('member-business-name').value.trim();
+        const businessType = document.getElementById('member-business-type').value;
+
+        if (!fullName || !phone || !businessName || !businessType) {
+            alert('Please fill all required fields.');
+            return;
+        }
+
         const btn = e.target.closest('button');
         const prevText = btn.innerHTML;
         btn.innerHTML = '<i data-lucide="loader-2" class="h-4 w-4 animate-spin mr-2"></i> Saving...';
         btn.disabled = true;
-        lucide.createIcons();
+        if (window.lucide) lucide.createIcons();
 
-        setTimeout(() => {
-            alert('Saved successfully!');
+        try {
+            const API_BASE = window.CONFIG.API_BASE_URL;
+            const token = localStorage.getItem('token');
+            const payload = {
+                "Full Name": fullName,
+                "Phone Number": phone,
+                "Business Name": businessName,
+                "Business Type": businessType
+            };
+
+            const res = await fetch(`${API_BASE}/associations/${associationId}/members`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const json = await res.json();
+            
+            if (!res.ok) {
+                let errorMsg = json.message || 'Failed to add member';
+                if (json.errors && typeof json.errors === 'object') {
+                    const details = Object.values(json.errors).flat().join(', ');
+                    if (details) errorMsg += `: ${details}`;
+                }
+                throw new Error(errorMsg);
+            }
+
+            alert('Member added successfully!');
+            document.getElementById('member-form').reset();
+            closeAllModals();
+            
+            // Refresh data
+            if (typeof loadAssociationData === 'function') {
+                loadAssociationData();
+            }
+        } catch (err) {
+            console.error('[Add Member Error]', err);
+            alert(err.message || 'An error occurred while saving.');
+        } finally {
             btn.innerHTML = prevText;
             btn.disabled = false;
-            closeAllModals();
-        }, 800);
+        }
     });
 
-    document.getElementById('process-import-btn').addEventListener('click', () => {
-        alert('CSV Imported successfully!');
-        closeAllModals();
-    });
+    const csvInput = document.getElementById('csv-upload-input');
+    if (csvInput) {
+        csvInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const textEl = csvInput.parentElement.querySelector('p.text-gray-600');
+                if (textEl) textEl.textContent = `Selected: ${file.name}`;
+            }
+        });
+    }
+
+    const processImportBtn = document.getElementById('process-import-btn');
+    if (processImportBtn && csvInput) {
+        processImportBtn.addEventListener('click', async () => {
+            const file = csvInput.files[0];
+            if (!file) {
+                alert('Please select a CSV file first.');
+                return;
+            }
+            
+            const prevText = processImportBtn.innerHTML;
+            processImportBtn.innerHTML = '<i data-lucide="loader-2" class="h-4 w-4 animate-spin mr-2"></i> Processing...';
+            processImportBtn.disabled = true;
+            if (window.lucide) lucide.createIcons();
+
+            try {
+                const text = await file.text();
+                const lines = text.split('\\n').map(l => l.trim()).filter(l => l);
+                if (lines.length <= 1) throw new Error('CSV is empty or missing data rows.');
+                
+                const API_BASE = window.CONFIG.API_BASE_URL;
+                const token = localStorage.getItem('token');
+                let successCount = 0;
+                let errorCount = 0;
+
+                for (let i = 1; i < lines.length; i++) {
+                    const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+                    if (cols.length < 2) continue;
+                    let fullName = cols[0] || 'Unknown';
+                    if (fullName.length < 2) fullName += 'User';
+                    
+                    const nameParts = fullName.split(' ');
+                    let firstName = nameParts[0];
+                    if (firstName.length < 2) firstName += 'X';
+                    
+                    let lastName = nameParts.slice(1).join(' ').trim();
+                    if (!lastName) lastName = 'User';
+                    
+                    let phone = cols[1] || '';
+                    phone = phone.replace(/[^0-9]/g, ''); // strip non-numeric
+                    if (phone.length < 10) phone = phone.padEnd(10, '0');
+                    if (phone.length > 10) phone = phone.slice(0, 10);
+                    
+                    const city = cols[4] || '';
+                    const district = cols[5] || '';
+                    const address = (city && district) ? `${city}, ${district}` : (city || district || 'Unknown');
+                    
+                    const uniqueSuffix = Date.now().toString().slice(-6) + i;
+                    
+                    const payload = {
+                        first_name: firstName,
+                        last_name: lastName,
+                        mobile: phone,
+                        email: `user${uniqueSuffix}@example.com`,
+                        gender: "Male",
+                        dob: "1992-09-14",
+                        business: cols[2] || 'Unknown',
+                        type: cols[3] || 'Unknown',
+                        address: address,
+                        association_id: associationId || null,
+                        membership_number: `MEM-${uniqueSuffix}`,
+                        status: "Active"
+                    };
+
+                    try {
+                        const res = await fetch(`${API_BASE}/members`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        const resJson = await res.json();
+                        if (res.ok && resJson.success) {
+                            successCount++;
+                        } else {
+                            errorCount++;
+                            console.warn(`Row ${i} failed:`, resJson);
+                        }
+                    } catch (e) {
+                        errorCount++;
+                        console.error(`Row ${i} request error:`, e);
+                    }
+                }
+
+                alert(`Import Complete!\\nSuccessfully imported: ${successCount}\\nFailed: ${errorCount}`);
+                closeAllModals();
+                
+                // Refresh data
+                if (typeof loadAssociationData === 'function') {
+                    loadAssociationData();
+                }
+
+            } catch (err) {
+                console.error('[Import CSV Error]', err);
+                alert(err.message || 'An error occurred while importing the CSV.');
+            } finally {
+                processImportBtn.innerHTML = prevText;
+                processImportBtn.disabled = false;
+                csvInput.value = ''; // reset file input
+            }
+        });
+    }
 
     // ----------------------------------------------------
     // Dynamic Data Loading

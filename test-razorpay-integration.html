@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Razorpay Integration</title>
+    <link href="css/style.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .mock-razorpay-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .mock-razorpay-content {
+            background: white; padding: 20px; border-radius: 8px;
+            width: 400px; text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow">
+        <h1 class="text-2xl font-bold mb-4">Integration Test for Razorpay Flow</h1>
+        <p class="mb-4 text-gray-600">This page mocks the API and Razorpay SDK to prove the flow works end-to-end.</p>
+        
+        <div id="test-log" class="bg-gray-900 text-green-400 p-4 rounded font-mono text-sm h-64 overflow-y-auto mb-4">
+            > Initializing test...<br>
+        </div>
+
+        <button id="start-test-btn" class="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700">Run Admin Razorpay Flow Test</button>
+    </div>
+
+    <!-- Hidden elements required by event-registrations.js -->
+    <div style="display: none;">
+        <select id="filter-event"><option value="1">Test Event</option></select>
+        <tbody id="registrations-table-body"></tbody>
+        <div id="manual-registration-modal"></div>
+        <form id="manual-registration-form">
+            <input id="manual-reg-name" value="Test User">
+            <input id="manual-reg-phone" value="9876543210">
+            <input id="manual-reg-email" value="">
+            <input id="manual-reg-business" value="Test Business">
+            <input id="manual-reg-businesstype" value="catering">
+            <input id="manual-reg-city" value="">
+            <select id="manual-reg-association"><option value="">Select</option></select>
+            <input id="manual-reg-receipt" value="">
+            <button id="submit-manual-reg-btn"></button>
+            <span id="submit-manual-reg-text"></span>
+        </form>
+        <div id="manual-registration-success">
+            <span id="success-reg-id"></span>
+            <span id="success-reg-status"></span>
+            <span id="success-reg-amount"></span>
+            <span id="success-reg-method"></span>
+        </div>
+    </div>
+
+    <script>
+        const log = (msg) => {
+            const logger = document.getElementById('test-log');
+            logger.innerHTML += `> ${msg}<br>`;
+            logger.scrollTop = logger.scrollHeight;
+            console.log(msg);
+        };
+
+        // 1. Mock LocalStorage & Config
+        localStorage.setItem('token', 'mock-token-123');
+        window.CONFIG = { API_BASE_URL: 'http://mock-api.local' };
+
+        // 2. Mock Razorpay SDK
+        window.Razorpay = class {
+            constructor(options) {
+                this.options = options;
+                log('Razorpay SDK Initialized with options: ' + JSON.stringify({
+                    key: options.key,
+                    amount: options.amount,
+                    order_id: options.order_id
+                }));
+            }
+            open() {
+                log('Razorpay Modal Opened');
+                
+                // Create mock modal UI
+                const modal = document.createElement('div');
+                modal.className = 'mock-razorpay-modal';
+                modal.innerHTML = `
+                    <div class="mock-razorpay-content">
+                        <h2 class="text-xl font-bold mb-4">Mock Razorpay Checkout</h2>
+                        <p class="mb-4">Amount: ₹${this.options.amount / 100}</p>
+                        <button id="mock-success-btn" class="px-4 py-2 bg-green-500 text-white rounded mr-2">Simulate Success</button>
+                        <button id="mock-fail-btn" class="px-4 py-2 bg-red-500 text-white rounded mr-2">Simulate Failure</button>
+                        <button id="mock-close-btn" class="px-4 py-2 bg-gray-500 text-white rounded">Close (Dismiss)</button>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                document.getElementById('mock-success-btn').onclick = () => {
+                    log('Simulating Payment Success...');
+                    modal.remove();
+                    this.options.handler({
+                        razorpay_payment_id: 'pay_mock12345',
+                        razorpay_order_id: this.options.order_id,
+                        razorpay_signature: 'sig_mock67890'
+                    });
+                };
+
+                document.getElementById('mock-fail-btn').onclick = () => {
+                    log('Simulating Payment Failure...');
+                    modal.remove();
+                    if(this.options.modal && this.options.modal.ondismiss) {
+                        this.options.modal.ondismiss();
+                    }
+                };
+
+                document.getElementById('mock-close-btn').onclick = () => {
+                    log('Simulating Modal Dismissal...');
+                    modal.remove();
+                    if(this.options.modal && this.options.modal.ondismiss) {
+                        this.options.modal.ondismiss();
+                    }
+                };
+            }
+        };
+
+        // 3. Mock window.api functions directly to avoid loading all event-registrations.js dependencies
+        window.api = {
+            createManualRegistration: async (eventId, payload) => {
+                log('API CALL: createManualRegistration');
+                log('Payload: ' + JSON.stringify(payload));
+                
+                if (payload.paymentMethod === 'cash') {
+                    return { id: 101, status: 'paid', amount: 500 };
+                }
+                
+                // Razorpay mock response
+                return {
+                    isFree: false,
+                    paymentOptions: {
+                        key: 'rzp_test_mock',
+                        amount: 100000,
+                        order_id: 'order_mock123'
+                    },
+                    member: { id: 999 }
+                };
+            },
+            confirmPublicPayment: async (eventId, data) => {
+                log('API CALL: confirmPublicPayment');
+                log('Data: ' + JSON.stringify(data));
+                return { success: true, message: 'Payment Confirmed' };
+            }
+        };
+
+        // 4. Test Runner
+        document.getElementById('start-test-btn').addEventListener('click', async () => {
+            log('Starting Test...');
+            const payload = {
+                name: 'Test User',
+                phone: '9876543210',
+                businessName: 'Test Business',
+                paymentMethod: 'razorpay'
+            };
+            
+            try {
+                // Step 1: Initiate via createManualRegistration
+                const paymentData = await window.api.createManualRegistration(1, payload);
+                log('createManualRegistration Response Received');
+
+                // Step 2: Open Razorpay
+                const options = {
+                    ...paymentData.paymentOptions,
+                    handler: async function (response) {
+                        log('Razorpay Handler Called. Confirming payment...');
+                        try {
+                            const confirmData = await window.api.confirmPublicPayment(1, {
+                                memberId: paymentData.member.id,
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature
+                            });
+                            log('SUCCESS! Payment confirmed and flow completed.');
+                        } catch(err) {
+                            log('ERROR during confirmation: ' + err.message);
+                        }
+                    },
+                    modal: {
+                        ondismiss: function() {
+                            log('Razorpay modal dismissed by user.');
+                        }
+                    }
+                };
+
+                const rzp = new window.Razorpay(options);
+                rzp.open();
+                
+            } catch(e) {
+                log('ERROR: ' + e.message);
+            }
+        });
+    </script>
+</body>
+</html>

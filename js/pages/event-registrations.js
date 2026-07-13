@@ -27,6 +27,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── State ─────────────────────────────────────────────────────────────────
     const API_BASE = window.CONFIG.API_BASE_URL;
     let allRegistrations = [];
+    let filteredRegistrations = [];
+    let allLoadedEvents = [];
+    let allAssociationsList = [];
+    let currentPage = 1;
+    const itemsPerPage = 10;
 
     // ── DOM refs ──────────────────────────────────────────────────────────────
     const tableBody      = document.getElementById('registrations-table-body');
@@ -59,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const res = await fetch(`${API_BASE}/event-registrations`, {
+            const res = await fetch(`${API_BASE}/events/registration/search`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
@@ -68,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cache: 'no-store'
             });
 
-            console.log(`[Registrations] GET ${API_BASE}/event-registrations → ${res.status}`);
+            console.log(`[Registrations] GET ${API_BASE}/events/registration/search → ${res.status}`);
             const json = await res.json();
             console.log('[Registrations] Response:', json);
 
@@ -76,14 +81,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(json.error || json.message || `Server error ${res.status}`);
             }
 
-            // Handle all response shapes: array / { data } / { registrations } / { success, data }
+            // Handle all response shapes: array / { data: { results: [] } } / { data: [] }
             if (Array.isArray(json))                             allRegistrations = json;
+            else if (json.data && Array.isArray(json.data.results)) allRegistrations = json.data.results;
             else if (Array.isArray(json.data))                   allRegistrations = json.data;
             else if (Array.isArray(json.registrations))          allRegistrations = json.registrations;
             else if (json.success && Array.isArray(json.data))   allRegistrations = json.data;
             else                                                  throw new Error(json.error || 'Unexpected API response format');
 
             if (totalCountEl) totalCountEl.textContent = json.total || allRegistrations.length;
+            
             applyFilters();
 
         } catch (err) {
@@ -105,9 +112,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── Render ────────────────────────────────────────────────────────────────
-    function renderRegistrations(list) {
+    function renderRegistrations(list, totalItems = 0, startIndex = 0, endIndex = 0) {
         if (!tableBody) return;
-        if (showingCountEl) showingCountEl.textContent = list.length;
+        if (showingCountEl) showingCountEl.textContent = totalItems;
+
+        const infoEl = document.getElementById('pagination-info');
+        if (infoEl) {
+            if (totalItems === 0) {
+                infoEl.innerHTML = `Showing <span class="font-medium">0</span> to <span class="font-medium">0</span> of <span class="font-medium">0</span> results`;
+            } else {
+                infoEl.innerHTML = `Showing <span class="font-medium">${startIndex + 1}</span> to <span class="font-medium">${endIndex}</span> of <span class="font-medium">${totalItems}</span> results`;
+            }
+        }
 
         if (list.length === 0) {
             tableBody.innerHTML = `
@@ -124,9 +140,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         tableBody.innerHTML = list.map(r => {
-            const name        = r.name || r.member_name || r.participant_name || 'N/A';
+            const mem         = r.member || {};
+            const memberName  = mem.name || (mem.first_name ? `${mem.first_name} ${mem.last_name || ''}`.trim() : null);
+            const name        = r.name || r.member_name || r.participant_name || memberName || 'N/A';
             const initials    = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-            const rawPhone    = r.phone || r.mobile || '—';
+            const memberPhone = mem.phone || mem.mobile;
+            const rawPhone    = r.phone || r.mobile || memberPhone || '—';
             const phone       = rawPhone.length === 10 ? `+91 ${rawPhone}` : rawPhone;
             const eventName   = r.event_name || r.event?.title || r.event?.name || '—';
             const regCode     = r.registration_code || r.reg_code || `REG-${String(r.id).padStart(5,'0')}`;
@@ -141,6 +160,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const dateObj     = createdAt ? new Date(createdAt) : null;
             const dateStr     = dateObj && !isNaN(dateObj) ? dateObj.toLocaleDateString('en-US', { day:'2-digit', month:'short', year:'numeric' }) : '—';
             const timeStr     = dateObj && !isNaN(dateObj) ? dateObj.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' }) : '';
+            
+            const paymentId   = r.razorpay_payment_id || r.payment_id || '';
+            const orderId     = r.razorpay_order_id || r.order_id || '';
 
             const statusColors = {
                 registered: 'bg-blue-100 text-blue-800',
@@ -182,7 +204,9 @@ document.addEventListener('DOMContentLoaded', () => {
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900">${amount}</div>
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${pColor} mt-1">${payment || '—'}</span>
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${pColor} mt-1 mb-1">${payment || '—'}</span>
+                ${paymentId ? `<div class="text-[10px] text-gray-400 max-w-[120px] truncate" title="${paymentId}">${paymentId}</div>` : ''}
+                ${orderId ? `<div class="text-[10px] text-gray-400 max-w-[120px] truncate" title="${orderId}">${orderId}</div>` : ''}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 ${dateStr}<br><span class="text-xs">${timeStr}</span>
@@ -200,21 +224,75 @@ document.addEventListener('DOMContentLoaded', () => {
         const status  = statusFilter ? statusFilter.value.toLowerCase().trim() : '';
         const payment = paymentFilter? paymentFilter.value.toLowerCase().trim(): '';
 
-        const filtered = allRegistrations.filter(r => {
-            const name      = (r.name || r.member_name || '').toLowerCase();
-            const phone     = (r.phone || r.mobile || '').toLowerCase();
-            const email     = (r.email || '').toLowerCase();
+        filteredRegistrations = allRegistrations.filter(r => {
+            const mem       = r.member || {};
+            const memberName= mem.name || (mem.first_name ? `${mem.first_name} ${mem.last_name || ''}`.trim() : null);
+            const name      = (r.name || r.member_name || r.participant_name || memberName || '').toLowerCase();
+            const memberPhone = mem.phone || mem.mobile;
+            const phone     = (r.phone || r.mobile || memberPhone || '').toLowerCase();
+            const email     = (r.email || mem.email || '').toLowerCase();
             const eventName = (r.event_name || r.event?.title || '').toLowerCase();
             const rStatus   = (r.status || r.registration_status || '').toLowerCase();
             const rPayment  = (r.payment_status || '').toLowerCase();
+            const rEventId  = String(r.event_id || r.event?.id || '');
 
             return (!search  || name.includes(search) || phone.includes(search) || email.includes(search)) &&
-                   (!event   || eventName.includes(event)) &&
+                   (!event   || rEventId === event) &&
                    (!status  || rStatus  === status) &&
                    (!payment || rPayment === payment);
         });
 
-        renderRegistrations(filtered);
+        currentPage = 1;
+        renderPaginated();
+    }
+
+    function renderPaginated() {
+        const totalItems = filteredRegistrations.length;
+        const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+        
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+        
+        const paginatedList = filteredRegistrations.slice(startIndex, endIndex);
+        
+        renderRegistrations(paginatedList, totalItems, startIndex, endIndex);
+        renderPaginationControls(totalPages);
+    }
+    
+    function renderPaginationControls(totalPages) {
+        const controls = document.getElementById('pagination-controls');
+        if (!controls) return;
+        
+        let html = '';
+        
+        html += `<button class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" ${currentPage === 1 ? 'disabled' : ''} data-page="${currentPage - 1}">Previous</button>`;
+        
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === currentPage) {
+                html += `<button class="relative inline-flex items-center px-4 py-2 border border-primary-500 bg-primary-50 text-sm font-medium text-primary-600" data-page="${i}">${i}</button>`;
+            } else if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                html += `<button class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50" data-page="${i}">${i}</button>`;
+            } else if (i === currentPage - 2 || i === currentPage + 2) {
+                html += `<span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>`;
+            }
+        }
+        
+        html += `<button class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" ${currentPage === totalPages ? 'disabled' : ''} data-page="${currentPage + 1}">Next</button>`;
+        
+        controls.innerHTML = html;
+        
+        controls.querySelectorAll('button[data-page]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const page = parseInt(e.currentTarget.getAttribute('data-page'));
+                if (!isNaN(page)) {
+                    currentPage = page;
+                    renderPaginated();
+                }
+            });
+        });
     }
 
     // ── Bind filter events ────────────────────────────────────────────────────
@@ -235,18 +313,25 @@ document.addEventListener('DOMContentLoaded', () => {
         exportBtn.addEventListener('click', () => {
             if (!allRegistrations.length) { alert('No data to export.'); return; }
             const headers = ['ID','Name','Phone','Email','Event','Reg Code','Status','Payment','Amount','Date'];
-            const rows = allRegistrations.map(r => [
-                r.id || '',
-                `"${(r.name || r.member_name || '').replace(/"/g,'""')}"`,
-                `"${(r.phone || r.mobile || '').replace(/"/g,'""')}"`,
-                `"${(r.email || '').replace(/"/g,'""')}"`,
-                `"${(r.event_name || r.event?.title || '').replace(/"/g,'""')}"`,
-                `"${(r.registration_code || `REG-${String(r.id).padStart(5,'0')}`).replace(/"/g,'""')}"`,
-                r.status || '',
-                r.payment_status || '',
-                r.amount || r.payment_amount || 0,
-                `"${(r.created_at || r.registered_at || '').replace(/"/g,'""')}"`
-            ].join(','));
+            const rows = allRegistrations.map(r => {
+                const mem = r.member || {};
+                const memberName = mem.name || (mem.first_name ? `${mem.first_name} ${mem.last_name || ''}`.trim() : null);
+                const name = r.name || r.member_name || r.participant_name || memberName || '';
+                const phone = r.phone || r.mobile || mem.phone || mem.mobile || '';
+                const email = r.email || mem.email || '';
+                return [
+                    r.id || '',
+                    `"${name.replace(/"/g,'""')}"`,
+                    `"${phone.replace(/"/g,'""')}"`,
+                    `"${email.replace(/"/g,'""')}"`,
+                    `"${(r.event_name || r.event?.title || '').replace(/"/g,'""')}"`,
+                    `"${(r.registration_code || `REG-${String(r.id).padStart(5,'0')}`).replace(/"/g,'""')}"`,
+                    r.status || r.registration_status || '',
+                    r.payment_status || '',
+                    r.amount || r.payment_amount || 0,
+                    `"${(r.created_at || r.registered_at || '').replace(/"/g,'""')}"`
+                ].join(',');
+            });
             const csv  = [headers.join(','), ...rows].join('\n');
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url  = URL.createObjectURL(blob);
@@ -260,6 +345,497 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ── Manual Registration Modal ──────────────────────────────────────────────
+    const manualRegBtn = document.getElementById('manual-reg-btn');
+    const manualRegModal = document.getElementById('manual-registration-modal');
+    const closeManualRegBtn = document.getElementById('close-manual-reg-btn');
+    const cancelManualRegBtn = document.getElementById('cancel-manual-reg-btn');
+    const manualRegOverlay = document.getElementById('manual-reg-overlay');
+    const manualRegForm = document.getElementById('manual-registration-form');
+    
+    // Toggle buttons
+    const payCashBtn = document.getElementById('pay-cash-btn');
+    const payRazorpayBtn = document.getElementById('pay-razorpay-btn');
+    
+    // Fee Display
+    const feeContainer = document.getElementById('manual-reg-fee-container');
+    const feeAmount = document.getElementById('manual-reg-fee-amount');
+    const feeNotice = document.getElementById('manual-reg-fee-notice');
+    const feeSummaryAmount = document.getElementById('manual-reg-fee-summary-amount');
+    const submitBtn = document.getElementById('submit-manual-reg-btn');
+    const submitText = document.getElementById('submit-manual-reg-text');
+    
+    let manualRegPaymentMethod = 'cash'; // Default
+    let manualRegEventId = null;
+    let manualRegEventData = null;
+    let manualRegPhotoFile = null;
+    let isPaymentConfirming = false; // Dedup guard for Razorpay
+
+    // Initialize modal state
+    function openManualRegModal() {
+        manualRegEventId = eventFilter ? eventFilter.value : null;
+        if (!manualRegEventId) {
+            alert('Please select a specific Event from the filter dropdown first.');
+            return;
+        }
+
+        // Use the event data already loaded from the dropdown API
+        const selectedEvent = allLoadedEvents.find(e => String(e.id) === String(manualRegEventId));
+        
+        if (!selectedEvent) {
+            alert('Selected event details not found.');
+            return;
+        }
+
+        // Check if event is active
+        if (selectedEvent.status && selectedEvent.status.toLowerCase() !== 'active' && selectedEvent.status.toLowerCase() !== 'upcoming') {
+            alert(`This event is currently marked as ${selectedEvent.status}. Registrations are not allowed.`);
+            return;
+        }
+
+        // Check if registration date has passed
+        const closeDateStr = selectedEvent.registration_close || selectedEvent.registrationClose;
+        if (closeDateStr) {
+            const closeDate = new Date(closeDateStr);
+            closeDate.setHours(23, 59, 59, 999);
+            const now = new Date();
+            
+            if (now > closeDate) {
+                alert(`Registration for this event is closed.\n(Closed on: ${new Date(closeDateStr).toLocaleDateString()})`);
+                return;
+            }
+        }
+
+        console.log("--- Selected Event Details from API ---");
+        console.log(selectedEvent);
+        
+        manualRegEventData = selectedEvent;
+        const fee = parseFloat(selectedEvent.registration_fee ?? selectedEvent.registrationFee ?? selectedEvent.fee) || 0;
+        feeAmount.textContent = `₹ ${fee.toFixed(2)}`;
+        feeSummaryAmount.textContent = `₹ ${fee.toFixed(2)}`;
+        
+        if (fee > 0) {
+            feeContainer.classList.remove('hidden');
+        } else {
+            feeContainer.classList.add('hidden');
+        }
+        
+        updateManualRegPaymentMethod(manualRegPaymentMethod, fee);
+        manualRegModal.classList.remove('hidden');
+    }
+
+    function closeManualRegModal() {
+        manualRegModal.classList.add('hidden');
+        manualRegForm.reset();
+        manualRegForm.classList.remove('hidden');
+        document.getElementById('manual-registration-success').classList.add('hidden');
+        manualRegPhotoFile = null;
+        document.getElementById('manual-reg-photo-preview-area').classList.add('hidden');
+        document.getElementById('manual-reg-photo-input-area').classList.remove('hidden');
+        document.getElementById('manual-reg-phone-error').classList.add('hidden');
+        document.getElementById('manual-reg-association').disabled = false;
+        
+        // Reset dropdown to all associations
+        populateAssociationDropdown(allAssociationsList);
+    }
+
+    if (manualRegBtn) manualRegBtn.addEventListener('click', openManualRegModal);
+    if (closeManualRegBtn) closeManualRegBtn.addEventListener('click', closeManualRegModal);
+    if (cancelManualRegBtn) cancelManualRegBtn.addEventListener('click', closeManualRegModal);
+    if (manualRegOverlay) manualRegOverlay.addEventListener('click', closeManualRegModal);
+
+    // Payment Toggle Logic
+    function updateManualRegPaymentMethod(method, fee = 0) {
+        manualRegPaymentMethod = method;
+        if (method === 'cash') {
+            payCashBtn.classList.replace('border-gray-300', 'border-primary-600');
+            payCashBtn.classList.replace('bg-white', 'bg-primary-50');
+            payRazorpayBtn.classList.replace('border-primary-600', 'border-gray-300');
+            payRazorpayBtn.classList.replace('bg-primary-50', 'bg-white');
+            
+            feeNotice.textContent = "This registration will be marked as paid immediately";
+            document.getElementById('manual-reg-receipt-container').classList.remove('hidden');
+            submitText.textContent = fee === 0 ? "Register (Free)" : "Register with Cash";
+        } else {
+            payRazorpayBtn.classList.replace('border-gray-300', 'border-primary-600');
+            payRazorpayBtn.classList.replace('bg-white', 'bg-primary-50');
+            payCashBtn.classList.replace('border-primary-600', 'border-gray-300');
+            payCashBtn.classList.replace('bg-primary-50', 'bg-white');
+            
+            feeNotice.textContent = "You will be redirected to the payment gateway";
+            document.getElementById('manual-reg-receipt-container').classList.add('hidden');
+            submitText.textContent = fee === 0 ? "Register (Free)" : "Register & Pay via Razorpay";
+        }
+    }
+
+    if (payCashBtn) payCashBtn.addEventListener('click', () => updateManualRegPaymentMethod('cash', parseFloat(manualRegEventData?.registrationFee ?? manualRegEventData?.fee) || 0));
+    if (payRazorpayBtn) payRazorpayBtn.addEventListener('click', () => updateManualRegPaymentMethod('razorpay', parseFloat(manualRegEventData?.registrationFee ?? manualRegEventData?.fee) || 0));
+
+    // Photo Upload Logic
+    const manualRegPhotoInput = document.getElementById('manual-reg-photo');
+    if (manualRegPhotoInput) {
+        manualRegPhotoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 30 * 1024 * 1024) { alert('Image too large (>30MB)'); e.target.value=''; return; }
+            manualRegPhotoFile = file;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                document.getElementById('manual-reg-photo-preview').src = ev.target.result;
+                document.getElementById('manual-reg-photo-input-area').classList.add('hidden');
+                document.getElementById('manual-reg-photo-preview-area').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    const removePhotoBtn = document.getElementById('manual-reg-remove-photo');
+    if (removePhotoBtn) {
+        removePhotoBtn.addEventListener('click', () => {
+            manualRegPhotoFile = null;
+            manualRegPhotoInput.value = '';
+            document.getElementById('manual-reg-photo-preview-area').classList.add('hidden');
+            document.getElementById('manual-reg-photo-input-area').classList.remove('hidden');
+        });
+    }
+
+    // Phone check & City associations logic
+    let phoneCheckTimeout = null;
+    const phoneInput = document.getElementById('manual-reg-phone');
+    const phoneChecking = document.getElementById('manual-reg-phone-checking');
+    const phoneError = document.getElementById('manual-reg-phone-error');
+    const phoneLoader = document.getElementById('manual-reg-phone-loader');
+
+    if (phoneInput) {
+        phoneInput.addEventListener('input', (e) => {
+            clearTimeout(phoneCheckTimeout);
+            const val = e.target.value.replace(/\D/g, '');
+            if (val.length !== 10) {
+                phoneError.classList.add('hidden');
+                submitBtn.disabled = false;
+                return;
+            }
+            phoneCheckTimeout = setTimeout(async () => {
+                try {
+                    phoneLoader.classList.remove('hidden');
+                    phoneChecking.classList.remove('hidden');
+                    phoneError.classList.add('hidden');
+                    
+                    const status = await window.api.checkPublicRegistrationStatus(manualRegEventId, val);
+                    if (status.isRegistered) {
+                        phoneError.textContent = 'This phone number is already registered for this event. Please use a different number.';
+                        phoneError.classList.remove('hidden');
+                        submitBtn.disabled = true;
+                    } else {
+                        submitBtn.disabled = false;
+                    }
+                } catch (err) {
+                    console.error('Error checking registration status:', err);
+                } finally {
+                    phoneLoader.classList.add('hidden');
+                    phoneChecking.classList.add('hidden');
+                }
+            }, 500);
+        });
+    }
+
+    const cityInput = document.getElementById('manual-reg-city');
+    const assocDropdown = document.getElementById('manual-reg-association');
+    const assocLoader = document.getElementById('manual-reg-assoc-loader');
+    
+    function populateAssociationDropdown(list) {
+        if (!assocDropdown) return;
+        assocDropdown.innerHTML = '<option value="">Select an association (optional)</option>';
+        list.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a.id;
+            opt.textContent = a.name + (a.city ? ` (${a.city})` : '');
+            assocDropdown.appendChild(opt);
+        });
+        assocDropdown.disabled = false;
+    }
+    
+    if (cityInput) {
+        cityInput.addEventListener('input', (e) => {
+            const city = e.target.value.trim().toLowerCase();
+            if (!city) {
+                populateAssociationDropdown(allAssociationsList);
+                return;
+            }
+            const filtered = allAssociationsList.filter(a => (a.city || '').toLowerCase().includes(city));
+            populateAssociationDropdown(filtered);
+        });
+    }
+
+    // Success Screen Handlers
+    document.getElementById('close-success-btn')?.addEventListener('click', closeManualRegModal);
+    document.getElementById('register-another-btn')?.addEventListener('click', () => {
+        manualRegForm.reset();
+        manualRegForm.classList.remove('hidden');
+        document.getElementById('manual-registration-success').classList.add('hidden');
+        manualRegPhotoFile = null;
+        document.getElementById('manual-reg-photo-preview-area').classList.add('hidden');
+        document.getElementById('manual-reg-photo-input-area').classList.remove('hidden');
+    });
+
+    const downloadPassBtn = document.getElementById('download-pass-btn');
+    if (downloadPassBtn) {
+        let isDownloading = false;
+        downloadPassBtn.addEventListener('click', async () => {
+            if (isDownloading) return;
+            const regIdEl = document.getElementById('success-reg-id');
+            const regIdText = regIdEl ? regIdEl.textContent.replace('#', '').trim() : null;
+            if (!regIdText || !manualRegEventId) return;
+            
+            isDownloading = true;
+            downloadPassBtn.classList.add('opacity-75', 'cursor-not-allowed');
+            const originalHtml = downloadPassBtn.innerHTML;
+            downloadPassBtn.innerHTML = '<i data-lucide="loader-2" class="h-4 w-4 mr-2 animate-spin"></i> Downloading...';
+            if (window.lucide) lucide.createIcons({ nameAttr: 'data-lucide', nodes: [downloadPassBtn] });
+
+            try {
+                const pdfBlob = await window.api.downloadRegistrationPdf(manualRegEventId, regIdText);
+                const url = window.URL.createObjectURL(pdfBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `mandapam-visitor-pass-${regIdText}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                setTimeout(() => {
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+            } catch (error) {
+                console.error('Download error:', error);
+                alert('Could not download the pass. Please try again.');
+            } finally {
+                isDownloading = false;
+                downloadPassBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+                downloadPassBtn.innerHTML = originalHtml;
+                if (window.lucide) lucide.createIcons({ nameAttr: 'data-lucide', nodes: [downloadPassBtn] });
+            }
+        });
+    }
+
+    // Form Submission
+    if (manualRegForm) {
+        manualRegForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-50');
+            const originalText = submitText.textContent;
+            submitText.textContent = "Processing...";
+
+            try {
+                let photoUrl = null;
+                if (manualRegPhotoFile) {
+                    const uploadResult = await window.api.uploadProfileImage(manualRegPhotoFile);
+                    photoUrl = uploadResult.url || uploadResult.image || uploadResult.filename;
+                }
+
+                const assocVal = document.getElementById('manual-reg-association').value;
+                const payload = {
+                    name: document.getElementById('manual-reg-name').value.trim(),
+                    phone: document.getElementById('manual-reg-phone').value.replace(/\D/g, ''),
+                    email: document.getElementById('manual-reg-email').value.trim() || null,
+                    businessName: document.getElementById('manual-reg-business').value.trim(),
+                    businessType: document.getElementById('manual-reg-businesstype').value || null,
+                    city: document.getElementById('manual-reg-city').value.trim() || null,
+                    associationId: assocVal ? parseInt(assocVal, 10) : null,
+                    photo: photoUrl,
+                    paymentMethod: manualRegPaymentMethod,
+                    cashReceiptNumber: manualRegPaymentMethod === 'cash' ? (document.getElementById('manual-reg-receipt').value.trim() || null) : null
+                };
+
+                const fee = parseFloat(manualRegEventData.registrationFee ?? manualRegEventData.fee) || 0;
+
+                // Universal API call for both Cash and Razorpay
+                const response = await window.api.createManualRegistration(manualRegEventId, payload);
+                
+                if (manualRegPaymentMethod === 'cash' || fee === 0 || response.isFree) {
+                    // Show success screen
+                    manualRegForm.classList.add('hidden');
+                    const successData = response.data || response.registration || response;
+                    
+                    document.getElementById('success-reg-id').textContent = successData.id || '#' + Math.floor(Math.random() * 10000);
+                    document.getElementById('success-reg-status').textContent = 'paid';
+                    document.getElementById('success-reg-amount').textContent = `₹ ${fee}`;
+                    document.getElementById('success-reg-method').textContent = manualRegPaymentMethod;
+                    document.getElementById('manual-registration-success').classList.remove('hidden');
+                    
+                    manualRegForm.reset(); // Make form fresh for next registration
+                    
+                    loadRegistrations(true); // refresh table
+                    loadEventsDropdown(); // refresh dropdown data
+                } else {
+                    // Razorpay Flow
+                    const pOpts = response.paymentOptions || response.data?.paymentOptions || response.data?.data?.paymentOptions || response;
+                    const mData = response.member || response.data?.member || response.registration?.member || response.data?.registration?.member || response.data || response;
+                    const mId = mData?.id || mData?.member_id || mData?.memberId;
+
+                    if (!pOpts || !pOpts.key) {
+                        console.error('Full response:', response);
+                        throw new Error('Payment gateway options not returned by the server. Cannot open Razorpay.');
+                    }
+                    if (typeof window.Razorpay === 'undefined') throw new Error('Payment gateway not loaded.');
+
+                    // Hide the form to make it "vanish" while Razorpay is open
+                    manualRegForm.classList.add('hidden');
+
+                    const options = {
+                        ...pOpts,
+                        handler: async function (rzpResponse) {
+                            if (isPaymentConfirming) return;
+                            isPaymentConfirming = true;
+                            
+                            let paymentConfirmed = false;
+                            
+                            try {
+                                const confirmData = await window.api.confirmPublicPayment(manualRegEventId, {
+                                    memberId: mId,
+                                    razorpay_order_id: rzpResponse.razorpay_order_id,
+                                    razorpay_payment_id: rzpResponse.razorpay_payment_id,
+                                    razorpay_signature: rzpResponse.razorpay_signature
+                                });
+                                paymentConfirmed = true;
+                            } catch (err) {
+                                console.error('Confirm error:', err);
+                                
+                                const isNetworkError = err instanceof TypeError || err.name === 'AbortError' || err.name === 'NetworkError';
+                                
+                                if (isNetworkError) {
+                                    console.warn('Network error detected. Polling checkPublicRegistrationStatus to verify payment...');
+                                    alert('Payment received! Verifying registration (this may take a few seconds)...');
+                                    
+                                    const maxPollAttempts = 6;
+                                    const pollInterval = 2000;
+                                    
+                                    for (let attempt = 1; attempt <= maxPollAttempts; attempt++) {
+                                        await new Promise(resolve => setTimeout(resolve, pollInterval));
+                                        try {
+                                            const statusData = await window.api.checkPublicRegistrationStatus(manualRegEventId, payload.phone);
+                                            if (statusData.isRegistered && statusData.registration?.paymentStatus === 'paid') {
+                                                console.log('Registration confirmed via polling!');
+                                                paymentConfirmed = true;
+                                                break;
+                                            }
+                                        } catch (pollError) {
+                                            console.error(`Poll attempt ${attempt} failed:`, pollError);
+                                        }
+                                    }
+                                }
+                                
+                                if (!paymentConfirmed) {
+                                    alert('Payment confirmation failed: ' + err.message);
+                                }
+                            } finally {
+                                if (paymentConfirmed) {
+                                    alert('Razorpay Registration successful!');
+                                    closeManualRegModal();
+                                    loadRegistrations(true);
+                                    loadEventsDropdown();
+                                }
+                                isPaymentConfirming = false;
+                                submitBtn.disabled = false;
+                                submitBtn.classList.remove('opacity-50');
+                                submitText.textContent = originalText;
+                            }
+                        },
+                        modal: {
+                            ondismiss: function() {
+                                manualRegForm.classList.remove('hidden'); // UNHIDE form if user closes Razorpay
+                                isPaymentConfirming = false;
+                                submitBtn.disabled = false;
+                                submitBtn.classList.remove('opacity-50');
+                                submitText.textContent = originalText;
+                            }
+                        }
+                    };
+
+                    const rzp = new window.Razorpay(options);
+                    rzp.on('payment.failed', function(fail) {
+                        alert('Payment failed.');
+                        manualRegForm.classList.remove('hidden'); // UNHIDE form if payment fails
+                        isPaymentConfirming = false;
+                        submitBtn.disabled = false;
+                        submitBtn.classList.remove('opacity-50');
+                        submitText.textContent = originalText;
+                    });
+                    rzp.open();
+                    return; // Prevent reset below
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert(err.message || 'Registration failed');
+                manualRegForm.classList.remove('hidden'); // UNHIDE if error occurred
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50');
+                submitText.textContent = originalText;
+            }
+        });
+    }
+
     // ── Initial load ──────────────────────────────────────────────────────────
+    async function loadEventsDropdown() {
+        if (!eventFilter) return;
+        try {
+            const evtRes = await fetch(`${API_BASE}/events`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+            if (evtRes.ok) {
+                const evtJson = await evtRes.json();
+                let eventsList = [];
+                if (evtJson.data && Array.isArray(evtJson.data.results)) {
+                    eventsList = evtJson.data.results;
+                } else if (Array.isArray(evtJson.data)) {
+                    eventsList = evtJson.data;
+                } else if (Array.isArray(evtJson)) {
+                    eventsList = evtJson;
+                }
+                
+                allLoadedEvents = eventsList;
+                
+                const currentVal = eventFilter.value;
+                eventFilter.innerHTML = '<option value="">All Events</option>';
+                
+                eventsList.forEach(e => {
+                    const opt = document.createElement('option');
+                    opt.value = e.id;
+                    opt.textContent = e.title || e.name;
+                    eventFilter.appendChild(opt);
+                });
+                
+                eventFilter.value = currentVal || '';
+            }
+        } catch (evtErr) {
+            console.error('[Registrations] Error fetching past events for dropdown:', evtErr);
+        }
+    }
+    
+    async function loadAllAssociations() {
+        try {
+            const res = await fetch(`${API_BASE}/associations`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+            });
+            if (res.ok) {
+                const json = await res.json();
+                if (json.data && Array.isArray(json.data.results)) allAssociationsList = json.data.results;
+                else if (Array.isArray(json.data)) allAssociationsList = json.data;
+                else if (Array.isArray(json)) allAssociationsList = json;
+                
+                populateAssociationDropdown(allAssociationsList);
+            }
+        } catch (err) {
+            console.error('[Registrations] Error fetching all associations:', err);
+        }
+    }
+
+    loadEventsDropdown();
+    loadAllAssociations();
     loadRegistrations();
 });

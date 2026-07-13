@@ -199,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Handle image correctly
             let imgUrl = null;
-            const imgData = evt.image || evt.imageURL || evt.banner;
+            const imgData = evt.event_image || evt.image || evt.imageURL || evt.banner;
             if (imgData) {
                 // If there's an API utility to format image URLs, we can use it.
                 // Assuming basic formatting if window.api.getImageUrl doesn't exist on this page
@@ -207,6 +207,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     imgUrl = imgData;
                 } else if (window.api && typeof window.api.getImageUrl === 'function') {
                     imgUrl = window.api.getImageUrl(imgData);
+                } else {
+                    imgUrl = `${API_BASE.replace('/api', '')}/storage/${imgData}`;
                 }
             }
 

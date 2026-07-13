@@ -8,7 +8,7 @@ window.api = {
         if (token) {
             try {
                 // Production-ready logout request
-                await fetch(`${window.CONFIG.API_BASE_URL}/auth/logout`, {
+                const response = await fetch(`${window.CONFIG.API_BASE_URL}/auth/logout`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -16,6 +16,11 @@ window.api = {
                         'Accept': 'application/json'
                     }
                 });
+                
+                const data = await response.json();
+                if (data.success) {
+                    console.log(data.message);
+                }
             } catch (error) {
                 console.error('[Logout API] Error:', error);
             }
@@ -70,6 +75,57 @@ window.api = {
         const data = await response.json();
         if (!response.ok) {
             throw { response: { data, status: response.status } };
+        }
+        return data;
+    },
+
+    createManualRegistration: async (eventId, payload) => {
+        const token = localStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${API_BASE_URL}/events/${eventId}/manual-registration`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw { response: { data, status: response.status }, message: data.message || 'Registration failed' };
+        }
+        return data;
+    },
+
+    initiatePayment: async (eventId, memberId = null) => {
+        const token = localStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${API_BASE_URL}/events/${eventId}/register-payment`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ memberId })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw { response: { data, status: response.status }, message: data.message || 'Payment initiation failed' };
+        }
+        return data;
+    },
+
+    confirmPayment: async (eventId, paymentData, memberId = null) => {
+        const token = localStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${API_BASE_URL}/events/${eventId}/confirm-payment`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ ...paymentData, memberId })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw { response: { data, status: response.status }, message: data.message || 'Payment confirmation failed' };
         }
         return data;
     },
