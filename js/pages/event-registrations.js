@@ -781,7 +781,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } catch (err) {
                 console.error(err);
-                alert(err.message || 'Registration failed');
+                
+                let errorMessage = err.message || 'Registration failed';
+                
+                // If it's a 422 validation error, extract the specific field errors
+                if (err.response && err.response.status === 422 && err.response.data && err.response.data.errors) {
+                    const validationErrors = Object.values(err.response.data.errors).flat().join('\n');
+                    if (validationErrors) {
+                        errorMessage = "Validation Error:\n" + validationErrors;
+                    }
+                }
+                
+                alert(errorMessage);
                 manualRegForm.classList.remove('hidden'); // UNHIDE if error occurred
             } finally {
                 submitBtn.disabled = false;
