@@ -124,13 +124,9 @@
 
         // 3. Mock window.api functions directly to avoid loading all event-registrations.js dependencies
         window.api = {
-            createManualRegistration: async (eventId, payload) => {
-                log('API CALL: createManualRegistration');
+            initiatePublicRegistration: async (eventId, payload) => {
+                log('API CALL: initiatePublicRegistration');
                 log('Payload: ' + JSON.stringify(payload));
-                
-                if (payload.paymentMethod === 'cash') {
-                    return { id: 101, status: 'paid', amount: 500 };
-                }
                 
                 // Razorpay mock response
                 return {
@@ -161,9 +157,9 @@
             };
             
             try {
-                // Step 1: Initiate via createManualRegistration
-                const paymentData = await window.api.createManualRegistration(1, payload);
-                log('createManualRegistration Response Received');
+                // Step 1: Initiate via initiatePublicRegistration
+                const paymentData = await window.api.initiatePublicRegistration(1, payload);
+                log('initiatePublicRegistration Response Received');
 
                 // Step 2: Open Razorpay
                 const options = {

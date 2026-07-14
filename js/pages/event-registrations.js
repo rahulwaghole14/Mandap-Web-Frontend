@@ -648,10 +648,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const fee = parseFloat(manualRegEventData.registrationFee ?? manualRegEventData.fee) || 0;
 
-                // Universal API call for both Cash and Razorpay
-                const response = await window.api.createManualRegistration(manualRegEventId, payload);
-                
-                if (manualRegPaymentMethod === 'cash' || fee === 0 || response.isFree) {
+                if (manualRegPaymentMethod === 'cash') {
+                    // Cash flow uses createManualRegistration
+                    const response = await window.api.createManualRegistration(manualRegEventId, payload);
+                    
                     // Show success screen
                     manualRegForm.classList.add('hidden');
                     const successData = response.data || response.registration || response;
@@ -659,7 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('success-reg-id').textContent = successData.id || '#' + Math.floor(Math.random() * 10000);
                     document.getElementById('success-reg-status').textContent = 'paid';
                     document.getElementById('success-reg-amount').textContent = `₹ ${fee}`;
-                    document.getElementById('success-reg-method').textContent = manualRegPaymentMethod;
+                    document.getElementById('success-reg-method').textContent = 'cash';
                     document.getElementById('manual-registration-success').classList.remove('hidden');
                     
                     manualRegForm.reset(); // Make form fresh for next registration
@@ -667,22 +667,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     loadRegistrations(true); // refresh table
                     loadEventsDropdown(); // refresh dropdown data
                 } else {
-                    // Razorpay Flow
-                    const pOpts = response.paymentOptions || response.data?.paymentOptions || response.data?.data?.paymentOptions || response;
-                    const mData = response.member || response.data?.member || response.registration?.member || response.data?.registration?.member || response.data || response;
-                    const mId = mData?.id || mData?.member_id || mData?.memberId;
-
-                    if (!pOpts || !pOpts.key) {
-                        console.error('Full response:', response);
-                        throw new Error('Payment gateway options not returned by the server. Cannot open Razorpay.');
+                    // Razorpay flow uses initiatePublicRegistration
+                    const paymentData = await window.api.initiatePublicRegistration(manualRegEventId, payload);
+                    
+                    if (fee === 0 || paymentData.isFree) {
+                        alert('Free Registration successful!');
+                        closeManualRegModal();
+                        loadRegistrations(true);
+                        loadEventsDropdown();
+                        return;
                     }
+
                     if (typeof window.Razorpay === 'undefined') throw new Error('Payment gateway not loaded.');
 
                     // Hide the form to make it "vanish" while Razorpay is open
                     manualRegForm.classList.add('hidden');
 
                     const options = {
-                        ...pOpts,
+                        ...paymentData.paymentOptions,
                         handler: async function (rzpResponse) {
                             if (isPaymentConfirming) return;
                             isPaymentConfirming = true;
@@ -691,7 +693,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             
                             try {
                                 const confirmData = await window.api.confirmPublicPayment(manualRegEventId, {
-                                    memberId: mId,
+                                    memberId: paymentData.member.id,
                                     razorpay_order_id: rzpResponse.razorpay_order_id,
                                     razorpay_payment_id: rzpResponse.razorpay_payment_id,
                                     razorpay_signature: rzpResponse.razorpay_signature
