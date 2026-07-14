@@ -667,8 +667,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     loadRegistrations(true); // refresh table
                     loadEventsDropdown(); // refresh dropdown data
                 } else {
-                    // Razorpay flow uses initiatePublicRegistration
-                    const paymentData = await window.api.initiatePublicRegistration(manualRegEventId, payload);
+                    // Razorpay flow uses createManualRegistration
+                    const paymentData = await window.api.createManualRegistration(manualRegEventId, payload);
                     
                     if (fee === 0 || paymentData.isFree) {
                         alert('Free Registration successful!');
@@ -678,13 +678,26 @@ document.addEventListener('DOMContentLoaded', () => {
                         return;
                     }
 
+                    // Log the response to debug where paymentOptions are hiding
+                    console.log("Razorpay Manual Registration Response:", paymentData);
+
+                    // Robust extraction of payment options
+                    const pOpts = paymentData.paymentOptions || paymentData.data?.paymentOptions || paymentData.data?.data?.paymentOptions || paymentData;
+                    const mData = paymentData.member || paymentData.data?.member || paymentData.registration?.member || paymentData.data?.registration?.member || paymentData.data || paymentData;
+                    const mId = mData?.id || mData?.member_id || mData?.memberId;
+
+                    if (!pOpts || !pOpts.key) {
+                        console.error('Full response:', paymentData);
+                        throw new Error('Payment gateway options not returned by the server. Cannot open Razorpay.');
+                    }
+
                     if (typeof window.Razorpay === 'undefined') throw new Error('Payment gateway not loaded.');
 
                     // Hide the form to make it "vanish" while Razorpay is open
                     manualRegForm.classList.add('hidden');
 
                     const options = {
-                        ...paymentData.paymentOptions,
+                        ...pOpts,
                         handler: async function (rzpResponse) {
                             if (isPaymentConfirming) return;
                             isPaymentConfirming = true;
@@ -693,7 +706,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             
                             try {
                                 const confirmData = await window.api.confirmPublicPayment(manualRegEventId, {
-                                    memberId: paymentData.member.id,
+                                    memberId: mId,
                                     razorpay_order_id: rzpResponse.razorpay_order_id,
                                     razorpay_payment_id: rzpResponse.razorpay_payment_id,
                                     razorpay_signature: rzpResponse.razorpay_signature
