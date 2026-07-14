@@ -521,12 +521,58 @@ document.addEventListener('DOMContentLoaded', () => {
                     phoneError.classList.add('hidden');
                     
                     const status = await window.api.checkPublicRegistrationStatus(manualRegEventId, val);
+                    
                     if (status.isRegistered) {
                         phoneError.textContent = 'This phone number is already registered for this event. Please use a different number.';
                         phoneError.classList.remove('hidden');
                         submitBtn.disabled = true;
                     } else {
                         submitBtn.disabled = false;
+                        
+                        // Auto-fill member details if member exists but is not registered yet
+                        const member = status.member || status.data?.member;
+                        if (member) {
+                            if (document.getElementById('manual-reg-name') && member.first_name) {
+                                document.getElementById('manual-reg-name').value = `${member.first_name} ${member.last_name || ''}`.trim();
+                            }
+                            if (document.getElementById('manual-reg-email') && member.email) {
+                                document.getElementById('manual-reg-email').value = member.email;
+                            }
+                            if (document.getElementById('manual-reg-business') && member.business) {
+                                document.getElementById('manual-reg-business').value = member.business;
+                            }
+                            if (document.getElementById('manual-reg-businesstype') && member.business_type) {
+                                document.getElementById('manual-reg-businesstype').value = member.business_type;
+                            }
+                            if (document.getElementById('manual-reg-city') && member.city) {
+                                document.getElementById('manual-reg-city').value = member.city;
+                                // Trigger change event if there is logic depending on city (e.g. associations)
+                                document.getElementById('manual-reg-city').dispatchEvent(new Event('change'));
+                            }
+                            
+                            // If they are associated with an association, wait for city associations to load, then select it
+                            if (member.association_id && document.getElementById('manual-reg-association')) {
+                                setTimeout(() => {
+                                    const assocSelect = document.getElementById('manual-reg-association');
+                                    if (assocSelect.querySelector(`option[value="${member.association_id}"]`)) {
+                                        assocSelect.value = member.association_id;
+                                    }
+                                }, 1000); // Wait for associations dropdown to populate based on city change
+                            }
+                            
+                            // Show a small toast/alert indicating data was auto-filled
+                            const autoFillNotice = document.createElement('div');
+                            autoFillNotice.className = 'text-green-600 text-sm mt-1 mb-2';
+                            autoFillNotice.textContent = 'Member details auto-filled from database.';
+                            
+                            // Remove old notice if exists
+                            const oldNotice = document.getElementById('auto-fill-notice');
+                            if (oldNotice) oldNotice.remove();
+                            
+                            autoFillNotice.id = 'auto-fill-notice';
+                            document.getElementById('manual-reg-phone').parentNode.appendChild(autoFillNotice);
+                            setTimeout(() => autoFillNotice.remove(), 4000);
+                        }
                     }
                 } catch (err) {
                     console.error('Error checking registration status:', err);
@@ -667,10 +713,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     loadRegistrations(true); // refresh table
                     loadEventsDropdown(); // refresh dropdown data
                 } else {
-                    // Razorpay flow uses createManualRegistration
-                    const paymentData = await window.api.createManualRegistration(manualRegEventId, payload);
+                    // Razorpay flow uses initiateRazorpayManualRegistration
+                    const paymentData = await window.api.initiateRazorpayManualRegistration(manualRegEventId, payload);
                     
-                    if (fee === 0 || paymentData.isFree) {
+                    if (fee === 0 || paymentData.data?.is_free) {
                         alert('Free Registration successful!');
                         closeManualRegModal();
                         loadRegistrations(true);
@@ -678,13 +724,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         return;
                     }
 
-                    // Log the response to debug where paymentOptions are hiding
-                    console.log("Razorpay Manual Registration Response:", paymentData);
-
-                    // Robust extraction of payment options
-                    const pOpts = paymentData.paymentOptions || paymentData.data?.paymentOptions || paymentData.data?.data?.paymentOptions || paymentData;
-                    const mData = paymentData.member || paymentData.data?.member || paymentData.registration?.member || paymentData.data?.registration?.member || paymentData.data || paymentData;
-                    const mId = mData?.id || mData?.member_id || mData?.memberId;
+                    // Extract Razorpay options correctly based on the new backend structure
+                    const pOpts = paymentData.paymentOptions || paymentData.data?.paymentOptions;
+                    const mData = paymentData.member || paymentData.data?.member || paymentData.data?.registration;
+                    const mId = mData?.id || mData?.member_id;
 
                     if (!pOpts || !pOpts.key) {
                         console.error('Full response:', paymentData);
@@ -705,7 +748,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             let paymentConfirmed = false;
                             
                             try {
-                                const confirmData = await window.api.confirmPublicPayment(manualRegEventId, {
+                                const confirmData = await window.api.confirmRazorpayManualPayment(manualRegEventId, {
                                     memberId: mId,
                                     razorpay_order_id: rzpResponse.razorpay_order_id,
                                     razorpay_payment_id: rzpResponse.razorpay_payment_id,

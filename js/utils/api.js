@@ -52,9 +52,14 @@ window.api = {
     },
 
     checkPublicRegistrationStatus: async (eventId, phone) => {
+        const token = localStorage.getItem('token');
+        const headers = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         // Endpoint matches React: /check-registration?phone=... (not /registration-status)
         const response = await fetch(
-            `${API_BASE_URL}/events/${eventId}/check-registration?phone=${encodeURIComponent(phone)}`
+            `${API_BASE_URL}/events/${eventId}/check-registration?phone=${encodeURIComponent(phone)}`,
+            { headers }
         );
         if (!response.ok) {
             throw new Error('Failed to verify registration status');
@@ -63,8 +68,8 @@ window.api = {
     },
 
     initiatePublicRegistration: async (eventId, payload) => {
-        // Correct endpoint: /register-payment (not /register)
-        const response = await fetch(`${API_BASE_URL}/events/${eventId}/register-payment`, {
+        // Correct endpoint: /public/events/{id}/register-payment
+        const response = await fetch(`${API_BASE_URL}/public/events/${eventId}/register-payment`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -92,6 +97,41 @@ window.api = {
         const data = await response.json();
         if (!response.ok) {
             throw { response: { data, status: response.status }, message: data.message || 'Registration failed' };
+        }
+        return data;
+    },
+
+    initiateRazorpayManualRegistration: async (eventId, payload) => {
+        const token = localStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${API_BASE_URL}/events/${eventId}/initiate`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw { response: { data, status: response.status }, message: data.message || 'Initiation failed' };
+        }
+        return data;
+    },
+
+    // Confirm admin manual Razorpay payment
+    confirmRazorpayManualPayment: async (eventId, payload) => {
+        const token = localStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${API_BASE_URL}/events/${eventId}/confirm-payment`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw { response: { data, status: response.status }, message: data.message || 'Confirmation failed' };
         }
         return data;
     },
