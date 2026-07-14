@@ -692,7 +692,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     cashReceiptNumber: manualRegPaymentMethod === 'cash' ? (document.getElementById('manual-reg-receipt').value.trim() || null) : null
                 };
 
-                const fee = parseFloat(manualRegEventData.registrationFee ?? manualRegEventData.fee) || 0;
+                const fee = parseFloat(manualRegEventData.registration_fee ?? manualRegEventData.registrationFee ?? manualRegEventData.fee) || 0;
+
 
                 if (manualRegPaymentMethod === 'cash') {
                     // Cash flow uses createManualRegistration
@@ -725,8 +726,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     // Extract Razorpay options correctly based on the new backend structure
-                    const pOpts = paymentData.paymentOptions || paymentData.data?.paymentOptions;
-                    const mData = paymentData.member || paymentData.data?.member || paymentData.data?.registration;
+                    const pOpts = paymentData.paymentOptions || paymentData.data?.paymentOptions || paymentData.data?.data?.paymentOptions;
+                    const mData = paymentData.member || paymentData.data?.member || paymentData.data?.registration || paymentData.data?.data?.registration;
                     const mId = mData?.id || mData?.member_id;
 
                     if (!pOpts || !pOpts.key) {
@@ -748,11 +749,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             let paymentConfirmed = false;
                             
                             try {
-                                const confirmData = await window.api.confirmRazorpayManualPayment(manualRegEventId, {
-                                    memberId: mId,
-                                    razorpay_order_id: rzpResponse.razorpay_order_id,
-                                    razorpay_payment_id: rzpResponse.razorpay_payment_id,
-                                    razorpay_signature: rzpResponse.razorpay_signature
+                                const confirmData = await window.api.confirmRazorpayManualPayment({
+                                    order_id: rzpResponse.razorpay_order_id,
+                                    transaction_id: rzpResponse.razorpay_payment_id,
+                                    signature: rzpResponse.razorpay_signature,
+                                    status: 'success'
                                 });
                                 paymentConfirmed = true;
                             } catch (err) {

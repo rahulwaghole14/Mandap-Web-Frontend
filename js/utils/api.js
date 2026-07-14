@@ -106,7 +106,7 @@ window.api = {
         const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        const response = await fetch(`${API_BASE_URL}/events/${eventId}/initiate`, {
+        const response = await fetch(`${API_BASE_URL}/events/${eventId}/public-registration/initiate`, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify(payload)
@@ -119,12 +119,12 @@ window.api = {
     },
 
     // Confirm admin manual Razorpay payment
-    confirmRazorpayManualPayment: async (eventId, payload) => {
+    confirmRazorpayManualPayment: async (payload) => {
         const token = localStorage.getItem('token');
         const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        const response = await fetch(`${API_BASE_URL}/events/${eventId}/confirm-payment`, {
+        const response = await fetch(`${API_BASE_URL}/payments/verify`, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify(payload)
@@ -132,6 +132,24 @@ window.api = {
         const data = await response.json();
         if (!response.ok) {
             throw { response: { data, status: response.status }, message: data.message || 'Confirmation failed' };
+        }
+        return data;
+    },
+
+    // Step 2 of the new 3-step Razorpay Flow: Create Payment Order
+    createPaymentOrder: async (payload) => {
+        const token = localStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${API_BASE_URL}/payments/order`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw { response: { data, status: response.status }, message: data.message || 'Order creation failed' };
         }
         return data;
     },
