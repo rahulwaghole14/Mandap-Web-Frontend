@@ -634,8 +634,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('Payment gateway not loaded. Please refresh the page.');
             }
 
+            let pOpts = paymentData.paymentOptions || {};
+            // Inject configured fallback key if backend doesn't provide one
+            if (!pOpts.key && window.CONFIG?.RAZORPAY?.KEY_ID) {
+                pOpts.key = window.CONFIG.RAZORPAY.KEY_ID;
+            }
+
             const options = {
-                ...paymentData.paymentOptions,
+                ...pOpts,
                 handler: async function (response) {
                     // --- Dedup guard (mirrors React's paymentConfirmingRef) ---
                     if (isPaymentConfirming) {
@@ -651,11 +657,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         try {
                             console.log('[Payment] Starting confirmation...');
-                            console.log('[Payment] Payment ID:', response.razorpay_payment_id);
-                            console.log('[Payment] Order ID:', response.razorpay_order_id);
+                            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:') {
+                                console.log('[Payment] Razorpay response received:', {
+                                    has_order_id:   !!response.razorpay_order_id,
+                                    has_payment_id: !!response.razorpay_payment_id,
+                                    has_signature:  !!response.razorpay_signature
+                                });
+                            }
+
+                            // BUG FIX (H4/C3): Validate all three Razorpay response fields before calling backend.
+                            // Missing fields cause a silent 400 error; this gives a clear user message instead.
+                            const rzpMissing = [
+                                !response.razorpay_order_id   && 'razorpay_order_id',
+                                !response.razorpay_payment_id && 'razorpay_payment_id',
+                                !response.razorpay_signature  && 'razorpay_signature'
+                            ].filter(Boolean);
+                            if (rzpMissing.length > 0) {
+                                throw new Error(`Payment gateway returned an incomplete response. Missing: ${rzpMissing.join(', ')}. Please try again.`);
+                            }
 
                             confirmData = await window.api.confirmPublicPayment(resolvedEventId, {
-                                memberId: paymentData.member.id,
+                                // BUG FIX (C4): Null-safe access — paymentData.member could be undefined
+                                // if backend doesn't return it. Using ?. prevents a hard TypeError crash.
+                                memberId: paymentData.member?.id ?? null,
                                 razorpay_order_id: response.razorpay_order_id,
                                 razorpay_payment_id: response.razorpay_payment_id,
                                 razorpay_signature: response.razorpay_signature
@@ -668,14 +692,17 @@ document.addEventListener('DOMContentLoaded', () => {
                             // Network errors may still have succeeded on the server.
                             console.error('[Payment] Confirmation failed after retries:', confirmError);
 
+                            const isAlreadyProcessed = confirmError.message?.includes('already processed') || 
+                                                       confirmError.response?.data?.message?.includes('already processed');
+
                             const isNetworkError = confirmError instanceof TypeError ||
                                                    confirmError.name === 'AbortError' ||
                                                    confirmError.name === 'NetworkError';
 
-                            if (isNetworkError) {
-                                // Network error – payment may have succeeded on server, poll to verify
-                                showToast('Payment received! Verifying registration…', 'info');
-                                console.warn('[Payment] Network error – polling registration status as fallback...');
+                            if (isNetworkError || isAlreadyProcessed) {
+                                // Payment may have succeeded on server (or already processed), poll to verify
+                                showToast('Verifying registration status…', 'info');
+                                console.warn('[Payment] Polling registration status to verify payment...');
 
                                 const maxPollAttempts = 6;
                                 const pollInterval = 2000;
@@ -691,8 +718,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                             el.phone.value
                                         );
 
-                                        if (statusData.isRegistered &&
-                                            statusData.registration?.paymentStatus === 'paid') {
+                                        const pStatus = statusData.registration?.paymentStatus || statusData.registration?.payment_status;
+                                        const isPaid = pStatus && ['paid', 'success'].includes(pStatus.toLowerCase());
+
+                                        if (statusData.isRegistered && isPaid) {
                                             console.log('[Payment] Registration confirmed via polling!');
                                             registrationFound = true;
                                             confirmData = {
@@ -780,15 +809,19 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             const rzp = new window.Razorpay(options);
+
+            // BUG FIX (L3): Register payment.failed BEFORE rzp.open() for reliable event delivery.
             rzp.on('payment.failed', function (failResponse) {
-                console.error('[Payment] Failed:', failResponse);
-                showToast('Payment failed. Please try again.', 'error');
+                console.error('[Payment] Failed:', failResponse.error?.description || failResponse);
+                const reason = failResponse.error?.description || failResponse.error?.reason || 'Payment failed';
+                showToast(`Payment failed: ${reason}. Please try again.`, 'error');
                 isRegistering = false;
                 isPaymentConfirming = false; // Reset dedup flag on failure
                 updateSubmitButtonState();
                 el.submitLoader.classList.add('hidden');
                 el.submitText.textContent = `Register & Pay ₹${fee.toFixed(2)}`;
             });
+
             rzp.open();
 
         } catch (error) {

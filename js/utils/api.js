@@ -1,6 +1,11 @@
 // API wrapper utilities
 const API_BASE_URL = window.CONFIG.API_BASE_URL;
 
+// Development mode flag — set to false in production builds
+const __DEV__ = (window.location.hostname === 'localhost' ||
+                 window.location.hostname === '127.0.0.1' ||
+                 window.location.protocol === 'file:');
+
 window.api = {
     // --- Auth API ---
     logout: async () => {
@@ -16,7 +21,7 @@ window.api = {
                         'Accept': 'application/json'
                     }
                 });
-                
+
                 const data = await response.json();
                 if (data.success) {
                     console.log(data.message);
@@ -25,7 +30,7 @@ window.api = {
                 console.error('[Logout API] Error:', error);
             }
         }
-        
+
         // Securely clear all user-related data from local storage
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
@@ -33,7 +38,7 @@ window.api = {
         localStorage.removeItem('userEmail');
         localStorage.removeItem('userName');
         localStorage.removeItem('userRole');
-        
+
         // Redirect to login
         window.location.href = 'login.html';
     },
@@ -101,20 +106,40 @@ window.api = {
         return data;
     },
 
+    // SOURCE OF TRUTH (React ManualRegistrationModal.jsx L245):
+    // Both the public form AND the admin manual registration form call the same
+    // public endpoint: POST /public/events/{id}/register-payment
+    // The admin flow does NOT use a separate authenticated order endpoint.
     initiateRazorpayManualRegistration: async (eventId, payload) => {
         const token = localStorage.getItem('token');
-        const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        // Send auth header if available, but not required by this public endpoint
+        const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        };
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        const response = await fetch(`${API_BASE_URL}/events/${eventId}/public-registration/initiate`, {
+        if (__DEV__) {
+            console.log('[Payment] Initiating Razorpay order via public endpoint for event:', eventId);
+        }
+
+        const response = await fetch(`${API_BASE_URL}/public/events/${eventId}/register-payment`, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify(payload)
         });
         const data = await response.json();
         if (!response.ok) {
-            throw { response: { data, status: response.status }, message: data.message || 'Initiation failed' };
+            throw { response: { data, status: response.status }, message: data.message || 'Order creation failed' };
         }
+
+        if (__DEV__) {
+            console.log('[Payment] Order created. Order ID:',
+                data?.paymentOptions?.order_id ||
+                data?.data?.paymentOptions?.order_id ||
+                '(check response structure)');
+        }
+
         return data;
     },
 
@@ -176,7 +201,7 @@ window.api = {
         const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        const response = await fetch(`${API_BASE_URL}/events/${eventId}/confirm-payment`, {
+        const response = await fetch(`${API_BASE_URL}/events/${eventId}/public-registration/confirm`, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify({ ...paymentData, memberId })
@@ -191,22 +216,50 @@ window.api = {
     /**
      * Confirm payment with retry logic + exponential backoff.
      * Mirrors the React confirmPublicPayment implementation.
+     *
+     * BUG FIX (H1): Was posting to incorrect URL /events/{id}/public-registration/confirm.
+     * Corrected to /public/events/{id}/confirm-payment to match React source of truth.
+     *
      * Retries only on network errors (ECONNRESET, etc.) – not on 4xx/5xx.
      */
     confirmPublicPayment: async (eventId, payload, maxRetries = 5) => {
         const retryDelays = [2000, 3000, 5000, 7000, 10000];
 
+        // BUG FIX (C3/H4): Validate all three required Razorpay fields before any network call.
+        // Prevents silent 400 errors with no clear user feedback.
+        const missingFields = [
+            !payload?.razorpay_order_id   && 'razorpay_order_id',
+            !payload?.razorpay_payment_id && 'razorpay_payment_id',
+            !payload?.razorpay_signature  && 'razorpay_signature'
+        ].filter(Boolean);
+
+        if (missingFields.length > 0) {
+            const msg = `Payment verification failed: missing fields from Razorpay response [${missingFields.join(', ')}]`;
+            console.error('[Payment Confirmation] ❌', msg, '| Full payload:', {
+                has_order_id:   !!payload?.razorpay_order_id,
+                has_payment_id: !!payload?.razorpay_payment_id,
+                has_signature:  !!payload?.razorpay_signature
+            });
+            throw new Error(msg);
+        }
+
         for (let attempt = 0; attempt < maxRetries; attempt++) {
-            console.log(`[Payment Confirmation] Attempt ${attempt + 1}/${maxRetries} for event ${eventId}`);
-            console.log(`[Payment Confirmation] Payment ID: ${payload.razorpay_payment_id}`);
-            console.log(`[Payment Confirmation] Order ID: ${payload.razorpay_order_id}`);
+            // Gate verbose logs behind isDev to avoid leaking payment IDs in production
+            if (__DEV__) {
+                console.log(`[Payment Confirmation] Attempt ${attempt + 1}/${maxRetries} for event ${eventId}`);
+                console.log(`[Payment Confirmation] Payment ID: ${payload.razorpay_payment_id}`);
+                console.log(`[Payment Confirmation] Order ID: ${payload.razorpay_order_id}`);
+            } else {
+                console.log(`[Payment Confirmation] Attempt ${attempt + 1}/${maxRetries}`);
+            }
 
             try {
+                // BUG FIX (H1): Corrected URL — was /events/{id}/public-registration/confirm
                 const response = await fetch(
-                    `${API_BASE_URL}/events/${eventId}/confirm-payment`,
+                    `${API_BASE_URL}/public/events/${eventId}/confirm-payment`,
                     {
                         method: 'POST',
-                        headers: { 
+                        headers: {
                             'Content-Type': 'application/json',
                             'Accept': 'application/json'
                         },
@@ -218,7 +271,7 @@ window.api = {
 
                 if (!response.ok) {
                     // 4xx/5xx are non-retryable – throw immediately
-                    console.error(`[Payment Confirmation] ❌ Non-retryable HTTP ${response.status}`);
+                    console.error(`[Payment Confirmation] ❌ Non-retryable HTTP ${response.status}:`, data?.message || 'Unknown error');
                     throw { response: { data, status: response.status } };
                 }
 
@@ -235,8 +288,8 @@ window.api = {
 
                 // Network-level error (TypeError: Failed to fetch, AbortError, etc.)
                 const isNetworkError = error instanceof TypeError ||
-                                       error.name === 'AbortError' ||
-                                       error.name === 'NetworkError';
+                    error.name === 'AbortError' ||
+                    error.name === 'NetworkError';
 
                 console.error(`[Payment Confirmation] ❌ Attempt ${attempt + 1}/${maxRetries} failed:`, {
                     message: error.message,
@@ -262,6 +315,32 @@ window.api = {
         }
 
         throw new Error('Payment confirmation failed after all retries');
+    },
+
+    // Cancel registration (using smart cancel for automatic refund processing)
+    cancelRegistration: async (eventId, registrationId, options = {}) => {
+        const token = localStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const payload = {
+            registration_id: registrationId,
+            reason: options.reason || 'Admin cancellation',
+            refund_speed: options.refundSpeed || 'optimum',
+            refund_amount: options.refundAmount || 'full'
+        };
+
+        const response = await fetch(`${API_BASE_URL}/events/cancel`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        if (!response.ok) {
+            throw { response: { data, status: response.status }, message: data.message || data.error || 'Cancellation failed' };
+        }
+        return data;
     },
 
     downloadRegistrationPdf: async (eventId, registrationId) => {
@@ -333,7 +412,7 @@ window.api = {
             headers: headers,
             body: JSON.stringify(data)
         });
-        
+
         return await response.json();
     },
 
@@ -359,11 +438,11 @@ window.api = {
             img.onload = () => {
                 const originalWidth = img.width;
                 const originalHeight = img.height;
-                
+
                 let width = originalWidth;
                 let height = originalHeight;
                 const needsResize = width > maxWidth || height > maxHeight;
-                
+
                 if (needsResize) {
                     if (width > maxWidth) {
                         height = (height * maxWidth) / width;
@@ -499,18 +578,18 @@ window.api = {
     getImageUrl: (filenameOrObject) => {
         let filename = null;
         let imageURL = null;
-        
+
         if (typeof filenameOrObject === 'object' && filenameOrObject !== null) {
             imageURL = filenameOrObject.imageURL;
             filename = filenameOrObject.image;
         } else {
             filename = filenameOrObject;
         }
-        
+
         if (imageURL && typeof imageURL === 'string' && imageURL.startsWith('http')) {
             return imageURL;
         }
-        
+
         if (filename && typeof filename === 'string' && filename.startsWith('http')) {
             return filename;
         }
@@ -520,25 +599,25 @@ window.api = {
         if (window.CONFIG.CLOUDINARY.USE_CLOUDINARY) {
             const hasFolder = filename.includes('/');
             const hasExtension = /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(filename);
-            
+
             if (hasFolder || !hasExtension) {
                 const encodedFilename = encodeURIComponent(filename).replace(/%2F/g, '/');
                 return `https://res.cloudinary.com/${window.CONFIG.CLOUDINARY.CLOUD_NAME}/image/upload/${encodedFilename}`;
             }
-            
+
             const isLocalPath = filename.startsWith('./') || filename.includes('\\');
             if (!isLocalPath) {
                 const encodedFilename = encodeURIComponent(filename).replace(/%2F/g, '/');
                 return `https://res.cloudinary.com/${window.CONFIG.CLOUDINARY.CLOUD_NAME}/image/upload/${encodedFilename}`;
             }
         }
-        
+
         const baseUrl = API_BASE_URL.replace('/api', '');
         const normalizePath = (value) => value.replace(/^\/+/, '').replace(/\\/g, '/');
         const encodePath = (value) => value.split('/').map(segment => encodeURIComponent(segment)).join('/');
         const normalized = normalizePath(filename);
         const [firstSegment] = normalized.split('/');
-        
+
         const knownSubDirs = ['uploads', 'event-images', 'profile-images', 'business-images', 'gallery-images', 'documents', 'images', 'general'];
         if (firstSegment === 'uploads') {
             return `${baseUrl}/${encodePath(normalized)}`;

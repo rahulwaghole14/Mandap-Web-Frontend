@@ -45,9 +45,76 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Handle Profile Form Submission
+    const profileForm = document.getElementById('profile-form');
+    if (profileForm) {
+        profileForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!profileForm.checkValidity()) {
+                profileForm.reportValidity();
+                return;
+            }
+            
+            const btn = profileForm.querySelector('.submit-btn');
+            const prevText = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="loader-2" class="h-4 w-4 animate-spin mr-2"></i> <span>Saving...</span>';
+            btn.disabled = true;
+            if (window.lucide) lucide.createIcons();
+            
+            const payload = {
+                name: document.getElementById('profile-name')?.value,
+                email: document.getElementById('profile-email')?.value,
+                phone: document.getElementById('profile-phone')?.value,
+                district: document.getElementById('profile-district')?.value
+            };
+            
+            try {
+                const token = localStorage.getItem('token');
+                const API_BASE = window.CONFIG.API_BASE_URL;
+                const res = await fetch(`${API_BASE}/auth/profile`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (res.ok) {
+                    const json = await res.json();
+                    alert('Profile updated successfully!');
+                    
+                    if (json.data && json.data.user) {
+                        const user = json.data.user;
+                        localStorage.setItem('user', JSON.stringify(user));
+                        localStorage.setItem('userName', user.name || '');
+                        localStorage.setItem('userEmail', user.email || '');
+                        
+                        const gNameEl = document.getElementById('user-name');
+                        if (gNameEl) gNameEl.textContent = user.name;
+                        const gEmailEl = document.getElementById('user-email');
+                        if (gEmailEl) gEmailEl.textContent = user.email;
+                    }
+                } else {
+                    const error = await res.json();
+                    alert('Failed to update profile: ' + (error.message || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('[Settings] Update profile error:', err);
+                alert('An error occurred while updating the profile.');
+            } finally {
+                btn.innerHTML = prevText;
+                btn.disabled = false;
+                if (window.lucide) lucide.createIcons();
+            }
+        });
+    }
+
     // Mock Saves
     const forms = document.querySelectorAll('form');
     forms.forEach(form => {
+        if (form.id === 'profile-form') return; // Skip profile form
         form.addEventListener('submit', (e) => {
             e.preventDefault();
             
@@ -93,10 +160,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     const nameInput = document.getElementById('profile-name');
                     const emailInput = document.getElementById('profile-email');
                     const roleInput = document.getElementById('profile-role');
+                    const phoneInput = document.getElementById('profile-phone');
+                    const districtInput = document.getElementById('profile-district');
 
                     if (nameInput) nameInput.value = user.name || '';
                     if (emailInput) emailInput.value = user.email || '';
                     if (roleInput) roleInput.value = user.role || '';
+                    if (phoneInput) phoneInput.value = user.phone || '';
+                    if (districtInput) districtInput.value = user.district || '';
                     
                     // Update role text in permissions tab
                     const roleText = document.querySelector('#permissions-tab .capitalize');

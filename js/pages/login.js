@@ -9,6 +9,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const eyeIconTemplate    = document.getElementById('eye-icon').innerHTML;
   const eyeOffIconTemplate = document.getElementById('eye-off-icon').innerHTML;
 
+  const tabAdmin           = document.getElementById('tabAdmin');
+  const tabMember          = document.getElementById('tabMember');
+  const adminFields        = document.getElementById('adminFields');
+  const memberFields       = document.getElementById('memberFields');
+  const adminFooter        = document.getElementById('adminFooter');
+  const memberFooter       = document.getElementById('memberFooter');
+  const authNote           = document.getElementById('authNote');
+  const mobileInput        = document.getElementById('mobile');
+  const otpInput           = document.getElementById('otp');
+  const otpGroup           = document.getElementById('otpGroup');
+  const btnLoadingText     = document.getElementById('btnLoadingText');
+  
+  let currentTab = 'admin'; // 'admin' or 'member'
+  let otpSent = false;
+
   // ── Toast ──────────────────────────────────────────────────────────────────
   const showToast = (message, type = 'success') => {
     const toastContainer = document.getElementById('toast-container');
@@ -46,30 +61,127 @@ document.addEventListener('DOMContentLoaded', () => {
     btnLoading.classList.toggle('hidden', !loading);
   };
 
+  // ── Tab switching ────────────────────────────────────────────────────────
+  const switchTab = (tab) => {
+    currentTab = tab;
+    
+    // Reset forms & state
+    loginForm.reset();
+    otpSent = false;
+    
+    // Update tab styling
+    if (tab === 'admin') {
+      tabAdmin.className = "flex-1 py-3 text-sm font-medium border-b-2 border-primary-600 text-primary-600 focus:outline-none";
+      tabMember.className = "flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none";
+      
+      adminFields.classList.replace('hidden', 'block');
+      adminFooter.classList.replace('hidden', 'block');
+      authNote.classList.replace('hidden', 'block');
+      
+      memberFields.classList.replace('block', 'hidden');
+      memberFooter.classList.replace('block', 'hidden');
+      
+      btnText.textContent = 'Sign in';
+    } else {
+      tabMember.className = "flex-1 py-3 text-sm font-medium border-b-2 border-primary-600 text-primary-600 focus:outline-none";
+      tabAdmin.className = "flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none";
+      
+      memberFields.classList.replace('hidden', 'block');
+      memberFooter.classList.replace('hidden', 'block');
+      
+      adminFields.classList.replace('block', 'hidden');
+      adminFooter.classList.replace('block', 'hidden');
+      authNote.classList.replace('block', 'hidden');
+      
+      otpGroup.classList.add('hidden');
+      mobileInput.readOnly = false;
+      btnText.textContent = 'Send OTP';
+    }
+  };
+
+  tabAdmin.addEventListener('click', () => switchTab('admin'));
+  tabMember.addEventListener('click', () => switchTab('member'));
+
+  // ── Send OTP API ──────────────────────────────────────────────────────────
+  const requestOTP = async (mobileNumber) => {
+    btnLoadingText.textContent = 'Sending OTP...';
+    setLoading(true);
+    try {
+      const response = await fetch(`${window.CONFIG.API_BASE_URL}/members/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobileNumber: mobileNumber })
+      });
+      let data = {};
+      try { data = await response.json(); } catch (_) {}
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to send OTP');
+      }
+      
+      showToast('OTP sent to your registered mobile number', 'success');
+      otpSent = true;
+      
+      // Update UI for OTP entry
+      mobileInput.readOnly = true;
+      otpGroup.classList.remove('hidden');
+      btnText.textContent = 'Verify & Login';
+      
+    } catch (error) {
+      console.error('[OTP]', error);
+      showToast(error.message || 'Network error while sending OTP', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // ── Form submit → real API call ────────────────────────────────────────────
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const email    = document.getElementById('email').value.trim();
-    const password = passwordInput.value;
-
-    if (!email || !password) {
-      showToast('Please fill in all fields', 'error');
+    if (currentTab === 'member' && !otpSent) {
+      // Step 1: Send OTP
+      const mobileNumber = mobileInput.value.trim();
+      if (!/^\d{10}$/.test(mobileNumber)) {
+        showToast('Please enter a valid 10-digit mobile number', 'error');
+        return;
+      }
+      await requestOTP(mobileNumber);
       return;
     }
 
+    let payload = {};
+    if (currentTab === 'admin') {
+      const email = document.getElementById('email').value.trim();
+      const password = passwordInput.value;
+      if (!email || !password) {
+        showToast('Please fill in all fields', 'error');
+        return;
+      }
+      payload = { email, password };
+    } else {
+      const mobile = mobileInput.value.trim();
+      const otp = otpInput.value.trim();
+      if (!otp || otp.length !== 6) {
+        showToast('Please enter the 6-digit OTP', 'error');
+        return;
+      }
+      payload = { mobileNumber: mobile, otp };
+    }
+
+    btnLoadingText.textContent = 'Signing in...';
     setLoading(true);
 
     try {
       const API_BASE = window.CONFIG.API_BASE_URL;
-      const endpoint = `${API_BASE}/auth/login`;
+      const endpoint = currentTab === 'admin' ? `${API_BASE}/auth/login` : `${API_BASE}/members/auth/verify-otp`;
 
       console.log('[Login] POST →', endpoint);
 
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(payload),
         signal: AbortSignal.timeout(30000) // 30 seconds timeout
       });
 
@@ -110,7 +222,8 @@ document.addEventListener('DOMContentLoaded', () => {
         data.data?.user ||
         data.admin      ||
         data.data?.admin||
-        { email, name: data.name, role: data.role };
+        data.member     ||
+        { email: payload.email || payload.mobileNumber, name: data.name, role: data.role };
 
       if (!token) {
         console.warn('[Login] No token found in response – storing session anyway:', data);
@@ -120,13 +233,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (token) localStorage.setItem('token', token);
       if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
       localStorage.setItem('user',      JSON.stringify(user));
-      localStorage.setItem('userEmail', user?.email || email);
-      localStorage.setItem('userName',  user?.name  || '');
-      localStorage.setItem('userRole',  user?.role  || '');
+      localStorage.setItem('userEmail', user?.email || payload.email || payload.mobileNumber);
+      localStorage.setItem('userName',  user?.name || user?.first_name || '');
+      localStorage.setItem('userRole',  user?.role || user?.type || '');
 
-      console.log('[Login] ✅ Success — user:', user?.name || email, '| role:', user?.role);
+      const displayName = user?.name || user?.first_name || payload.email || payload.mobileNumber;
+      console.log('[Login] ✅ Success — user:', displayName, '| role:', user?.role || user?.type);
 
-      showToast(`Welcome back, ${user?.name || email}!`, 'success');
+      showToast(`Welcome back, ${displayName}!`, 'success');
 
       // Redirect to dashboard
       setTimeout(() => {

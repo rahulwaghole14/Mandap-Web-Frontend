@@ -1,426 +1,483 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Global Registrations - Mandapam Admin</title>
-    <link rel="icon" type="image/png" href="assets/images/mandapam-logo.png" />
-    <link rel="apple-touch-icon" href="assets/images/mandapam-logo.png" />
-    <link href="css/style.css" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Razorpay SDK -->
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-  </head>
-  <body class="bg-gray-100 font-sans antialiased text-gray-900">
-    <div class="flex">
-      <!-- Sidebar -->
-      <div class="w-64 bg-gray-900 text-white h-screen flex flex-col sticky top-0 flex-shrink-0" style="width: 256px; min-width: 256px; max-width: 256px;">
-        <!-- Header -->
-        <div class="p-6 border-b border-gray-700">
-          <h2 class="text-xl font-semibold text-white">Mandapam Admin</h2>
-          <p class="text-sm text-gray-400 mt-1">Association Platform</p>
-        </div>
 
-        <!-- User Info -->
-        <div class="p-4 border-b border-gray-700">
-          <div class="flex items-center space-x-3">
-            <div class="h-10 w-10 bg-primary-600 rounded-full flex items-center justify-center">
-              <i data-lucide="user" class="h-5 w-5 text-white"></i>
-            </div>
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-white truncate" id="user-name">
-                Admin User
-              </p>
-            </div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Registrations - Mandapam Admin</title>
+  <link rel="icon" type="image/png" href="assets/images/mandapam-logo.png" />
+  <link rel="apple-touch-icon" href="assets/images/mandapam-logo.png" />
+  <link href="css/style.css" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Razorpay SDK -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+
+<body class="bg-gray-100 font-sans antialiased text-gray-900">
+  <div class="flex">
+    <!-- Sidebar -->
+    <div class="w-64 bg-gray-900 text-white h-screen flex flex-col sticky top-0 flex-shrink-0"
+      style="width: 256px; min-width: 256px; max-width: 256px;">
+      <!-- Header -->
+      <div class="p-6 border-b border-gray-700">
+        <h2 class="text-xl font-semibold text-white">Mandapam Admin</h2>
+        <p class="text-sm text-gray-400 mt-1">Association Platform</p>
+      </div>
+
+      <!-- User Info -->
+      <div class="p-4 border-b border-gray-700">
+        <div class="flex items-center space-x-3">
+          <div class="h-10 w-10 bg-primary-600 rounded-full flex items-center justify-center">
+            <i data-lucide="user" class="h-5 w-5 text-white"></i>
           </div>
-        </div>
-
-        <!-- Navigation -->
-        <nav class="flex-1 p-4 space-y-2">
-          <a href="dashboard.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
-            <i data-lucide="layout-dashboard" class="h-5 w-5"></i>
-            <span class="text-sm font-medium">Dashboard</span>
-          </a>
-          <a href="vendors.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
-            <i data-lucide="users" class="h-5 w-5"></i>
-            <span class="text-sm font-medium">Vendors</span>
-          </a>
-          <a href="events.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
-            <i data-lucide="calendar" class="h-5 w-5"></i>
-            <span class="text-sm font-medium">Events</span>
-          </a>
-          <a href="event-registrations.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors bg-primary-600 text-white">
-            <i data-lucide="clipboard-list" class="h-5 w-5"></i>
-            <span class="text-sm font-medium">Registrations</span>
-          </a>
-          <a href="nbod.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
-            <i data-lucide="award" class="h-5 w-5"></i>
-            <span class="text-sm font-medium">NBOD</span>
-          </a>
-          <a href="members.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
-            <i data-lucide="building" class="h-5 w-5"></i>
-            <span class="text-sm font-medium">Members</span>
-          </a>
-          <a href="associations.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
-            <i data-lucide="map-pin" class="h-5 w-5"></i>
-            <span class="text-sm font-medium">Associations</span>
-          </a>
-        </nav>
-
-        <!-- Footer -->
-        <div class="p-4 border-t border-gray-700 space-y-2">
-          <a href="settings.html" class="flex items-center space-x-3 px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors">
-            <i data-lucide="settings" class="h-5 w-5"></i>
-            <span class="text-sm font-medium">Settings</span>
-          </a>
-          <button id="logout-btn" class="w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors">
-            <i data-lucide="log-out" class="h-5 w-5"></i>
-            <span class="text-sm font-medium">Logout</span>
-          </button>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-white truncate" id="user-name">
+              Admin User
+            </p>
+          </div>
         </div>
       </div>
 
-      <!-- Main Content -->
-      <main class="flex-1 p-8 bg-gray-100 min-h-screen overflow-x-auto">
-        <div class="space-y-6">
-          
-          <div class="flex justify-between items-center">
-            <div>
-              <h1 class="text-3xl font-bold text-gray-900">Event Registrations</h1>
-              <p class="text-gray-600 mt-2">Showing <span id="showing-count">0</span> of <span id="total-count">0</span> registrations</p>
-            </div>
-            <div class="flex space-x-3">
-              <button id="manual-reg-btn" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2">
-                <i data-lucide="plus" class="h-4 w-4"></i>
-                <span>Manual Registration</span>
-              </button>
-              <button id="refresh-btn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2">
-                <i data-lucide="refresh-cw" class="h-4 w-4"></i>
-                <span>Refresh</span>
-              </button>
-              <button id="export-btn" class="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center space-x-2">
-                <i data-lucide="download" class="h-4 w-4"></i>
-                <span>Export CSV</span>
-              </button>
-            </div>
-          </div>
+      <!-- Navigation -->
+      <nav class="flex-1 p-4 space-y-2">
+        <a href="dashboard.html"
+          class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+          <i data-lucide="layout-dashboard" class="h-5 w-5"></i>
+          <span class="text-sm font-medium">Dashboard</span>
+        </a>
+        <a href="vendors.html"
+          class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+          <i data-lucide="users" class="h-5 w-5"></i>
+          <span class="text-sm font-medium">Vendors</span>
+        </a>
+        <a href="events.html"
+          class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+          <i data-lucide="calendar" class="h-5 w-5"></i>
+          <span class="text-sm font-medium">Events</span>
+        </a>
+        <a href="event-registrations.html"
+          class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors bg-primary-600 text-white">
+          <i data-lucide="clipboard-list" class="h-5 w-5"></i>
+          <span class="text-sm font-medium">Registrations</span>
+        </a>
+        <a href="nbod.html"
+          class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+          <i data-lucide="award" class="h-5 w-5"></i>
+          <span class="text-sm font-medium">NBOD</span>
+        </a>
+        <a href="members.html"
+          class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+          <i data-lucide="building" class="h-5 w-5"></i>
+          <span class="text-sm font-medium">Members</span>
+        </a>
+        <a href="associations.html"
+          class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+          <i data-lucide="map-pin" class="h-5 w-5"></i>
+          <span class="text-sm font-medium">Associations</span>
+        </a>
+      </nav>
 
-          <!-- Advanced Filters -->
-          <div class="bg-white rounded-lg shadow p-6">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
-                <div class="relative">
-                  <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4"></i>
-                  <input
-                    id="search-registrations"
-                    type="text"
-                    placeholder="Name, Phone, Email..."
-                    class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Event</label>
-                <select id="filter-event" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                  <option value="">All Events</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select id="filter-status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                  <option value="">All Statuses</option>
-                  <option value="registered">Registered</option>
-                  <option value="attended">Attended</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Payment</label>
-                <select id="filter-payment" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                  <option value="">All Payments</option>
-                  <option value="paid">Paid</option>
-                  <option value="pending">Pending</option>
-                  <option value="failed">Failed</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <!-- Registrations Table -->
-          <div class="bg-white rounded-lg shadow overflow-hidden">
-            <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                  <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registration Info</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Details</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  </tr>
-                </thead>
-                <tbody id="registrations-table-body" class="bg-white divide-y divide-gray-200">
-                  <!-- Populated dynamically by event-registrations.js -->
-                </tbody>
-              </table>
-            </div>
-
-            <!-- Pagination -->
-            <div class="bg-white px-4 py-3 border-t border-gray-200 flex items-center justify-between sm:px-6">
-              <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                <div>
-                  <p class="text-sm text-gray-700" id="pagination-info">
-                    Showing <span class="font-medium">0</span> to <span class="font-medium">0</span> of <span class="font-medium">0</span> results
-                  </p>
-                </div>
-                <div>
-                  <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination" id="pagination-controls">
-                  </nav>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-        </div>
-      </main>
+      <!-- Footer -->
+      <div class="p-4 border-t border-gray-700 space-y-2">
+        <a href="settings.html"
+          class="flex items-center space-x-3 px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors">
+          <i data-lucide="settings" class="h-5 w-5"></i>
+          <span class="text-sm font-medium">Settings</span>
+        </a>
+        <button id="logout-btn"
+          class="w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors">
+          <i data-lucide="log-out" class="h-5 w-5"></i>
+          <span class="text-sm font-medium">Logout</span>
+        </button>
+      </div>
     </div>
 
-    <!-- Manual Registration Modal -->
-    <div id="manual-registration-modal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-      <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" id="manual-reg-overlay"></div>
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
-          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Manual Registration</h3>
-            <button id="close-manual-reg-btn" class="text-gray-400 hover:text-gray-500">
-              <i data-lucide="x" class="h-5 w-5"></i>
+    <!-- Main Content -->
+    <main class="flex-1 p-8 bg-gray-100 min-h-screen overflow-x-auto">
+      <div class="space-y-6">
+
+        <div class="flex justify-between items-center">
+          <div>
+            <h1 class="text-3xl font-bold text-gray-900">Event Registrations</h1>
+            <p class="text-gray-600 mt-2">Showing <span id="showing-count">0</span> of <span id="total-count">0</span>
+              registrations</p>
+          </div>
+          <div class="flex space-x-3">
+            <button id="manual-reg-btn"
+              class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2">
+              <i data-lucide="plus" class="h-4 w-4"></i>
+              <span>Manual Registration</span>
+            </button>
+            <button id="refresh-btn"
+              class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2">
+              <i data-lucide="refresh-cw" class="h-4 w-4"></i>
+              <span>Refresh</span>
+            </button>
+            <button id="export-btn"
+              class="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center space-x-2">
+              <i data-lucide="download" class="h-4 w-4"></i>
+              <span>Export CSV</span>
             </button>
           </div>
-          
-          <div class="p-6">
-            <form id="manual-registration-form" class="space-y-6">
-              
-              <!-- Payment Method Selection -->
-              <div class="bg-gray-50 rounded-lg p-4">
-                <label class="block text-sm font-medium text-gray-700 mb-3">Payment Method *</label>
-                <div class="grid grid-cols-2 gap-4">
-                  <button type="button" id="pay-cash-btn" class="p-4 border-2 rounded-lg transition-colors border-primary-600 bg-primary-50">
-                    <div class="flex items-center justify-center space-x-2">
-                      <i data-lucide="indian-rupee" class="h-5 w-5"></i>
-                      <span class="font-medium">Cash Payment</span>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1 text-center">Mark as paid immediately</p>
-                  </button>
-                  <button type="button" id="pay-razorpay-btn" class="p-4 border-2 rounded-lg transition-colors border-gray-300 bg-white hover:border-gray-400">
-                    <div class="flex items-center justify-center space-x-2">
-                      <i data-lucide="credit-card" class="h-5 w-5"></i>
-                      <span class="font-medium">Razorpay</span>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1 text-center">Online payment gateway</p>
-                  </button>
-                </div>
-              </div>
-              
-              <!-- Registration Fee Display -->
-              <div id="manual-reg-fee-container" class="bg-blue-50 border border-blue-200 rounded-lg p-4 hidden">
-                <div class="flex items-center justify-between">
-                  <span class="text-sm font-medium text-blue-900">Registration Fee:</span>
-                  <span class="text-lg font-bold text-blue-900" id="manual-reg-fee-amount">₹ 0.00</span>
-                </div>
-                <p id="manual-reg-fee-notice" class="text-xs text-blue-700 mt-1">This registration will be marked as paid immediately</p>
-              </div>
-              
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Name -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    <i data-lucide="user" class="h-4 w-4 inline mr-1"></i> Full Name *
-                  </label>
-                  <input type="text" id="manual-reg-name" required minlength="2" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter full name">
-                  <p class="text-red-500 text-sm mt-1 hidden" id="manual-reg-name-error"></p>
-                </div>
-                
-                <!-- Phone -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    <i data-lucide="phone" class="h-4 w-4 inline mr-1"></i> Phone Number *
-                  </label>
-                  <div class="relative">
-                    <input type="tel" id="manual-reg-phone" required pattern="[0-9]{10}" maxlength="10" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="9876543210">
-                    <div id="manual-reg-phone-loader" class="absolute right-3 top-1/2 transform -translate-y-1/2 hidden">
-                      <i data-lucide="loader-2" class="h-4 w-4 animate-spin text-gray-400"></i>
-                    </div>
-                  </div>
-                  <p class="text-gray-500 text-sm mt-1 hidden" id="manual-reg-phone-checking">Checking registration status...</p>
-                  <p class="text-red-500 text-sm mt-1 hidden font-medium" id="manual-reg-phone-error"></p>
-                </div>
-                
-                <!-- Email -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    <i data-lucide="mail" class="h-4 w-4 inline mr-1"></i> Email (Optional)
-                  </label>
-                  <input type="email" id="manual-reg-email" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="your@email.com">
-                  <p class="text-red-500 text-sm mt-1 hidden" id="manual-reg-email-error"></p>
-                </div>
-                
-                <!-- Business Name -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    <i data-lucide="building-2" class="h-4 w-4 inline mr-1"></i> Business Name *
-                  </label>
-                  <input type="text" id="manual-reg-business" required minlength="2" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Your business name">
-                  <p class="text-red-500 text-sm mt-1 hidden" id="manual-reg-business-error"></p>
-                </div>
-                
-                <!-- Business Type -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Business Type (Optional)</label>
-                  <select id="manual-reg-businesstype" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
-                    <option value="">Select business type (optional)</option>
-                    <option value="catering">Catering</option>
-                    <option value="sound">Sound</option>
-                    <option value="mandap">Mandap</option>
-                    <option value="light">Light</option>
-                    <option value="decorator">Decorator</option>
-                    <option value="photography">Photography</option>
-                    <option value="videography">Videography</option>
-                    <option value="transport">Transport</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-                
-                <!-- City -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    <i data-lucide="map-pin" class="h-4 w-4 inline mr-1"></i> City (Optional)
-                  </label>
-                  <input type="text" id="manual-reg-city" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter city name (optional)">
-                </div>
-                
-                <!-- Association -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Association (Optional)</label>
-                  <div id="manual-reg-assoc-loader" class="hidden flex items-center p-3 border border-gray-300 rounded-lg">
-                    <i data-lucide="loader-2" class="h-4 w-4 animate-spin mr-2"></i>
-                    <span class="text-gray-600">Loading associations...</span>
-                  </div>
-                  <select id="manual-reg-association" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" disabled>
-                    <option value="">Enter city to view associations (optional)</option>
-                  </select>
-                </div>
-                
-                <!-- Cash Receipt Number -->
-                <div id="manual-reg-receipt-container">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Cash Receipt Number</label>
-                  <input type="text" id="manual-reg-receipt" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" placeholder="Enter cash receipt number (optional)">
-                  <p class="text-xs text-gray-500 mt-1">Reference number for cash payment records</p>
-                </div>
-                
-                <!-- Photo Upload -->
-                <div class="md:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    <i data-lucide="camera" class="h-4 w-4 inline mr-1"></i> Profile Photo (Optional)
-                  </label>
-                  <div id="manual-reg-photo-container" class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary-400 transition-colors">
-                    <div class="space-y-1 text-center w-full">
-                      <div id="manual-reg-photo-input-area">
-                        <label for="manual-reg-photo" class="cursor-pointer flex flex-col items-center space-y-2 text-gray-600 hover:text-primary-600">
-                          <i data-lucide="camera" class="h-10 w-10"></i>
-                          <span class="bg-white rounded-md font-medium">Capture Photo from Camera</span>
-                        </label>
-                        <input id="manual-reg-photo" type="file" class="sr-only" accept="image/*" capture="user">
-                        <p class="text-xs text-gray-500">Max 30MB - JPG, PNG, GIF, WEBP</p>
-                      </div>
-                      
-                      <div id="manual-reg-photo-preview-area" class="hidden relative inline-block">
-                        <img id="manual-reg-photo-preview" src="" alt="Photo preview" class="h-32 w-32 object-cover rounded-lg border-2 border-gray-200">
-                        <button type="button" id="manual-reg-remove-photo" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600">
-                          <i data-lucide="x" class="h-4 w-4"></i>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <p class="text-red-500 text-sm mt-2 hidden" id="manual-reg-photo-error"></p>
-                </div>
-              </div>
-              
-              <div class="flex items-center justify-between pt-4 border-t border-gray-200">
-                <div class="text-gray-600">
-                  <span class="font-semibold">Registration Fee: </span>
-                  <span id="manual-reg-fee-summary-amount" class="text-gray-900">₹ 0.00</span>
-                </div>
-                <div class="flex space-x-3">
-                  <button type="button" id="cancel-manual-reg-btn" class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-                  <button type="submit" id="submit-manual-reg-btn" class="inline-flex items-center px-6 py-2 text-sm font-semibold rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-all">
-                    <i data-lucide="indian-rupee" id="submit-manual-reg-icon" class="h-5 w-5 mr-2"></i>
-                    <span id="submit-manual-reg-text">Register with Cash</span>
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-          
-          <!-- Success State -->
-          <div id="manual-registration-success" class="hidden p-6">
-            <div class="text-center mb-6">
-              <i data-lucide="check-circle" class="h-16 w-16 text-green-500 mx-auto mb-4"></i>
-              <h3 class="text-xl font-semibold text-gray-900 mb-2">Registration Completed!</h3>
-              <p class="text-gray-600" id="manual-reg-success-message">Registration has been created with cash payment.</p>
-            </div>
-            
-            <div class="bg-gray-50 rounded-lg p-4 mb-4">
-              <div class="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span class="text-gray-500">Registration ID:</span>
-                  <span class="ml-2 font-semibold" id="success-reg-id">#</span>
-                </div>
-                <div>
-                  <span class="text-gray-500">Payment Status:</span>
-                  <span class="ml-2 font-semibold capitalize" id="success-reg-status">paid</span>
-                </div>
-                <div>
-                  <span class="text-gray-500">Amount:</span>
-                  <span class="ml-2 font-semibold" id="success-reg-amount">₹ 0</span>
-                </div>
-                <div>
-                  <span class="text-gray-500">Payment Method:</span>
-                  <span class="ml-2 font-semibold capitalize" id="success-reg-method">cash</span>
-                </div>
-              </div>
-            </div>
-            
-            <div class="flex justify-end space-x-3">
-              <button id="download-pass-btn" class="px-4 py-2 text-sm font-medium text-primary-700 bg-white border border-primary-300 rounded-lg hover:bg-primary-50 inline-flex items-center">
-                <i data-lucide="download" class="h-4 w-4 mr-2"></i> Download Pass
-              </button>
-              <button id="register-another-btn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-                Register Another
-              </button>
-              <button id="close-success-btn" class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700">
-                Close
-              </button>
-            </div>
-          </div>
-          
         </div>
+
+        <!-- Advanced Filters -->
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+              <div class="relative">
+                <i data-lucide="search"
+                  class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4"></i>
+                <input id="search-registrations" type="text" placeholder="Name, Phone, Email..."
+                  class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Event</label>
+              <select id="filter-event"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                <option value="">All Events</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select id="filter-status"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                <option value="">All Statuses</option>
+                <option value="registered">Registered</option>
+                <option value="attended">Attended</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Payment</label>
+              <select id="filter-payment"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                <option value="">All Payments</option>
+                <option value="paid">Paid</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Failed</option>
+                <option value="unpaid">Unpaid</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Registrations Table -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Registration Info</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event
+                    Details</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="registrations-table-body" class="bg-white divide-y divide-gray-200">
+                <!-- Populated dynamically by event-registrations.js -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="bg-white px-4 py-3 border-t border-gray-200 flex items-center justify-between sm:px-6">
+            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p class="text-sm text-gray-700" id="pagination-info">
+                  Showing <span class="font-medium">0</span> to <span class="font-medium">0</span> of <span
+                    class="font-medium">0</span> results
+                </p>
+              </div>
+              <div>
+                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination"
+                  id="pagination-controls">
+                </nav>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Manual Registration Modal -->
+  <div id="manual-registration-modal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title"
+    role="dialog" aria-modal="true">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"
+        id="manual-reg-overlay"></div>
+      <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+      <div
+        class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 border-b border-gray-200 flex justify-between items-center">
+          <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Manual Registration</h3>
+          <button id="close-manual-reg-btn" class="text-gray-400 hover:text-gray-500">
+            <i data-lucide="x" class="h-5 w-5"></i>
+          </button>
+        </div>
+
+        <div class="p-6">
+          <form id="manual-registration-form" class="space-y-6">
+
+            <!-- Payment Method Selection -->
+            <div class="bg-gray-50 rounded-lg p-4">
+              <label class="block text-sm font-medium text-gray-700 mb-3">Payment Method *</label>
+              <div class="grid grid-cols-2 gap-4">
+                <button type="button" id="pay-cash-btn"
+                  class="p-4 border-2 rounded-lg transition-colors border-primary-600 bg-primary-50">
+                  <div class="flex items-center justify-center space-x-2">
+                    <i data-lucide="indian-rupee" class="h-5 w-5"></i>
+                    <span class="font-medium">Cash Payment</span>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1 text-center">Mark as paid immediately</p>
+                </button>
+                <button type="button" id="pay-razorpay-btn"
+                  class="p-4 border-2 rounded-lg transition-colors border-gray-300 bg-white hover:border-gray-400">
+                  <div class="flex items-center justify-center space-x-2">
+                    <i data-lucide="credit-card" class="h-5 w-5"></i>
+                    <span class="font-medium">Razorpay</span>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1 text-center">Online payment gateway</p>
+                </button>
+              </div>
+            </div>
+
+            <!-- Registration Fee Display -->
+            <div id="manual-reg-fee-container" class="bg-blue-50 border border-blue-200 rounded-lg p-4 hidden">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-blue-900">Registration Fee:</span>
+                <span class="text-lg font-bold text-blue-900" id="manual-reg-fee-amount">₹ 0.00</span>
+              </div>
+              <p id="manual-reg-fee-notice" class="text-xs text-blue-700 mt-1">This registration will be marked as paid
+                immediately</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Name -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  <i data-lucide="user" class="h-4 w-4 inline mr-1"></i> Full Name *
+                </label>
+                <input type="text" id="manual-reg-name" required minlength="2"
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="Enter full name">
+                <p class="text-red-500 text-sm mt-1 hidden" id="manual-reg-name-error"></p>
+              </div>
+
+              <!-- Phone -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  <i data-lucide="phone" class="h-4 w-4 inline mr-1"></i> Phone Number *
+                </label>
+                <div class="relative">
+                  <input type="tel" id="manual-reg-phone" required pattern="[0-9]{10}" maxlength="10"
+                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="9876543210">
+                  <div id="manual-reg-phone-loader" class="absolute right-3 top-1/2 transform -translate-y-1/2 hidden">
+                    <i data-lucide="loader-2" class="h-4 w-4 animate-spin text-gray-400"></i>
+                  </div>
+                </div>
+                <p class="text-gray-500 text-sm mt-1 hidden" id="manual-reg-phone-checking">Checking registration
+                  status...</p>
+                <p class="text-red-500 text-sm mt-1 hidden font-medium" id="manual-reg-phone-error"></p>
+              </div>
+
+              <!-- Email -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  <i data-lucide="mail" class="h-4 w-4 inline mr-1"></i> Email (Optional)
+                </label>
+                <input type="email" id="manual-reg-email"
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="your@email.com">
+                <p class="text-red-500 text-sm mt-1 hidden" id="manual-reg-email-error"></p>
+              </div>
+
+              <!-- Business Name -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  <i data-lucide="building-2" class="h-4 w-4 inline mr-1"></i> Business Name *
+                </label>
+                <input type="text" id="manual-reg-business" required minlength="2"
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="Your business name">
+                <p class="text-red-500 text-sm mt-1 hidden" id="manual-reg-business-error"></p>
+              </div>
+
+              <!-- Business Type -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Business Type (Optional)</label>
+                <select id="manual-reg-businesstype"
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+                  <option value="">Select business type (optional)</option>
+                  <option value="catering">Catering</option>
+                  <option value="sound">Sound</option>
+                  <option value="mandap">Mandap</option>
+                  <option value="light">Light</option>
+                  <option value="decorator">Decorator</option>
+                  <option value="photography">Photography</option>
+                  <option value="videography">Videography</option>
+                  <option value="transport">Transport</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <!-- City -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  <i data-lucide="map-pin" class="h-4 w-4 inline mr-1"></i> City (Optional)
+                </label>
+                <input type="text" id="manual-reg-city"
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="Enter city name (optional)">
+              </div>
+
+              <!-- Association -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Association (Optional)</label>
+                <div id="manual-reg-assoc-loader"
+                  class="hidden flex items-center p-3 border border-gray-300 rounded-lg">
+                  <i data-lucide="loader-2" class="h-4 w-4 animate-spin mr-2"></i>
+                  <span class="text-gray-600">Loading associations...</span>
+                </div>
+                <select id="manual-reg-association"
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  disabled>
+                  <option value="">Enter city to view associations (optional)</option>
+                </select>
+              </div>
+
+              <!-- Cash Receipt Number -->
+              <div id="manual-reg-receipt-container">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Cash Receipt Number</label>
+                <input type="text" id="manual-reg-receipt"
+                  class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="Enter cash receipt number (optional)">
+                <p class="text-xs text-gray-500 mt-1">Reference number for cash payment records</p>
+              </div>
+
+              <!-- Photo Upload -->
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  <i data-lucide="camera" class="h-4 w-4 inline mr-1"></i> Profile Photo (Optional)
+                </label>
+                <div id="manual-reg-photo-container"
+                  class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary-400 transition-colors">
+                  <div class="space-y-1 text-center w-full">
+                    <div id="manual-reg-photo-input-area">
+                      <label for="manual-reg-photo"
+                        class="cursor-pointer flex flex-col items-center space-y-2 text-gray-600 hover:text-primary-600">
+                        <i data-lucide="camera" class="h-10 w-10"></i>
+                        <span class="bg-white rounded-md font-medium">Capture Photo from Camera</span>
+                      </label>
+                      <input id="manual-reg-photo" type="file" class="sr-only" accept="image/*" capture="user">
+                      <p class="text-xs text-gray-500">Max 30MB - JPG, PNG, GIF, WEBP</p>
+                    </div>
+
+                    <div id="manual-reg-photo-preview-area" class="hidden relative inline-block">
+                      <img id="manual-reg-photo-preview" src="" alt="Photo preview"
+                        class="h-32 w-32 object-cover rounded-lg border-2 border-gray-200">
+                      <button type="button" id="manual-reg-remove-photo"
+                        class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600">
+                        <i data-lucide="x" class="h-4 w-4"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <p class="text-red-500 text-sm mt-2 hidden" id="manual-reg-photo-error"></p>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+              <div class="text-gray-600">
+                <span class="font-semibold">Registration Fee: </span>
+                <span id="manual-reg-fee-summary-amount" class="text-gray-900">₹ 0.00</span>
+              </div>
+              <div class="flex space-x-3">
+                <button type="button" id="cancel-manual-reg-btn"
+                  class="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+                <button type="submit" id="submit-manual-reg-btn"
+                  class="inline-flex items-center px-6 py-2 text-sm font-semibold rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-all">
+                  <i data-lucide="indian-rupee" id="submit-manual-reg-icon" class="h-5 w-5 mr-2"></i>
+                  <span id="submit-manual-reg-text">Register with Cash</span>
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Success State -->
+        <div id="manual-registration-success" class="hidden p-6">
+          <div class="text-center mb-6">
+            <i data-lucide="check-circle" class="h-16 w-16 text-green-500 mx-auto mb-4"></i>
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">Registration Completed!</h3>
+            <p class="text-gray-600" id="manual-reg-success-message">Registration has been created with cash payment.
+            </p>
+          </div>
+
+          <div class="bg-gray-50 rounded-lg p-4 mb-4">
+            <div class="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span class="text-gray-500">Registration ID:</span>
+                <span class="ml-2 font-semibold" id="success-reg-id">#</span>
+              </div>
+              <div>
+                <span class="text-gray-500">Payment Status:</span>
+                <span class="ml-2 font-semibold capitalize" id="success-reg-status">paid</span>
+              </div>
+              <div>
+                <span class="text-gray-500">Amount:</span>
+                <span class="ml-2 font-semibold" id="success-reg-amount">₹ 0</span>
+              </div>
+              <div>
+                <span class="text-gray-500">Payment Method:</span>
+                <span class="ml-2 font-semibold capitalize" id="success-reg-method">cash</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end space-x-3">
+            <button id="download-pass-btn"
+              class="px-4 py-2 text-sm font-medium text-primary-700 bg-white border border-primary-300 rounded-lg hover:bg-primary-50 inline-flex items-center">
+              <i data-lucide="download" class="h-4 w-4 mr-2"></i> Download Pass
+            </button>
+            <button id="register-another-btn"
+              class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+              Register Another
+            </button>
+            <button id="close-success-btn"
+              class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700">
+              Close
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
+  </div>
 
-    <!-- config must load first so API_BASE_URL is available to page scripts -->
-    <script src="js/config.js"></script>
-    <script src="js/utils/api.js"></script>
-    <script src="js/pages/event-registrations.js"></script>
-    <script>
-      // Init sidebar/filter icons (table icons are created by the JS module)
-      if (window.lucide) lucide.createIcons();
-    </script>
-  </body>
+  <!-- config must load first so API_BASE_URL is available to page scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/utils/api.js"></script>
+  <script src="js/pages/event-registrations.js"></script>
+  <script>
+    // Init sidebar/filter icons (table icons are created by the JS module)
+    if (window.lucide) lucide.createIcons();
+  </script>
+</body>
+
 </html>

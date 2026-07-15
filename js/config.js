@@ -44,6 +44,12 @@ const CONFIG = {
         CLOUD_NAME: '',         // Set your Cloudinary cloud name here
         UPLOAD_PRESET: '',      // Set your Cloudinary unsigned upload preset here
         USE_CLOUDINARY: false,
+    },
+
+    // Razorpay configuration (Frontend only needs KEY_ID, but SECRET is included per request)
+    RAZORPAY: {
+        KEY_ID: 'rzp_test_TDk3Ebfc77WEcB',
+        KEY_SECRET: 'vYBmTEhJjlpIgg7rIqUmt4pj'
     }
 };
 
@@ -187,18 +193,46 @@ window.CONFIG = CONFIG;
         }
 
         // Global UI Population for User Info
-        const userNameEl = document.getElementById('user-name');
-        if (userNameEl) {
-            userNameEl.textContent = user.name || localStorage.getItem('userName') || 'User';
-        }
-        const userRoleEl = document.getElementById('user-role');
-        if (userRoleEl) {
-            const roleStr = user.role || userRole;
-            userRoleEl.textContent = roleStr ? roleStr.charAt(0).toUpperCase() + roleStr.slice(1) : 'User';
-        }
-        const userEmailEl = document.getElementById('user-email');
-        if (userEmailEl) {
-            userEmailEl.textContent = user.email || localStorage.getItem('userEmail') || '';
+        const updateUIWithUser = (u) => {
+            const userNameEl = document.getElementById('user-name');
+            if (userNameEl) {
+                userNameEl.textContent = u.name || localStorage.getItem('userName') || 'User';
+            }
+            const userRoleEl = document.getElementById('user-role');
+            if (userRoleEl) {
+                const roleStr = u.role || localStorage.getItem('userRole');
+                userRoleEl.textContent = roleStr ? roleStr.charAt(0).toUpperCase() + roleStr.slice(1) : 'User';
+            }
+            const userEmailEl = document.getElementById('user-email');
+            if (userEmailEl) {
+                userEmailEl.textContent = u.email || localStorage.getItem('userEmail') || '';
+            }
+        };
+
+        // Initial populate with local storage data
+        updateUIWithUser(user);
+
+        // Fetch fresh profile data
+        const token = localStorage.getItem('token');
+        if (token && !publicPages.includes(pageName)) {
+            fetch(`${CONFIG.API_BASE_URL}/auth/profile`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data && data.data.user) {
+                    const freshUser = data.data.user;
+                    localStorage.setItem('user', JSON.stringify(freshUser));
+                    localStorage.setItem('userName', freshUser.name);
+                    localStorage.setItem('userRole', freshUser.role);
+                    localStorage.setItem('userEmail', freshUser.email);
+                    updateUIWithUser(freshUser);
+                }
+            })
+            .catch(err => console.error('Failed to fetch profile:', err));
         }
     });
 
