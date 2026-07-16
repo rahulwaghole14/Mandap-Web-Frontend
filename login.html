@@ -63,9 +63,12 @@
       </div>
       
       <!-- Tabs -->
+      <!-- USER FLOW COMMENTED OUT: Member Login tab hidden — only Admin/Manager flow is active -->
       <div class="flex border-b border-gray-200 mt-6">
         <button id="tabAdmin" type="button" class="flex-1 py-3 text-sm font-medium border-b-2 border-primary-600 text-primary-600 focus:outline-none">Admin Login</button>
+        <!-- USER FLOW: Member Login tab (OTP-based) — commented out
         <button id="tabMember" type="button" class="flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none">Member Login</button>
+        -->
       </div>
 
       <form id="loginForm" class="mt-6 space-y-6">
@@ -117,7 +120,7 @@
           </div>
         </div>
 
-        <!-- Member Fields -->
+        <!-- USER FLOW: Member Fields (Mobile + OTP) — commented out
         <div id="memberFields" class="rounded-md shadow-sm -space-y-px hidden">
           <div>
             <label for="mobile" class="sr-only">Mobile Number</label>
@@ -125,13 +128,13 @@
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-gray-400"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
               </div>
-              <input 
-                id="mobile" 
-                name="mobile" 
-                type="tel" 
-                pattern="[0-9]{10}" 
-                class="appearance-none rounded-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md rounded-b-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm" 
-                placeholder="10-digit Mobile Number" 
+              <input
+                id="mobile"
+                name="mobile"
+                type="tel"
+                pattern="[0-9]{10}"
+                class="appearance-none rounded-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md rounded-b-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                placeholder="10-digit Mobile Number"
               />
             </div>
           </div>
@@ -141,17 +144,18 @@
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 text-gray-400"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               </div>
-              <input 
-                id="otp" 
-                name="otp" 
-                type="text" 
-                pattern="[0-9]{6}" 
-                class="w-full pl-10 pr-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm" 
-                placeholder="6-digit OTP" 
+              <input
+                id="otp"
+                name="otp"
+                type="text"
+                pattern="[0-9]{6}"
+                class="w-full pl-10 pr-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                placeholder="6-digit OTP"
               />
             </div>
           </div>
         </div>
+        -->
 
         <div>
           <button
@@ -175,11 +179,13 @@
             Contact administrator for account creation
           </p>
         </div>
+        <!-- USER FLOW: Member footer note — commented out
         <div id="memberFooter" class="text-center hidden">
           <p class="text-xs text-gray-500">
             Access your member dashboard and event passes
           </p>
         </div>
+        -->
       </form>
     </div>
   </div>

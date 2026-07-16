@@ -1,3 +1,15 @@
+// =============================================================
+// USER FLOW COMMENTED OUT — delete-account.js
+// This entire file is a MEMBER self-service flow:
+//   Step 1: Enter mobile number → send OTP via WhatsApp
+//   Step 2: Verify OTP
+//   Step 3: View deletion confirmation / cancel deletion request
+//   Step 4: Cancellation confirmed
+// This flow is disabled. Only Admin/Manager flows are active.
+// To re-enable: uncomment the block below.
+// =============================================================
+
+/* USER FLOW START
 document.addEventListener('DOMContentLoaded', () => {
     // State
     let step = 1;
@@ -307,3 +319,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+*/ // USER FLOW END

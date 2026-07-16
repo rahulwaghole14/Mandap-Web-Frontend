@@ -94,11 +94,13 @@
             <form id="profile-form" class="space-y-6">
               
               <div class="flex items-center space-x-6">
-                <div class="h-20 w-20 rounded-full bg-primary-600 flex items-center justify-center">
-                  <i data-lucide="user" class="h-10 w-10 text-white"></i>
+                <div id="profile-photo-container" class="h-20 w-20 rounded-full bg-primary-600 flex items-center justify-center overflow-hidden">
+                  <i id="profile-photo-icon" data-lucide="user" class="h-10 w-10 text-white"></i>
+                  <img id="profile-photo-preview" src="" alt="Profile Photo" class="h-full w-full object-cover hidden">
                 </div>
                 <div>
-                  <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2">
+                  <input type="file" id="profile-photo-input" accept="image/*" class="hidden">
+                  <button type="button" id="change-photo-btn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2">
                     <i data-lucide="camera" class="h-4 w-4"></i>
                     <span>Change Photo</span>
                   </button>
@@ -144,15 +146,15 @@
               
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
-                <input type="password" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                <input id="current-password" type="password" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-                <input type="password" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                <input id="new-password" type="password" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
-                <input type="password" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
+                <input id="confirm-password" type="password" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500">
               </div>
 
               <div class="flex justify-end pt-4">
@@ -276,6 +278,7 @@
       lucide.createIcons();
     </script>
     <script src="js/config.js"></script>
+    <script src="js/utils/api.js"></script>
     <script src="js/pages/settings.js"></script>
   </body>
 </html>

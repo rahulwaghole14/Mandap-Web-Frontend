@@ -8,12 +8,12 @@ const getApiBaseUrl = () => {
 
     // If opening the HTML directly from the filesystem (file:///...)
     if (protocol === 'file:' || !hostname) {
-        return 'http://192.168.0.119:8000/api'; // Default fallback for local file testing
+        return 'http://192.168.0.102:8000/api'; // Default fallback for local file testing
     }
 
     // Local development (if accessing via localhost)
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        return 'http://192.168.0.119:8000/api';
+        return 'http://192.168.0.102:8000/api';
     }
 
     // Dynamic local network or production
@@ -134,7 +134,11 @@ window.CONFIG = CONFIG;
     // Route Protection Guard
     const pathname = window.location.pathname;
     const pageName = pathname.split('/').pop() || 'index.html';
+    // USER FLOW COMMENTED OUT: delete-account.html removed from public pages (was user/member self-service)
+    // The page still exists but user-flow JS is disabled — only admin/manager can access protected pages
     const publicPages = ['login.html', 'index.html', '', 'test-events-integration.html'];
+    // NOTE: 'delete-account.html' and 'event-registration.html' were formerly accessible to members (user flow)
+    // They are now only reachable if you are authenticated as admin or manager.
     
     if (!publicPages.includes(pageName) && pageName.endsWith('.html') && userRole) {
         // Manager Route Redirects
@@ -194,19 +198,50 @@ window.CONFIG = CONFIG;
 
         // Global UI Population for User Info
         const updateUIWithUser = (u) => {
+            const nameStr = u.name || localStorage.getItem('userName') || 'User';
+            const roleStr = u.role || localStorage.getItem('userRole');
+            const roleFormatted = roleStr ? roleStr.charAt(0).toUpperCase() + roleStr.slice(1) : 'User';
+            const emailStr = u.email || localStorage.getItem('userEmail') || '';
+            const profileImg = u.profile_image || u.profile_photo_url || null;
+
             const userNameEl = document.getElementById('user-name');
             if (userNameEl) {
-                userNameEl.textContent = u.name || localStorage.getItem('userName') || 'User';
+                const userInfoContainer = userNameEl.closest('.flex.items-center.space-x-3');
+                if (userInfoContainer) {
+                    let imgUrl = null;
+                    if (profileImg) {
+                        imgUrl = profileImg.startsWith('http') ? profileImg : `${CONFIG.API_BASE_URL.replace('/api', '')}/${profileImg.replace(new RegExp('^/'), '')}`;
+                    }
+
+                    let imgHtml = imgUrl 
+                        ? `<img src="${imgUrl}" class="h-10 w-10 rounded-full object-cover shadow-sm ring-2 ring-primary-500">`
+                        : `<div class="h-10 w-10 bg-primary-600 rounded-full flex items-center justify-center flex-shrink-0"><i data-lucide="user" class="h-5 w-5 text-white"></i></div>`;
+
+                    userInfoContainer.innerHTML = `
+                        ${imgHtml}
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-white truncate" id="user-name" title="${nameStr}">${nameStr}</p>
+                            ${emailStr ? `<p class="text-xs text-gray-400 truncate" id="user-email" title="${emailStr}">${emailStr}</p>` : ''}
+                            ${roleStr ? `<span class="text-xs bg-primary-700 text-primary-200 px-2 py-0.5 rounded-full inline-block mt-1" id="user-role">${roleFormatted}</span>` : ''}
+                        </div>
+                    `;
+
+                    // Re-initialize lucide icons since we injected new HTML
+                    if (window.lucide) {
+                        lucide.createIcons({ nameAttr: 'data-lucide', nodes: [userInfoContainer] });
+                    }
+                }
             }
-            const userRoleEl = document.getElementById('user-role');
-            if (userRoleEl) {
-                const roleStr = u.role || localStorage.getItem('userRole');
-                userRoleEl.textContent = roleStr ? roleStr.charAt(0).toUpperCase() + roleStr.slice(1) : 'User';
-            }
-            const userEmailEl = document.getElementById('user-email');
-            if (userEmailEl) {
-                userEmailEl.textContent = u.email || localStorage.getItem('userEmail') || '';
-            }
+
+            // Update admin dashboard card (if on dashboard)
+            const adminCardName = document.getElementById('admin-card-name');
+            if (adminCardName) adminCardName.textContent = nameStr;
+
+            const adminCardRole = document.getElementById('admin-card-role');
+            if (adminCardRole) adminCardRole.textContent = roleFormatted;
+
+            const adminCardEmail = document.getElementById('admin-card-email');
+            if (adminCardEmail) adminCardEmail.textContent = emailStr;
         };
 
         // Initial populate with local storage data
@@ -223,6 +258,7 @@ window.CONFIG = CONFIG;
             })
             .then(res => res.json())
             .then(data => {
+                console.log('[GET /auth/profile] Response (Global):', data);
                 if (data.success && data.data && data.data.user) {
                     const freshUser = data.data.user;
                     localStorage.setItem('user', JSON.stringify(freshUser));

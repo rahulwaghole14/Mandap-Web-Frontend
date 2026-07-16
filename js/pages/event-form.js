@@ -241,6 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (imageInputEl && imageInputEl.files.length > 0) {
                 // Send strictly the exact key the DB expects to prevent Postman validation discrepancies
                 formData.append('event_image', imageInputEl.files[0]);
+                formData.append('image', imageInputEl.files[0]); // Fallback if backend expects 'image'
             }
 
             submitText.textContent = 'Saving...';
@@ -255,8 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (isEdit) {
                     formData.append('_method', 'PUT');
-                    // Also append to URL to ensure Laravel intercepts it before body parsing
-                    endpoint += '?_method=PUT';
+                    // Removed ?_method=PUT from URL to prevent conflicts with body parsing
                 }
 
                 console.log('--- Debug: Sending FormData ---');

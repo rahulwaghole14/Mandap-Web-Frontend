@@ -110,7 +110,7 @@
                   <span class="font-medium">Active Session</span>
                 </div>
                 <p class="mt-1" id="api-display">API: connecting...</p>
-                <script>document.getElementById('api-display').textContent = 'API: ' + (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL.replace('http://', '') : '192.168.1.42:8000');</script>
+                <script>document.getElementById('api-display').textContent = 'API: ' + (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL.replace('http://', '') : '192.168.0.102:8000');</script>
               </div>
             </div>
           </div>
@@ -202,13 +202,22 @@
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             <div class="bg-white rounded-lg shadow p-6 flex flex-col items-center justify-center min-h-[300px]">
-              <h3 class="text-lg font-medium text-gray-900 w-full mb-4">Performance</h3>
-              <p class="text-gray-500 text-sm italic">Chart container (Implementation via Chart.js or similar)</p>
+              <h3 class="text-lg font-medium text-gray-900 w-full mb-4">Platform Metrics</h3>
+              <div class="relative w-full flex-1" style="min-height: 250px;">
+                <canvas id="performanceChart"></canvas>
+              </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow p-6 flex flex-col items-center justify-center min-h-[300px]">
+            <div class="bg-white rounded-lg shadow p-6 flex flex-col min-h-[300px]">
               <h3 class="text-lg font-medium text-gray-900 w-full mb-4">Top Associations</h3>
-              <p class="text-gray-500 text-sm italic">Top associations list container</p>
+              <div class="flex-1 overflow-y-auto">
+                <ul id="top-associations-list" class="divide-y divide-gray-200">
+                  <!-- Associations will be loaded here -->
+                  <li class="py-3 flex justify-between items-center text-sm text-gray-500">
+                    Loading top associations...
+                  </li>
+                </ul>
+              </div>
             </div>
 
           </div>
@@ -279,6 +288,7 @@
 
     <!-- Scripts -->
     <script src="https://unpkg.com/lucide@latest" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
     <script src="js/config.js" defer></script>
     <script src="js/pages/dashboard.js" defer></script>
     <script>
