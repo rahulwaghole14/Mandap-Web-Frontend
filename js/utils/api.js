@@ -106,6 +106,55 @@ window.api = {
         return data;
     },
 
+    sendWhatsApp: async (eventId, registrationId) => {
+        const token = localStorage.getItem('token');
+        const headers = { 'Accept': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${API_BASE_URL}/events/${eventId}/registrations/${registrationId}/send-whatsapp`, {
+            method: 'POST',
+            headers: headers
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw { response: { data, status: response.status }, message: data.message || 'Failed to send WhatsApp message' };
+        }
+        return data;
+    },
+
+    getMyRegistrations: async () => {
+        const token = localStorage.getItem('token');
+        const headers = { 'Accept': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${API_BASE_URL}/events/my-registrations`, {
+            method: 'GET',
+            headers: headers
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw { response: { data, status: response.status }, message: data.message || 'Failed to fetch tickets' };
+        }
+        return data;
+    },
+
+    checkinByQr: async (qrCodeRef) => {
+        const token = localStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${API_BASE_URL}/events/checkin`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ qr_code_ref: qrCodeRef })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw { response: { data, status: response.status }, message: data.message || 'Check-in failed' };
+        }
+        return data;
+    },
+
     // SOURCE OF TRUTH (React ManualRegistrationModal.jsx L245):
     // Both the public form AND the admin manual registration form call the same
     // public endpoint: POST /public/events/{id}/register-payment
@@ -343,12 +392,242 @@ window.api = {
         return data;
     },
 
-    downloadRegistrationPdf: async (eventId, registrationId) => {
-        const response = await fetch(`${API_BASE_URL}/events/${eventId}/registrations/${registrationId}/pdf`);
-        if (!response.ok) {
-            throw new Error('Failed to generate PDF');
+    generatePdfFromElement: async (elementId) => {
+        return new Promise((resolve, reject) => {
+            const element = document.getElementById(elementId);
+            if (!element) return reject(new Error('Ticket element not found for PDF generation'));
+            
+            // Fix for qrcode.js: html2canvas struggles with dynamically drawn canvases.
+            // qrcode.js creates both a <canvas> and an <img src="data:...">.
+            // We temporarily hide the canvas and show the image for PDF generation.
+            const qrCanvas = element.querySelector('canvas');
+            let qrImg = null;
+            if (qrCanvas) {
+                // Find the sibling image created by qrcode.js
+                qrImg = qrCanvas.nextElementSibling;
+                if (qrImg && qrImg.tagName === 'IMG') {
+                    qrCanvas.style.display = 'none';
+                    qrImg.style.display = 'block';
+                }
+            }
+
+            const generate = () => {
+                const opt = {
+                    margin: 0.5,
+                    filename: 'visitor-pass.pdf',
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true },
+                    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+                };
+                html2pdf().set(opt).from(element).output('blob').then((blob) => {
+                    // Revert display back to normal
+                    if (qrCanvas && qrImg) {
+                        qrCanvas.style.display = '';
+                        qrImg.style.display = 'none';
+                    }
+                    resolve(blob);
+                }).catch((err) => {
+                    if (qrCanvas && qrImg) {
+                        qrCanvas.style.display = '';
+                        qrImg.style.display = 'none';
+                    }
+                    reject(err);
+                });
+            };
+
+            if (window.html2pdf) {
+                generate();
+            } else {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+                script.onload = generate;
+                script.onerror = () => reject(new Error('Failed to load PDF generation library'));
+                document.head.appendChild(script);
+            }
+        });
+    },
+
+    generateProfessionalTicketPdf: async (ticketData) => {
+        const { eventName, eventDate, eventVenue, memberName, registrationId, amount, paymentMethod, paymentStatus, qrRef, qrUrl } = ticketData;
+
+        // ── Helper: generate QR data URL from qrRef using QRCode.js ─────────────
+        const getQrDataUrl = () => new Promise((resolve) => {
+            // If we already have a valid pre-captured data URI, convert to JPEG for jsPDF compatibility
+            if (qrUrl && String(qrUrl).startsWith('data:')) {
+                if (qrUrl.startsWith('data:image/jpeg')) {
+                    return resolve(qrUrl); // already JPEG
+                }
+                // Convert PNG/other to JPEG via canvas
+                const img = new Image();
+                img.onload = () => {
+                    const cvs = document.createElement('canvas');
+                    cvs.width = img.width; cvs.height = img.height;
+                    cvs.getContext('2d').drawImage(img, 0, 0);
+                    resolve(cvs.toDataURL('image/jpeg', 1.0));
+                };
+                img.onerror = () => resolve(null);
+                img.src = qrUrl;
+                return;
+            }
+
+            const text = qrRef || qrUrl;
+            if (!text || !window.QRCode) return resolve(null);
+
+            // Render into a hidden temp div, grab the canvas, convert to PNG data URL
+            const tmp = document.createElement('div');
+            tmp.style.cssText = 'position:absolute;left:-9999px;top:0;';
+            document.body.appendChild(tmp);
+
+            try {
+                new QRCode(tmp, {
+                    text: String(text),
+                    width: 200,
+                    height: 200,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            } catch(e) {
+                document.body.removeChild(tmp);
+                return resolve(null);
+            }
+
+            // QRCode.js renders synchronously; give browser one tick to paint canvas pixels
+            setTimeout(() => {
+                try {
+                    const canvas = tmp.querySelector('canvas');
+                    const dataUrl = canvas ? canvas.toDataURL('image/jpeg', 1.0) : null;
+                    document.body.removeChild(tmp);
+                    console.log('[PDF QR] Generated fresh QR:', dataUrl ? 'YES (' + dataUrl.length + ' chars)' : 'NO');
+                    resolve(dataUrl);
+                } catch(e) {
+                    if (document.body.contains(tmp)) document.body.removeChild(tmp);
+                    console.warn('[PDF QR] toDataURL failed:', e);
+                    resolve(null);
+                }
+            }, 200);
+        });
+
+        // ── Load jsPDF ───────────────────────────────────────────────────────────
+        const loadJsPdf = () => new Promise((resolve, reject) => {
+            if (window.jspdf && window.jspdf.jsPDF) return resolve(window.jspdf.jsPDF);
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+            script.onload = () => {
+                if (window.jspdf && window.jspdf.jsPDF) resolve(window.jspdf.jsPDF);
+                else reject(new Error('jsPDF not found after load'));
+            };
+            script.onerror = () => reject(new Error('Failed to load jsPDF'));
+            document.head.appendChild(script);
+        });
+
+        // Run both in parallel to save time
+        const [jsPDF, qrDataUrl] = await Promise.all([loadJsPdf(), getQrDataUrl()]);
+        console.log('[PDF] qrDataUrl available:', !!qrDataUrl);
+
+        const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        const pageW = doc.internal.pageSize.getWidth();
+        const margin = 15;
+        const contentW = pageW - margin * 2;
+        let y = margin;
+
+        // ── Header bar ──────────────────────────────────────────
+        doc.setFillColor(13, 148, 136);
+        doc.rect(margin, y, contentW, 22, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(18);
+        doc.setTextColor(255, 255, 255);
+        doc.text('EVENT ENTRY PASS', pageW / 2, y + 10, { align: 'center' });
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Please present this pass at the entrance', pageW / 2, y + 17, { align: 'center' });
+        y += 28;
+
+        // ── Event name ──────────────────────────────────────────
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(15);
+        doc.setTextColor(17, 24, 39);
+        doc.text(eventName || 'Event', pageW / 2, y, { align: 'center' });
+        y += 7;
+
+        // ── Participant ─────────────────────────────────────────
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(107, 114, 128);
+        doc.text('PARTICIPANT', pageW / 2, y, { align: 'center' });
+        y += 5;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(31, 41, 55);
+        doc.text(memberName || 'N/A', pageW / 2, y, { align: 'center' });
+        y += 9;
+
+        // ── Divider ─────────────────────────────────────────────
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineDashPattern([2, 2], 0);
+        doc.line(margin, y, margin + contentW, y);
+        doc.setLineDashPattern([], 0);
+        y += 7;
+
+        // ── Info rows ───────────────────────────────────────────
+        const addRow = (label, value, color) => {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(107, 114, 128);
+            doc.text(label + ':', margin, y);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            if (color) doc.setTextColor(...color);
+            else doc.setTextColor(17, 24, 39);
+            doc.text(String(value || 'N/A'), margin + 45, y);
+            y += 7;
+        };
+
+        if (eventDate) addRow('Date & Time', eventDate);
+        if (eventVenue) addRow('Venue', eventVenue);
+        addRow('Registration ID', '#' + String(registrationId || 'N/A').replace(/^#+/, ''));
+        addRow('Amount', 'Rs. ' + (amount || '0'));
+        addRow('Payment', (paymentStatus || 'Paid') + ' (' + (paymentMethod || 'Online') + ')', [5, 150, 105]);
+        y += 4;
+
+        // ── Second divider ──────────────────────────────────────
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineDashPattern([2, 2], 0);
+        doc.line(margin, y, margin + contentW, y);
+        doc.setLineDashPattern([], 0);
+        y += 8;
+
+        // ── QR Code ─────────────────────────────────────────────
+        if (qrDataUrl) {
+            const qrSize = 50;
+            const qrX = (pageW - qrSize) / 2;
+            doc.addImage(qrDataUrl, 'JPEG', qrX, y, qrSize, qrSize);
+            y += qrSize + 4;
+        } else {
+            doc.setFontSize(9);
+            doc.setTextColor(200, 0, 0);
+            doc.text('QR Code could not be generated', pageW / 2, y + 5, { align: 'center' });
+            y += 12;
         }
-        return await response.blob();
+
+        if (qrRef) {
+            doc.setFont('courier', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(100, 100, 100);
+            doc.text(String(qrRef), pageW / 2, y, { align: 'center' });
+            y += 8;
+        }
+
+        // ── Footer ───────────────────────────────────────────────
+        const footerY = doc.internal.pageSize.getHeight() - 15;
+        doc.setFillColor(243, 244, 246);
+        doc.rect(margin, footerY - 5, contentW, 12, 'F');
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(156, 163, 175);
+        doc.text('Electronically generated ticket. Keep the QR code safe.', pageW / 2, footerY + 2, { align: 'center' });
+
+        return doc.output('blob');
     },
 
     // --- Association API ---

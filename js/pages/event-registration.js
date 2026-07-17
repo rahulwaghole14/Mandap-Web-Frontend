@@ -487,17 +487,56 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // QR Code
-        const qrData = registration.qrDataURL || registration.qrCode || registration.qrCodeUrl || registration.qrCodeDataURL;
-        if (qrData) {
+        const qrUrl = registration.qrDataURL || registration.qrCode || registration.qrCodeUrl || registration.qrCodeDataURL;
+        const token = registration.qrToken || registration.qr_code_ref || registration.id;
+        
+        if (qrUrl) {
             el.qrSection.classList.remove('hidden');
-            el.qrImage.src = qrData;
-            el.qrImage.onerror = () => {
-                const token = registration.qrToken || registration.id;
-                el.qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(token)}`;
-            };
-        } else if (registration.qrToken || registration.id) {
+            const qrImageEl = document.getElementById('qr-image');
+            if (qrImageEl) {
+                qrImageEl.src = qrUrl;
+                qrImageEl.classList.remove('hidden');
+                
+                // Hide local container if we created it previously
+                const qrContainer = document.getElementById('qr-code-container');
+                if (qrContainer) qrContainer.classList.add('hidden');
+            }
+        } else if (token) {
             el.qrSection.classList.remove('hidden');
-            el.qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(registration.qrToken || registration.id)}`;
+            
+            // Try to find the new container, or fallback to inserting before the image
+            let qrContainer = document.getElementById('qr-code-container');
+            const qrImageEl = document.getElementById('qr-image');
+            
+            if (!qrContainer && qrImageEl) {
+                qrContainer = document.createElement('div');
+                qrContainer.id = 'qr-code-container';
+                qrContainer.className = 'w-48 h-48 flex items-center justify-center';
+                qrImageEl.parentNode.insertBefore(qrContainer, qrImageEl);
+                qrImageEl.classList.add('hidden');
+            }
+            
+            if (qrContainer) {
+                qrContainer.innerHTML = ''; // Clear previous
+                qrContainer.classList.remove('hidden');
+                try {
+                    new QRCode(qrContainer, {
+                        text: String(token),
+                        width: 176, // 44 * 4 to fit in w-48 with some padding
+                        height: 176,
+                        colorDark: "#000000",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                } catch (e) {
+                    console.error('QR Generation failed:', e);
+                    qrContainer.innerHTML = '<span class="text-sm text-red-500">Failed to generate QR</span>';
+                }
+            } else if (qrImageEl) {
+                // Absolute fallback just in case
+                qrImageEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(token)}`;
+                qrImageEl.classList.remove('hidden');
+            }
         }
     };
 
@@ -851,7 +890,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const regId = registration.id || registration.registrationId;
-            const pdfBlob = await window.api.downloadRegistrationPdf(resolvedEventId, regId);
+            
+            let pdfBlob;
+            if (window.api.generateProfessionalTicketPdf) {
+                const qrUrl = registration.qrDataURL || registration.qrCode || registration.qrCodeUrl || registration.qrCodeDataURL;
+                const qrRef = registration.qrToken || registration.qr_code_ref || registration.id;
+                
+                pdfBlob = await window.api.generateProfessionalTicketPdf({
+                    eventName: eventData?.title || eventData?.name || 'Event',
+                    eventDate: eventData?.date || eventData?.start_date || '',
+                    eventVenue: eventData?.venue || eventData?.location || '',
+                    memberName: registration.memberName || registration.member?.name || registration.name || 'Participant',
+                    registrationId: regId,
+                    amount: parseFloat(registration.amountPaid || fee) || 0,
+                    paymentMethod: registration.paymentMethod || (fee === 0 ? 'Free' : 'Online'),
+                    paymentStatus: registration.paymentStatus || 'Paid',
+                    qrRef: qrRef,
+                    qrUrl: qrUrl
+                });
+            } else {
+                pdfBlob = await window.api.generatePdfFromElement('success-screen');
+            }
             
             const url = window.URL.createObjectURL(pdfBlob);
             const link = document.createElement('a');

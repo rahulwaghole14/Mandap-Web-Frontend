@@ -217,9 +217,18 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('slug', slug);
             formData.append('description', document.getElementById('event-desc').value);
             formData.append('venue', document.getElementById('event-venue').value);
-            formData.append('address', [address, city, state].filter(Boolean).join(', '));
+            formData.append('address', [address, city, state].filter(Boolean).join(', ')); // Some backends want full string
+            formData.append('city', city);
+            formData.append('district', district);
+            formData.append('state', state);
+            formData.append('pincode', document.getElementById('event-pincode').value);
+            
+            // Send both date formats to be safe
             formData.append('start_date', startStr.substring(0, 10));
             formData.append('end_date', endStr.substring(0, 10));
+            formData.append('startDateTime', startStr); // yyyy-MM-ddThh:mm
+            formData.append('endDateTime', endStr);
+            
             formData.append('registration_open', document.getElementById('event-reg-open').value || startStr.substring(0, 10));
             formData.append('registration_close', document.getElementById('event-reg-close').value || startStr.substring(0, 10));
             formData.append('capacity', parseInt(document.getElementById('event-capacity').value, 10) || 1200);
@@ -230,11 +239,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const assocId = document.getElementById('event-association')?.value;
             if (assocId) formData.append('association_id', assocId);
             
-            // Laravel boolean accepts 1 / 0. Using 1/0 instead of true/false string
             formData.append('featured', document.getElementById('event-featured')?.checked ? 1 : 0);
 
             const fee = document.getElementById('event-fee').value;
-            if (fee) formData.append('registration_fee', fee);
+            if (fee) {
+                formData.append('registration_fee', fee);
+                formData.append('registrationFee', fee);
+            }
 
             // Append image
             const imageInputEl = document.getElementById('event-image');

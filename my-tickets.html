@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Tickets - Mandapam Member</title>
+    <link rel="icon" type="image/png" href="assets/images/mandapam-logo.png" />
+    <link rel="apple-touch-icon" href="assets/images/mandapam-logo.png" />
+    <link href="css/style.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  </head>
+  <body class="bg-gray-100 font-sans antialiased text-gray-900">
+    <div class="flex">
+      <!-- Sidebar -->
+      <div class="w-64 bg-gray-900 text-white h-screen flex flex-col sticky top-0 flex-shrink-0" style="width: 256px; min-width: 256px; max-width: 256px;">
+        <div class="p-6 border-b border-gray-700">
+          <h2 class="text-xl font-semibold text-white">Mandapam Member</h2>
+          <p class="text-sm text-gray-400 mt-1">My Dashboard</p>
+        </div>
+        <div class="p-4 border-b border-gray-700">
+          <div class="flex items-center space-x-3">
+            <div class="h-10 w-10 bg-primary-600 rounded-full flex items-center justify-center">
+              <i data-lucide="user" class="h-5 w-5 text-white"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-white truncate" id="user-name">Member</p>
+            </div>
+          </div>
+        </div>
+        <nav class="flex-1 p-4 space-y-2">
+          <a href="dashboard.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white">
+            <i data-lucide="layout-dashboard" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Dashboard</span>
+          </a>
+          <a href="my-tickets.html" class="flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors bg-primary-600 text-white">
+            <i data-lucide="ticket" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">My Tickets</span>
+          </a>
+        </nav>
+        <div class="p-4 border-t border-gray-700 space-y-2">
+          <a href="settings.html" class="flex items-center space-x-3 px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors">
+            <i data-lucide="settings" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Settings</span>
+          </a>
+          <button id="logout-btn" class="w-full flex items-center space-x-3 px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors">
+            <i data-lucide="log-out" class="h-5 w-5"></i>
+            <span class="text-sm font-medium">Logout</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <main class="flex-1 p-8 bg-gray-100 min-h-screen overflow-y-auto">
+        <div class="mb-8">
+          <h1 class="text-3xl font-bold text-gray-900">My Tickets</h1>
+          <p class="text-gray-600 mt-1">View your upcoming event registrations and visitor passes.</p>
+        </div>
+
+        <div id="tickets-loading" class="text-center py-12">
+          <i data-lucide="loader-2" class="h-8 w-8 animate-spin mx-auto text-primary-600 mb-4"></i>
+          <p class="text-gray-500">Loading your tickets...</p>
+        </div>
+
+        <div id="no-tickets" class="hidden text-center py-12 bg-white rounded-lg shadow-sm border border-gray-200">
+          <i data-lucide="ticket" class="h-12 w-12 mx-auto text-gray-400 mb-4"></i>
+          <h3 class="text-lg font-medium text-gray-900">No Tickets Found</h3>
+          <p class="text-gray-500 mt-1">You haven't registered for any upcoming events yet.</p>
+        </div>
+
+        <div id="tickets-list" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Tickets will be dynamically added here -->
+        </div>
+      </main>
+    </div>
+
+    <!-- Ticket Detail Modal -->
+    <div id="ticket-modal" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden flex items-center justify-center">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+          <h3 class="text-lg font-medium text-gray-900">Visitor Pass</h3>
+          <button id="close-ticket-modal" class="text-gray-400 hover:text-gray-500">
+            <i data-lucide="x" class="h-5 w-5"></i>
+          </button>
+        </div>
+        <div class="p-6 text-center">
+          <h4 id="ticket-event-name" class="font-bold text-xl text-gray-900 mb-1">Event Name</h4>
+          <p id="ticket-member-name" class="text-gray-600 mb-6">Member Name</p>
+          
+          <div class="flex justify-center mb-4">
+            <div id="modal-qr-container" class="w-48 h-48 border border-gray-200 rounded-lg p-2 flex items-center justify-center bg-white"></div>
+          </div>
+          
+          <p class="text-sm font-medium text-gray-900" id="ticket-ref"></p>
+          <p class="text-xs text-gray-500 mt-2">Show this QR code at the entrance.</p>
+          
+          <div class="mt-6" data-html2canvas-ignore="true">
+            <button id="download-pass-btn" class="w-full flex justify-center items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
+              <i data-lucide="download" class="h-4 w-4 mr-2"></i> Download Pass
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>lucide.createIcons();</script>
+    <script src="js/config.js"></script>
+    <script src="js/utils/api.js?v=4"></script>
+    <script src="js/pages/my-tickets.js"></script>
+  </body>
+</html>

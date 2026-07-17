@@ -176,6 +176,129 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- Manual Registration Modal Logic ---
+    const manualModal = document.getElementById('manual-registration-modal');
+    const openManualBtn = document.getElementById('open-manual-reg-btn');
+    const closeManualBtn = document.getElementById('close-manual-modal');
+    const cancelManualBtn = document.getElementById('cancel-manual-btn');
+    const manualForm = document.getElementById('manual-registration-form');
+    const manualSuccessView = document.getElementById('manual-success-view');
+    const sendWhatsappBtn = document.getElementById('send-whatsapp-btn');
+    const doneManualBtn = document.getElementById('done-manual-btn');
+    
+    let currentManualRegistrationId = null;
+
+    const openManualModal = () => {
+        if (!eventId) {
+            alert('Event ID not found');
+            return;
+        }
+        manualForm.reset();
+        manualForm.classList.remove('hidden');
+        manualSuccessView.classList.add('hidden');
+        modalOverlay.classList.remove('hidden');
+        manualModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    };
+
+    const closeManualModal = () => {
+        modalOverlay.classList.add('hidden');
+        manualModal.classList.add('hidden');
+        document.body.style.overflow = '';
+        currentManualRegistrationId = null;
+    };
+
+    if (openManualBtn) openManualBtn.addEventListener('click', openManualModal);
+    if (closeManualBtn) closeManualBtn.addEventListener('click', closeManualModal);
+    if (cancelManualBtn) cancelManualBtn.addEventListener('click', closeManualModal);
+    if (doneManualBtn) doneManualBtn.addEventListener('click', () => {
+        closeManualModal();
+        window.location.reload(); // Reload to show new registration
+    });
+
+    if (manualForm) {
+        manualForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submit-manual-btn');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Registering...';
+            submitBtn.disabled = true;
+
+            const memberId = document.getElementById('manual-member-id').value;
+            const receiptNumber = document.getElementById('manual-receipt-number').value;
+
+            try {
+                const resData = await window.api.createManualRegistration(eventId, {
+                    member_id: parseInt(memberId, 10),
+                    cashReceiptNumber: receiptNumber
+                });
+
+                if (resData.success) {
+                    // Show success view
+                    manualForm.classList.add('hidden');
+                    manualSuccessView.classList.remove('hidden');
+                    
+                    const qrUrl = resData.data?.qrDataURL || resData.qrDataURL || resData.data?.qrCode || resData.qrCode || resData.data?.qrCodeUrl || resData.qrCodeUrl || resData.data?.qrCodeDataURL || resData.qrCodeDataURL;
+                    const qrRef = resData.data?.qr_code_ref || resData.qr_code_ref || resData.data?.qrToken || `EVT-${eventId}-MEM-${memberId}`;
+                    currentManualRegistrationId = resData.data?.id || resData.registrationId;
+                    
+                    document.getElementById('manual-qr-ref').textContent = `Ref: ${qrRef}`;
+                    
+                    // Generate QR
+                    const qrContainer = document.getElementById('manual-qr-container');
+                    qrContainer.innerHTML = '';
+                    
+                    if (qrUrl) {
+                        const img = document.createElement('img');
+                        img.src = qrUrl;
+                        img.className = 'w-44 h-44';
+                        qrContainer.appendChild(img);
+                    } else if (window.QRCode) {
+                        new QRCode(qrContainer, {
+                            text: String(qrRef),
+                            width: 176,
+                            height: 176,
+                            colorDark: "#000000",
+                            colorLight: "#ffffff",
+                            correctLevel: QRCode.CorrectLevel.H
+                        });
+                    } else {
+                        qrContainer.innerHTML = '<span class="text-sm text-red-500">QRCode library missing</span>';
+                    }
+                }
+            } catch (err) {
+                alert(err.message || 'Failed to register manually');
+                console.error('Manual registration error:', err);
+            } finally {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+    }
+
+    if (sendWhatsappBtn) {
+        sendWhatsappBtn.addEventListener('click', async () => {
+            if (!currentManualRegistrationId) return;
+            const originalText = sendWhatsappBtn.innerHTML;
+            sendWhatsappBtn.innerHTML = '<i data-lucide="loader-2" class="h-4 w-4 mr-2 animate-spin"></i> Sending...';
+            sendWhatsappBtn.disabled = true;
+            if (window.lucide) lucide.createIcons();
+
+            try {
+                await window.api.sendWhatsApp(eventId, currentManualRegistrationId);
+                sendWhatsappBtn.innerHTML = '<i data-lucide="check" class="h-4 w-4 mr-2"></i> Sent Successfully';
+                sendWhatsappBtn.classList.replace('bg-green-500', 'bg-gray-500');
+                sendWhatsappBtn.classList.replace('hover:bg-green-600', 'hover:bg-gray-600');
+            } catch (err) {
+                alert(err.message || 'Failed to send WhatsApp message');
+                sendWhatsappBtn.innerHTML = originalText;
+                sendWhatsappBtn.disabled = false;
+                if (window.lucide) lucide.createIcons();
+            }
+        });
+    }
+
     // --- Load Event Details ---
     const API_BASE = window.CONFIG.API_BASE_URL;
     const urlParams = new URLSearchParams(window.location.search);

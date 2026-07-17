@@ -8,6 +8,7 @@
     <link rel="apple-touch-icon" href="assets/images/mandapam-logo.png" />
     <link href="css/style.css" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   </head>
   <body class="bg-gray-100 font-sans antialiased text-gray-900">
     <div class="flex">
@@ -146,15 +147,21 @@
             <div id="registrations-tab" class="p-6 flex-1 tab-content">
               <div class="flex justify-between items-center mb-6">
                 <h3 class="text-lg font-bold text-gray-900">Registrations Overview</h3>
-                <div class="relative group">
-                  <button class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center">
-                    <i data-lucide="download" class="h-4 w-4 mr-2"></i>
-                    Export
+                <div class="flex items-center space-x-3">
+                  <button id="open-manual-reg-btn" class="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 flex items-center shadow-sm">
+                    <i data-lucide="plus-circle" class="h-4 w-4 mr-2"></i>
+                    Manual Reg (Cash)
                   </button>
-                  <!-- Dropdown Menu -->
-                  <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg hidden group-hover:block z-10 border border-gray-100">
-                    <button id="export-csv-btn" class="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export CSV</button>
-                    <button id="export-pdf-btn" class="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 opacity-50 cursor-not-allowed">Export PDF</button>
+                  <div class="relative group">
+                    <button class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center">
+                      <i data-lucide="download" class="h-4 w-4 mr-2"></i>
+                      Export
+                    </button>
+                    <!-- Dropdown Menu -->
+                    <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg hidden group-hover:block z-10 border border-gray-100">
+                      <button id="export-csv-btn" class="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export CSV</button>
+                      <button id="export-pdf-btn" class="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 opacity-50 cursor-not-allowed">Export PDF</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -258,6 +265,56 @@
               </button>
             </div>
           </form>
+        </div>
+      </div>
+
+      <!-- Manual Registration Modal -->
+      <div id="manual-registration-modal" class="bg-white rounded-lg shadow-xl w-full max-w-md hidden overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+          <h3 class="text-lg font-medium text-gray-900">Manual Registration (Cash)</h3>
+          <button id="close-manual-modal" class="text-gray-400 hover:text-gray-500">
+            <i data-lucide="x" class="h-5 w-5"></i>
+          </button>
+        </div>
+        <div class="p-6">
+          <form id="manual-registration-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Member ID</label>
+              <input type="number" id="manual-member-id" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500" placeholder="e.g. 23">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Cash Receipt Number</label>
+              <input type="text" id="manual-receipt-number" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500" placeholder="e.g. CASH-123">
+            </div>
+            <div class="pt-4 flex justify-end space-x-3">
+              <button type="button" id="cancel-manual-btn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                Cancel
+              </button>
+              <button type="submit" id="submit-manual-btn" class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
+                Register
+              </button>
+            </div>
+          </form>
+
+          <!-- Success View inside Modal -->
+          <div id="manual-success-view" class="hidden space-y-4 text-center">
+            <div class="text-green-600 mb-2">
+              <i data-lucide="check-circle" class="h-12 w-12 mx-auto"></i>
+            </div>
+            <h4 class="text-lg font-medium text-gray-900">Registration Successful!</h4>
+            <div class="flex justify-center my-4">
+              <div id="manual-qr-container" class="w-48 h-48 border border-gray-200 rounded-lg p-2 flex items-center justify-center"></div>
+            </div>
+            <p class="text-sm text-gray-500 mb-4" id="manual-qr-ref"></p>
+            <div class="pt-2">
+              <button type="button" id="send-whatsapp-btn" class="w-full flex justify-center items-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 mb-2">
+                <i data-lucide="message-circle" class="h-4 w-4 mr-2"></i> Send via WhatsApp
+              </button>
+              <button type="button" id="done-manual-btn" class="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                Done
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

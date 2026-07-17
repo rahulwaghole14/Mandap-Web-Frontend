@@ -218,18 +218,41 @@ document.addEventListener('DOMContentLoaded', () => {
                     const rRole = (localStorage.getItem('userRole') || '').toLowerCase();
                     // Admin cannot delete registrations. Only managers/superadmins can.
                     const canCancel = rRole !== 'admin';
+                    let actionHtml = `<div class="flex items-center justify-end space-x-2">`;
+                    
+                    // Download Pass action
+                    // Serialize needed data for the download
+                    const ticketData = encodeURIComponent(JSON.stringify({
+                        eventName: eventName,
+                        memberName: name || 'Participant',
+                        registrationId: r.id || r.registrationId || 'N/A',
+                        amount: amount,
+                        paymentMethod: payment || 'Online',
+                        paymentStatus: status,
+                        qrRef: r.qr_code_ref || r.qrToken || `EVT-${r.event_id || r.event?.id}-MEM-${r.member_id || ''}`,
+                        qrUrl: r.qrDataURL || r.qrCode || r.qrCodeUrl || r.qrCodeDataURL || null,
+                        eventDate: dateStr,
+                        eventVenue: window.manualRegEventData?.venue || ''
+                    }));
+                    
+                    actionHtml += `
+                      <button onclick="window.downloadPassFromTable(this, '${ticketData}')" class="text-primary-600 hover:text-primary-900 bg-primary-50 hover:bg-primary-100 px-3 py-1 rounded-md transition-colors flex items-center inline-flex">
+                        <i data-lucide="download" class="h-4 w-4 mr-1"></i> Pass
+                      </button>
+                    `;
 
                     if (statusRaw.toLowerCase() === 'cancelled') {
-                        return '<span class="text-gray-400 text-xs italic">Cancelled</span>';
+                        actionHtml += '<span class="text-gray-400 text-xs italic ml-2">Cancelled</span>';
                     } else if (canCancel) {
-                        return `
+                        actionHtml += `
                       <button onclick="window.handleCancelRegistration(${r.event_id || r.event?.id}, ${r.id})" class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-md transition-colors flex items-center inline-flex">
                         <i data-lucide="x-circle" class="h-4 w-4 mr-1"></i> Cancel
                       </button>
                       `;
-                    } else {
-                        return ''; // Admins see nothing
                     }
+                    
+                    actionHtml += `</div>`;
+                    return actionHtml;
                 })()}
               </td>
             </tr>`;
@@ -237,6 +260,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (window.lucide) lucide.createIcons({ nameAttr: 'data-lucide', nodes: [tableBody] });
     }
+
+    // Global handler for downloading pass directly from the table
+    window.downloadPassFromTable = async (btnEl, encodedData) => {
+        try {
+            const originalHtml = btnEl.innerHTML;
+            btnEl.innerHTML = `<i data-lucide="loader-2" class="h-4 w-4 mr-1 animate-spin"></i> Wait...`;
+            btnEl.disabled = true;
+            if (window.lucide) lucide.createIcons({ nameAttr: 'data-lucide', nodes: [btnEl] });
+            
+            const ticketData = JSON.parse(decodeURIComponent(encodedData));
+            
+            if (window.api && window.api.generateProfessionalTicketPdf) {
+                const pdfBlob = await window.api.generateProfessionalTicketPdf(ticketData);
+                const url = URL.createObjectURL(pdfBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `entry-pass-${ticketData.registrationId}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } else {
+                alert('PDF generation is currently unavailable.');
+            }
+            
+            btnEl.innerHTML = originalHtml;
+            btnEl.disabled = false;
+            if (window.lucide) lucide.createIcons({ nameAttr: 'data-lucide', nodes: [btnEl] });
+        } catch (error) {
+            console.error('Download pass error:', error);
+            alert('Failed to generate pass: ' + error.message);
+            btnEl.innerHTML = `<i data-lucide="download" class="h-4 w-4 mr-1"></i> Pass`;
+            btnEl.disabled = false;
+            if (window.lucide) lucide.createIcons({ nameAttr: 'data-lucide', nodes: [btnEl] });
+        }
+    };
 
     // Global handler for cancelling registration directly from the table
     window.handleCancelRegistration = async (eventId, regId) => {
@@ -689,11 +748,40 @@ document.addEventListener('DOMContentLoaded', () => {
             isDownloading = true;
             downloadPassBtn.classList.add('opacity-75', 'cursor-not-allowed');
             const originalHtml = downloadPassBtn.innerHTML;
-            downloadPassBtn.innerHTML = '<i data-lucide="loader-2" class="h-4 w-4 mr-2 animate-spin"></i> Downloading...';
+            downloadPassBtn.innerHTML = '<i data-lucide="loader-2" class="h-4 w-4 mr-2 animate-spin"></i> Preparing QR...';
             if (window.lucide) lucide.createIcons({ nameAttr: 'data-lucide', nodes: [downloadPassBtn] });
 
             try {
-                const pdfBlob = await window.api.downloadRegistrationPdf(manualRegEventId, regIdText);
+                // Step 1: Capture the VISIBLE on-screen QR directly (most reliable approach)
+                const qrContainer = document.getElementById('manual-qr-container');
+                let capturedQrDataUrl = null;
+
+                if (qrContainer) {
+                    const canvas = qrContainer.querySelector('canvas');
+                    const img = qrContainer.querySelector('img');
+                    if (canvas) {
+                        try { capturedQrDataUrl = canvas.toDataURL('image/png'); } catch(e) { console.warn('QR canvas capture failed', e); }
+                    } else if (img && img.src) {
+                        capturedQrDataUrl = img.src;
+                    }
+                }
+
+                // Step 2: Inject the captured QR into ticket data so the PDF generator uses it directly
+                if (window.lastTicketData) {
+                    if (capturedQrDataUrl) {
+                        window.lastTicketData.qrUrl = capturedQrDataUrl;
+                    }
+                }
+
+                downloadPassBtn.innerHTML = '<i data-lucide="loader-2" class="h-4 w-4 mr-2 animate-spin"></i> Downloading...';
+                if (window.lucide) lucide.createIcons({ nameAttr: 'data-lucide', nodes: [downloadPassBtn] });
+
+                let pdfBlob;
+                if (window.lastTicketData && window.api.generateProfessionalTicketPdf) {
+                    pdfBlob = await window.api.generateProfessionalTicketPdf(window.lastTicketData);
+                } else {
+                    pdfBlob = await window.api.generatePdfFromElement('manual-registration-success');
+                }
                 const url = window.URL.createObjectURL(pdfBlob);
                 const link = document.createElement('a');
                 link.href = url;
@@ -761,6 +849,68 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('success-reg-status').textContent = 'paid';
                     document.getElementById('success-reg-amount').textContent = `₹ ${fee}`;
                     document.getElementById('success-reg-method').textContent = 'cash';
+                    
+                    // Generate QR Code for Manual Registration Success
+                    const qrSection = document.getElementById('qr-section');
+                    const qrContainer = document.getElementById('manual-qr-container');
+                    const qrRefEl = document.getElementById('manual-qr-ref');
+                    
+                    if (qrSection && qrContainer) {
+                        qrSection.classList.remove('hidden');
+                        qrContainer.innerHTML = ''; // clear previous
+                        
+                        const qrUrl = successData.qrDataURL || successData.qrCode || successData.qrCodeUrl || successData.qrCodeDataURL;
+                        const qrRef = successData.qr_code_ref || successData.qrToken || `EVT-${manualRegEventId}-MEM-${successData.member_id || ''}`;
+                        
+                        if (qrRefEl) qrRefEl.textContent = `Ref: ${qrRef}`;
+                        
+                        if (qrUrl) {
+                            const img = document.createElement('img');
+                            img.src = qrUrl;
+                            img.className = 'w-44 h-44';
+                            qrContainer.appendChild(img);
+                        } else if (window.QRCode) {
+                            new QRCode(qrContainer, {
+                                text: String(qrRef),
+                                width: 176,
+                                height: 176,
+                                colorDark: "#000000",
+                                colorLight: "#ffffff",
+                                correctLevel: QRCode.CorrectLevel.H
+                            });
+                        } else {
+                            qrContainer.innerHTML = '<span class="text-sm text-red-500">QRCode missing</span>';
+                        }
+                        
+                        // Save ticket data for professional PDF generation
+                        window.lastTicketData = {
+                            eventName: manualRegEventData?.title || manualRegEventData?.name || 'Event',
+                            eventDate: manualRegEventData?.date || manualRegEventData?.start_date || '',
+                            eventVenue: manualRegEventData?.venue || manualRegEventData?.location || '',
+                            memberName: payload.name || 'Participant',
+                            registrationId: successData.id || Math.floor(Math.random() * 10000),
+                            amount: fee,
+                            paymentMethod: 'Cash',
+                            paymentStatus: 'Paid',
+                            qrRef: qrRef,
+                            qrUrl: qrUrl || null
+                        };
+                        // QRCode.js draws asynchronously — wait for it then capture the canvas as data URI
+                        setTimeout(() => {
+                            const qrEl = document.getElementById('manual-qr-container');
+                            if (qrEl) {
+                                const canvas = qrEl.querySelector('canvas');
+                                const img = qrEl.querySelector('img');
+                                if (canvas) {
+                                    try { window.lastTicketData.qrUrl = canvas.toDataURL('image/png'); } catch(e) { console.warn('QR capture failed', e); }
+                                } else if (img && img.src && img.src.length > 50) {
+                                    window.lastTicketData.qrUrl = img.src;
+                                }
+                                console.log('[QR Capture] qrUrl set:', window.lastTicketData.qrUrl ? 'YES (' + window.lastTicketData.qrUrl.length + ' chars)' : 'NO');
+                            }
+                        }, 500);
+                    }
+                    
                     document.getElementById('manual-registration-success').classList.remove('hidden');
 
                     manualRegForm.reset(); // Make form fresh for next registration
@@ -858,6 +1008,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                                 // Use the authenticated `/payments/verify` endpoint for the Admin flow
                                 const confirmData = await window.api.confirmRazorpayManualPayment(verifyPayload);
+                                window.lastPaymentConfirmData = confirmData;
 
                                 if (isDev) {
                                     console.log('[DEBUG] Verify API response:', confirmData);
@@ -916,11 +1067,87 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
                             } finally {
                                 if (paymentConfirmed) {
-                                    alert(window.lastPaymentSuccessMessage || 'Payment successful');
-                                    closeManualRegModal();
+                                    // Show success screen instead of just alerting
+                                    manualRegForm.classList.add('hidden');
+                                    
+                                    // We need confirmData, but it's scoped inside try block. 
+                                    // Wait, it is inside try block. Let's just use it if available, else fallback
+                                    const successData = window.lastPaymentConfirmData?.registration || window.lastPaymentConfirmData?.data || window.lastPaymentConfirmData || {};
+                                    
+                                    document.getElementById('success-reg-id').textContent = successData.id || '#' + Math.floor(Math.random() * 10000);
+                                    document.getElementById('success-reg-status').textContent = 'paid';
+                                    document.getElementById('success-reg-amount').textContent = `₹ ${fee}`;
+                                    document.getElementById('success-reg-method').textContent = 'razorpay';
+                                    
+                                    // Generate QR Code for Manual Registration Success
+                                    const qrSection = document.getElementById('qr-section');
+                                    const qrContainer = document.getElementById('manual-qr-container');
+                                    const qrRefEl = document.getElementById('manual-qr-ref');
+                                    
+                                    if (qrSection && qrContainer) {
+                                        qrSection.classList.remove('hidden');
+                                        qrContainer.innerHTML = ''; // clear previous
+                                        
+                                        const qrUrl = successData.qrDataURL || successData.qrCode || successData.qrCodeUrl || successData.qrCodeDataURL;
+                                        const qrRef = successData.qr_code_ref || successData.qrToken || `EVT-${manualRegEventId}-MEM-${successData.member_id || ''}`;
+                                        
+                                        if (qrRefEl) qrRefEl.textContent = `Ref: ${qrRef}`;
+                                        
+                                        if (qrUrl) {
+                                            const img = document.createElement('img');
+                                            img.src = qrUrl;
+                                            img.className = 'w-44 h-44';
+                                            qrContainer.appendChild(img);
+                                        } else if (window.QRCode) {
+                                            new QRCode(qrContainer, {
+                                                text: String(qrRef),
+                                                width: 176,
+                                                height: 176,
+                                                colorDark: "#000000",
+                                                colorLight: "#ffffff",
+                                                correctLevel: QRCode.CorrectLevel.H
+                                            });
+                                        } else {
+                                            qrContainer.innerHTML = '<span class="text-sm text-red-500">QRCode missing</span>';
+                                        }
+                                        
+                                        // Save ticket data for professional PDF generation
+                                        window.lastTicketData = {
+                                            eventName: manualRegEventData?.title || manualRegEventData?.name || 'Event',
+                                            eventDate: manualRegEventData?.date || manualRegEventData?.start_date || '',
+                                            eventVenue: manualRegEventData?.venue || manualRegEventData?.location || '',
+                                            memberName: payload.name || 'Participant',
+                                            registrationId: successData.id || Math.floor(Math.random() * 10000),
+                                            amount: fee,
+                                            paymentMethod: 'Razorpay',
+                                            paymentStatus: 'Paid',
+                                            qrRef: qrRef,
+                                            qrUrl: qrUrl || null
+                                        };
+                                        // QRCode.js draws asynchronously — wait for it then capture the canvas as data URI
+                                        setTimeout(() => {
+                                            const qrEl = document.getElementById('manual-qr-container');
+                                            if (qrEl) {
+                                                const canvas = qrEl.querySelector('canvas');
+                                                const img = qrEl.querySelector('img');
+                                                if (canvas) {
+                                                    try { window.lastTicketData.qrUrl = canvas.toDataURL('image/png'); } catch(e) { console.warn('QR capture failed', e); }
+                                                } else if (img && img.src && img.src.length > 50) {
+                                                    window.lastTicketData.qrUrl = img.src;
+                                                }
+                                                console.log('[QR Capture Razorpay] qrUrl set:', window.lastTicketData.qrUrl ? 'YES (' + window.lastTicketData.qrUrl.length + ' chars)' : 'NO');
+                                            }
+                                        }, 500);
+                                    }
+                                    
+                                    document.getElementById('manual-registration-success').classList.remove('hidden');
+                                    manualRegForm.reset(); // Make form fresh for next registration
                                     loadRegistrations(true);
                                     loadEventsDropdown();
+                                } else {
+                                    manualRegForm.classList.remove('hidden'); // Show form again if not confirmed
                                 }
+                                
                                 isPaymentConfirming = false;
                                 submitBtn.disabled = false;
                                 submitBtn.classList.remove('opacity-50');

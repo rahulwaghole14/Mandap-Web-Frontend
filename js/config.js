@@ -3,27 +3,7 @@
 // ============================================================
 
 const getApiBaseUrl = () => {
-    const hostname = window.location.hostname;
-    const protocol = window.location.protocol;
-
-    // If opening the HTML directly from the filesystem (file:///...)
-    if (protocol === 'file:' || !hostname) {
-        return 'http://192.168.0.102:8000/api'; // Default fallback for local file testing
-    }
-
-    // Local development (if accessing via localhost)
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        return 'http://192.168.0.102:8000/api';
-    }
-
-    // Dynamic local network or production
-    // If accessing via an IP like 192.168.X.X, this will construct the correct API URL dynamically
-    if (hostname.match(/^[0-9.]+$/)) {
-        return `http://${hostname}:8000/api`;
-    }
-
-    // Production / Fallback - assumes backend is on the same origin
-    return window.location.origin + '/api';
+    return 'http://192.168.0.115:8000/api';
 };
 
 // Legacy window.CONFIG kept for backward compatibility with

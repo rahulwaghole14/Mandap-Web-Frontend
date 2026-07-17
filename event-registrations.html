@@ -450,7 +450,14 @@
             </div>
           </div>
 
-          <div class="flex justify-end space-x-3">
+          <!-- QR Code Section -->
+          <div class="flex flex-col items-center justify-center mb-6 border-t border-gray-200 pt-6 hidden" id="qr-section">
+            <div class="text-sm font-semibold text-gray-700 mb-3">QR Code Entry Pass</div>
+            <div id="manual-qr-container" class="bg-white p-2 rounded-lg border-2 border-gray-200 inline-block w-48 h-48 flex items-center justify-center"></div>
+            <div id="manual-qr-ref" class="text-xs text-gray-500 mt-2 font-mono"></div>
+          </div>
+
+          <div class="flex justify-end space-x-3" data-html2canvas-ignore="true">
             <button id="download-pass-btn"
               class="px-4 py-2 text-sm font-medium text-primary-700 bg-white border border-primary-300 rounded-lg hover:bg-primary-50 inline-flex items-center">
               <i data-lucide="download" class="h-4 w-4 mr-2"></i> Download Pass
@@ -469,6 +476,9 @@
       </div>
     </div>
   </div>
+
+  <!-- External Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <!-- config must load first so API_BASE_URL is available to page scripts -->
   <script src="js/config.js"></script>
