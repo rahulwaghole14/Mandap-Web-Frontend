@@ -9,7 +9,7 @@ if (typeof API_BASE_URL === 'undefined') {
 }
 
 const CONFIG = window.CONFIG || {
-    API_BASE_URL: (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'http://192.168.0.115:8000') + '/api',
+    API_BASE_URL: (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'http://192.168.0.101:8000') + '/api',
 
     EVENT_SLUGS: {
         'kolhapur-2026': 33,

@@ -3,7 +3,7 @@
 // ============================================================
 
 const getApiBaseUrl = () => {
-    return 'http://192.168.0.115:8000/api';
+    return 'http://192.168.0.101:8000/api';
 };
 
 // Legacy window.CONFIG kept for backward compatibility with
