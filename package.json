@@ -4,7 +4,9 @@
   "description": "HTML, CSS, Vanilla JS migration of Mandapam Frontend",
   "scripts": {
     "build:css": "tailwindcss -i ./css/input.css -o ./css/style.css",
-    "watch:css": "tailwindcss -i ./css/input.css -o ./css/style.css --watch"
+    "watch:css": "tailwindcss -i ./css/input.css -o ./css/style.css --watch",
+    "serve": "npx serve -l 3000 .",
+    "dev": "npx serve -l 3000 ."
   },
   "devDependencies": {
     "tailwindcss": "^3.3.0"

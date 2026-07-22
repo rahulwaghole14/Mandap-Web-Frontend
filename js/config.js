@@ -3,7 +3,7 @@
 // ============================================================
 
 const getApiBaseUrl = () => {
-    return 'http://192.168.0.101:8000/api';
+    return 'http://192.168.0.102:8000/api';
 };
 
 // Legacy window.CONFIG kept for backward compatibility with
@@ -41,7 +41,7 @@ window.CONFIG = CONFIG;
 // RBAC (Role-Based Access Control)
 // ============================================================
 
-(function() {
+(function () {
     const userRole = localStorage.getItem('userRole') || '';
     const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -49,16 +49,16 @@ window.CONFIG = CONFIG;
         const storedRole = userRole.toLowerCase();
         const objRole = (user?.role || '').toLowerCase();
         const checkRole = role.toLowerCase();
-        
+
         // Handle typo where backend returns 'manger' instead of 'manager'
         const isManagerTypo = checkRole === 'manager' && (storedRole === 'manger' || objRole === 'manger');
-        
+
         return storedRole === checkRole || objRole === checkRole || isManagerTypo;
     };
 
     const hasPermission = (permission) => {
         if (!userRole) return false;
-        
+
         if (hasRole('admin')) return true;
 
         if (hasRole('manager')) {
@@ -119,7 +119,7 @@ window.CONFIG = CONFIG;
     const publicPages = ['login.html', 'index.html', '', 'test-events-integration.html'];
     // NOTE: 'delete-account.html' and 'event-registration.html' were formerly accessible to members (user flow)
     // They are now only reachable if you are authenticated as admin or manager.
-    
+
     if (!publicPages.includes(pageName) && pageName.endsWith('.html') && userRole) {
         // Manager Route Redirects
         if (hasRole('manager')) {
@@ -129,7 +129,7 @@ window.CONFIG = CONFIG;
                 return;
             }
         }
-        
+
         // Other role route protection based on sidebar navigation
         const currentNavItem = navigation.find(item => item.href === pageName);
         if (currentNavItem) {
@@ -144,30 +144,30 @@ window.CONFIG = CONFIG;
 
     // Dynamic Sidebar Rendering
     document.addEventListener('DOMContentLoaded', () => {
-        const navContainer = document.querySelector('nav.flex-1.p-4.space-y-2');
+        const navContainer = document.querySelector('nav.flex-1');
         if (navContainer) {
+            navContainer.className = 'flex-1 px-3 py-2 space-y-1 overflow-hidden';
             navContainer.innerHTML = ''; // Clear hardcoded links
-            
+
             navigation.forEach(item => {
                 const shouldShow = shouldShowNavigationItem(item);
                 if (item.show === false || !shouldShow) return;
-                
-                const isActive = (pageName === item.href) || 
-                                 (pageName === '' && item.href === 'dashboard.html');
-                
+
+                const isActive = (pageName === item.href) ||
+                    (pageName === '' && item.href === 'dashboard.html');
+
                 const a = document.createElement('a');
                 a.href = item.href;
-                a.className = `flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                    isActive
-                        ? 'bg-primary-600 text-white'
+                a.className = `flex items-center space-x-3 px-3 py-1.5 rounded-lg transition-colors ${isActive
+                        ? 'bg-primary-600 text-white font-semibold'
                         : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                }`;
-                
+                    }`;
+
                 a.innerHTML = `
-                    <i data-lucide="${item.icon}" class="h-5 w-5"></i>
+                    <i data-lucide="${item.icon}" class="h-5 w-5 flex-shrink-0"></i>
                     <span class="text-sm font-medium">${item.name}</span>
                 `;
-                
+
                 navContainer.appendChild(a);
             });
 
@@ -175,6 +175,76 @@ window.CONFIG = CONFIG;
                 lucide.createIcons({ nameAttr: 'data-lucide', nodes: [navContainer] });
             }
         }
+
+        // Dynamic Sidebar Footer & Logout Integration
+        const sidebar = document.querySelector('aside, .w-64.bg-gray-900');
+        if (sidebar) {
+            // Make header & user info sections compact if present
+            const headerSection = sidebar.querySelector('.border-b.border-gray-700, .p-6');
+            if (headerSection) {
+                headerSection.classList.remove('p-6');
+                headerSection.classList.add('px-4', 'py-3');
+            }
+            const userInfoSection = sidebar.querySelectorAll('.border-b.border-gray-700')[1];
+            if (userInfoSection) {
+                userInfoSection.classList.remove('p-4');
+                userInfoSection.classList.add('px-4', 'py-2.5');
+            }
+
+            let footer = sidebar.querySelector('.border-t.border-gray-700');
+            if (!footer) {
+                footer = document.createElement('div');
+                footer.className = 'px-3 py-2 border-t border-gray-700 space-y-1 flex-shrink-0 mt-auto';
+                sidebar.appendChild(footer);
+            } else {
+                footer.className = 'px-3 py-2 border-t border-gray-700 space-y-1 flex-shrink-0 mt-auto';
+            }
+
+            const isSettingsActive = (pageName === 'settings.html');
+            const settingsClass = isSettingsActive
+                ? 'flex items-center space-x-3 px-3 py-1.5 rounded-lg transition-colors bg-primary-600 text-white font-semibold'
+                : 'flex items-center space-x-3 px-3 py-1.5 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white';
+
+            footer.innerHTML = `
+                <a href="settings.html" class="${settingsClass}">
+                    <i data-lucide="settings" class="h-5 w-5 flex-shrink-0"></i>
+                    <span class="text-sm font-medium">Settings</span>
+                </a>
+                <button id="logout-btn" type="button" class="w-full flex items-center space-x-3 px-3 py-1.5 rounded-lg transition-colors text-gray-300 hover:bg-gray-800 hover:text-white cursor-pointer text-left focus:outline-none">
+                    <i data-lucide="log-out" class="h-5 w-5 flex-shrink-0"></i>
+                    <span class="text-sm font-medium">Logout</span>
+                </button>
+            `;
+            if (window.lucide) {
+                lucide.createIcons({ nameAttr: 'data-lucide', nodes: [footer] });
+            }
+        }
+
+        // Global Click Listener for Logout Button
+        document.body.addEventListener('click', (e) => {
+            const btn = e.target.closest('#logout-btn');
+            if (btn) {
+                e.preventDefault();
+                const token = localStorage.getItem('token');
+                if (token) {
+                    fetch(`${CONFIG.API_BASE_URL}/auth/logout`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        }
+                    }).catch(err => console.error('[Logout] API error:', err));
+                }
+                localStorage.removeItem('token');
+                localStorage.removeItem('refreshToken');
+                localStorage.removeItem('user');
+                localStorage.removeItem('userEmail');
+                localStorage.removeItem('userName');
+                localStorage.removeItem('userRole');
+                window.location.href = 'login.html';
+            }
+        });
 
         // Global UI Population for User Info
         const updateUIWithUser = (u) => {
@@ -193,7 +263,7 @@ window.CONFIG = CONFIG;
                         imgUrl = profileImg.startsWith('http') ? profileImg : `${CONFIG.API_BASE_URL.replace('/api', '')}/${profileImg.replace(new RegExp('^/'), '')}`;
                     }
 
-                    let imgHtml = imgUrl 
+                    let imgHtml = imgUrl
                         ? `<img src="${imgUrl}" class="h-10 w-10 rounded-full object-cover shadow-sm ring-2 ring-primary-500">`
                         : `<div class="h-10 w-10 bg-primary-600 rounded-full flex items-center justify-center flex-shrink-0"><i data-lucide="user" class="h-5 w-5 text-white"></i></div>`;
 
@@ -236,19 +306,19 @@ window.CONFIG = CONFIG;
                     'Accept': 'application/json'
                 }
             })
-            .then(res => res.json())
-            .then(data => {
-                console.log('[GET /auth/profile] Response (Global):', data);
-                if (data.success && data.data && data.data.user) {
-                    const freshUser = data.data.user;
-                    localStorage.setItem('user', JSON.stringify(freshUser));
-                    localStorage.setItem('userName', freshUser.name);
-                    localStorage.setItem('userRole', freshUser.role);
-                    localStorage.setItem('userEmail', freshUser.email);
-                    updateUIWithUser(freshUser);
-                }
-            })
-            .catch(err => console.error('Failed to fetch profile:', err));
+                .then(res => res.json())
+                .then(data => {
+                    console.log('[GET /auth/profile] Response (Global):', data);
+                    if (data.success && data.data && data.data.user) {
+                        const freshUser = data.data.user;
+                        localStorage.setItem('user', JSON.stringify(freshUser));
+                        localStorage.setItem('userName', freshUser.name);
+                        localStorage.setItem('userRole', freshUser.role);
+                        localStorage.setItem('userEmail', freshUser.email);
+                        updateUIWithUser(freshUser);
+                    }
+                })
+                .catch(err => console.error('Failed to fetch profile:', err));
         }
     });
 
