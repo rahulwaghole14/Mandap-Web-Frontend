@@ -3,7 +3,12 @@
 // ============================================================
 
 const getApiBaseUrl = () => {
-    return 'http://192.168.0.102:8000/api';
+    const hostname = window.location.hostname;
+    if (hostname === 'mandapassociation.com' || hostname === 'www.mandapassociation.com') {
+        return 'https://mandapassociation.com/mandapam-backend-php/public/api';
+    }
+    // For local development on this machine (PHP server runs on port 8000)
+    return 'http://127.0.0.1:8000/api';
 };
 
 // Legacy window.CONFIG kept for backward compatibility with
@@ -159,8 +164,8 @@ window.CONFIG = CONFIG;
                 const a = document.createElement('a');
                 a.href = item.href;
                 a.className = `flex items-center space-x-3 px-3 py-1.5 rounded-lg transition-colors ${isActive
-                        ? 'bg-primary-600 text-white font-semibold'
-                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                    ? 'bg-primary-600 text-white font-semibold'
+                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                     }`;
 
                 a.innerHTML = `

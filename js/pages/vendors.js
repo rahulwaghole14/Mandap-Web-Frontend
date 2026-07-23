@@ -135,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const val = formData.get(formField);
                 if (val && val.trim() !== '') {
                     payload[apiField] = val.trim();
+                    payload[formField] = val.trim();
                 }
             }
 
