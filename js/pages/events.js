@@ -251,8 +251,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     View Details
                   </a>
                   <div class="flex space-x-2">
-                    <a href="event-form.html?id=${id}" class="p-2 text-gray-400 hover:text-yellow-600 transition-colors" title="Edit Event">
-                      <i data-lucide="edit" class="h-4 w-4"></i>
+                    <a href="event-form?id=${id}" class="p-2 text-gray-400 hover:text-yellow-600 transition-colors inline-block cursor-pointer" title="Edit Event">
+                      <i data-lucide="edit" class="h-4 w-4 pointer-events-none"></i>
                     </a>
                     <button class="p-2 text-gray-400 hover:text-red-600 transition-colors delete-event-btn" data-id="${id}" title="Delete Event">
                       <i data-lucide="trash-2" class="h-4 w-4"></i>

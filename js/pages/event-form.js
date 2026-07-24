@@ -15,32 +15,36 @@ document.addEventListener('DOMContentLoaded', () => {
         if (userNameEl) userNameEl.textContent = user.name;
     }
 
-    // Setup Edit Mode checks
+    // Setup Edit Mode checks synchronously to prevent layout flicker
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('id');
     const isEdit = !!eventId;
     
-    // Store original event data for unmodified fields
+    if (isEdit) {
+        const formTitle = document.getElementById('form-title');
+        if (formTitle) formTitle.textContent = 'Edit Event';
+
+        const formSub = formTitle?.nextElementSibling;
+        if (formSub) formSub.textContent = 'Update existing event details below';
+
+        const submitTextEl = document.getElementById('submit-text');
+        if (submitTextEl) submitTextEl.textContent = 'Update Event';
+    }
+
     let originalEventData = {};
 
-    // Load associations
-    const assocSelect = document.getElementById('event-association');
-    if (assocSelect) {
-        fetch(`${API_BASE}/associations`, {
-            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
-        })
-        .then(res => res.json())
-        .then(json => {
-            let assocs = [];
-            if (json.success && json.data && Array.isArray(json.data.results)) {
-                assocs = json.data.results;
-            } else if (Array.isArray(json)) {
-                assocs = json;
-            } else if (json.data && Array.isArray(json.data)) {
-                assocs = json.data;
-            }
+    const loadFormData = async () => {
+        const assocSelect = document.getElementById('event-association');
 
-            if (assocs.length > 0) {
+        // Step 1: Load Associations list for dropdown
+        try {
+            const assocRes = await fetch(`${API_BASE}/associations`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+            });
+            const json = await assocRes.json();
+            let assocs = Array.isArray(json.associations) ? json.associations : (Array.isArray(json.data) ? json.data : (json.data?.results || []));
+            
+            if (assocSelect && assocs.length > 0) {
                 assocSelect.innerHTML = '<option value="">Select Association</option>';
                 assocs.forEach(a => {
                     const opt = document.createElement('option');
@@ -48,96 +52,88 @@ document.addEventListener('DOMContentLoaded', () => {
                     opt.textContent = a.name || a.title || `Association ${a.id}`;
                     assocSelect.appendChild(opt);
                 });
-                
-                // If editing and we already loaded event data, set it now
-                if (isEdit && originalEventData.association_id) {
-                    assocSelect.value = originalEventData.association_id;
-                }
             }
-        })
-        .catch(err => console.error('Failed to load associations:', err));
-    }
+        } catch (err) {
+            console.error('Failed to load associations:', err);
+        }
 
-    if (isEdit) {
-        document.getElementById('form-title').textContent = 'Edit Event';
-        
-        // Fetch event data from API
-        fetch(`${API_BASE}/events/${eventId}`, {
-            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
-        })
-        .then(res => res.json())
-        .then(data => {
-            const evt = data.results || data.data || data;
-            originalEventData = evt;
-            
-            document.getElementById('event-name').value = evt.title || '';
-            document.getElementById('event-slug').value = evt.slug || '';
-            document.getElementById('event-desc').value = evt.description || '';
-            
-            // Format dates for datetime-local input (YYYY-MM-DDThh:mm)
-            if (evt.start_date) {
-                let s = evt.start_date;
-                if (s.length === 10) s += 'T09:00'; // Default time if missing
-                document.getElementById('event-start').value = s.substring(0, 16);
-            }
-            if (evt.end_date) {
-                let e = evt.end_date;
-                if (e.length === 10) e += 'T18:00'; // Default time if missing
-                document.getElementById('event-end').value = e.substring(0, 16);
-            }
-            if (evt.registration_open) document.getElementById('event-reg-open').value = evt.registration_open.substring(0, 10);
-            if (evt.registration_close) document.getElementById('event-reg-close').value = evt.registration_close.substring(0, 10);
-            
-            // Smartly split the combined address string for the individual form inputs
-            document.getElementById('event-venue').value = evt.venue || '';
-            
-            let addr = evt.address || '';
-            let city = 'Pune';
-            let state = 'Maharashtra';
-            
-            if (addr) {
-                const parts = addr.split(',').map(p => p.trim());
-                if (parts.length >= 3) {
-                    state = parts.pop();
-                    city = parts.pop();
-                    addr = parts.join(', ');
-                } else if (parts.length === 2) {
-                    city = parts.pop();
-                    addr = parts[0];
+        // Step 2: If Edit Mode, fetch Event details and pre-populate fields
+        if (isEdit) {
+            try {
+                const eventRes = await fetch(`${API_BASE}/events/${eventId}`, {
+                    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+                });
+                const data = await eventRes.json();
+                const evt = data.results || data.data || data;
+                originalEventData = evt;
+
+                document.getElementById('event-name').value = evt.title || '';
+                document.getElementById('event-slug').value = evt.slug || '';
+                document.getElementById('event-desc').value = evt.description || '';
+
+                // Format dates for datetime-local input (YYYY-MM-DDThh:mm)
+                if (evt.start_date) {
+                    let s = evt.start_date;
+                    if (s.length === 10) s += 'T09:00';
+                    document.getElementById('event-start').value = s.substring(0, 16);
                 }
-            }
-            
-            document.getElementById('event-address').value = addr;
-            document.getElementById('event-city').value = city;
-            document.getElementById('event-state').value = state;
-            document.getElementById('event-fee').value = evt.registration_fee || '0';
-            document.getElementById('event-capacity').value = evt.capacity || '1200';
-            document.getElementById('event-status').value = evt.status || 'active';
-            
-            const assocEl = document.getElementById('event-association');
-            if (assocEl && evt.association_id) assocEl.value = evt.association_id;
-            
-            const featEl = document.getElementById('event-featured');
-            if (featEl) featEl.checked = evt.featured == 1 || evt.featured == true;
-            
-            if (evt.event_image || evt.image) {
-                const imgUrl = evt.event_image || evt.image;
-                const previewContainer = document.getElementById('image-preview-container');
-                const imagePreview = document.getElementById('image-preview');
-                const uploadPrompt = document.getElementById('upload-prompt');
-                
-                if (imagePreview && previewContainer && uploadPrompt) {
-                    imagePreview.src = imgUrl.startsWith('http') ? imgUrl : `${API_BASE.replace('/api', '')}/storage/${imgUrl}`;
-                    uploadPrompt.classList.add('hidden');
-                    previewContainer.classList.remove('hidden');
+                if (evt.end_date) {
+                    let e = evt.end_date;
+                    if (e.length === 10) e += 'T18:00';
+                    document.getElementById('event-end').value = e.substring(0, 16);
                 }
+                if (evt.registration_open) document.getElementById('event-reg-open').value = evt.registration_open.substring(0, 10);
+                if (evt.registration_close) document.getElementById('event-reg-close').value = evt.registration_close.substring(0, 10);
+
+                // Pre-populate Location fields
+                document.getElementById('event-venue').value = evt.venue || '';
+                document.getElementById('event-address').value = evt.address || '';
+                document.getElementById('event-city').value = evt.city || evt.location || '';
+
+                const districtEl = document.getElementById('event-district');
+                if (districtEl && evt.district) {
+                    let exists = Array.from(districtEl.options).some(opt => opt.value.toLowerCase() === evt.district.toLowerCase());
+                    if (!exists) {
+                        const opt = document.createElement('option');
+                        opt.value = evt.district;
+                        opt.textContent = evt.district;
+                        districtEl.appendChild(opt);
+                    }
+                    districtEl.value = evt.district;
+                }
+
+                document.getElementById('event-state').value = evt.state || 'Maharashtra';
+                document.getElementById('event-fee').value = evt.registration_fee != null ? evt.registration_fee : (evt.registrationFee != null ? evt.registrationFee : '0');
+                document.getElementById('event-capacity').value = evt.capacity || '1200';
+                document.getElementById('event-status').value = evt.status || 'active';
+
+                if (assocSelect && evt.association_id) {
+                    assocSelect.value = evt.association_id;
+                }
+
+                const featEl = document.getElementById('event-featured');
+                if (featEl) featEl.checked = evt.featured == 1 || evt.featured == true;
+
+                const imgUrl = evt.event_image || evt.image || evt.imageURL || evt.banner;
+                if (imgUrl) {
+                    const previewContainer = document.getElementById('image-preview-container');
+                    const imagePreview = document.getElementById('image-preview');
+                    const uploadPrompt = document.getElementById('upload-prompt');
+
+                    if (imagePreview && previewContainer && uploadPrompt) {
+                        imagePreview.src = typeof imgUrl === 'string' && imgUrl.startsWith('http') ? imgUrl : `${API_BASE.replace('/api', '')}/storage/${imgUrl}`;
+                        uploadPrompt.classList.add('hidden');
+                        previewContainer.classList.remove('hidden');
+                    }
+                }
+            } catch (err) {
+                console.error('[Events API] Error loading event:', err);
+                alert('Could not load event details.');
             }
-        })
-        .catch(err => {
-            console.error('[Events API] Error loading event:', err);
-            alert('Could not load event details.');
-        });
-    }
+        }
+    };
+
+    loadFormData();
 
     // Image Upload Logic (Keeping existing logic for UI)
     const imageInput = document.getElementById('event-image');
@@ -217,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('slug', slug);
             formData.append('description', document.getElementById('event-desc').value);
             formData.append('venue', document.getElementById('event-venue').value);
-            formData.append('address', [address, city, state].filter(Boolean).join(', ')); // Some backends want full string
+            formData.append('address', address);
             formData.append('city', city);
             formData.append('district', district);
             formData.append('state', state);
@@ -230,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('endDateTime', endStr);
             
             formData.append('registration_open', document.getElementById('event-reg-open').value || startStr.substring(0, 10));
-            formData.append('registration_close', document.getElementById('event-reg-close').value || startStr.substring(0, 10));
+            formData.append('registration_close', document.getElementById('event-reg-close').value || endStr.substring(0, 10));
             formData.append('capacity', parseInt(document.getElementById('event-capacity').value, 10) || 1200);
             formData.append('status', document.getElementById('event-status').value || "active");
             

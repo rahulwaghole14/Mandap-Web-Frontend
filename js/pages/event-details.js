@@ -308,9 +308,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!targetEventId || !token) return;
 
         // Update Edit link with active event ID
-        const editBtn = document.querySelector('a[href*="event-form.html"]');
+        const editBtn = document.querySelector('a[href*="event-form"]');
         if (editBtn) {
-            editBtn.href = `event-form.html?id=${targetEventId}`;
+            editBtn.href = `event-form?id=${targetEventId}`;
         }
 
         fetch(`${API_BASE}/events/${targetEventId}`, {
