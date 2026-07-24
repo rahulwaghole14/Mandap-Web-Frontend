@@ -54,7 +54,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!res.ok) throw new Error('Failed to fetch associations');
             
             const json = await res.json();
-            if (json.success && json.data && Array.isArray(json.data.results)) {
+            if (json.success && Array.isArray(json.associations)) {
+                allAssociations = json.associations;
+            } else if (json.success && Array.isArray(json.data)) {
+                allAssociations = json.data;
+            } else if (json.success && json.data && Array.isArray(json.data.results)) {
                 allAssociations = json.data.results;
             } else if (Array.isArray(json)) {
                 allAssociations = json;

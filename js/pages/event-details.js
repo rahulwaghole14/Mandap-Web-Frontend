@@ -302,10 +302,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Load Event Details ---
     const API_BASE = window.CONFIG.API_BASE_URL;
     const urlParams = new URLSearchParams(window.location.search);
-    const eventId = urlParams.get('id');
+    let eventId = urlParams.get('id');
 
-    if (eventId && token) {
-        fetch(`${API_BASE}/events/${eventId}`, {
+    const loadEventDetails = (targetEventId) => {
+        if (!targetEventId || !token) return;
+
+        // Update Edit link with active event ID
+        const editBtn = document.querySelector('a[href*="event-form.html"]');
+        if (editBtn) {
+            editBtn.href = `event-form.html?id=${targetEventId}`;
+        }
+
+        fetch(`${API_BASE}/events/${targetEventId}`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Accept': 'application/json'
@@ -369,6 +377,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const placeholder = document.getElementById('event-image-placeholder');
                     if (container) {
                         container.style.backgroundImage = `url('${imgUrl}')`;
+                        container.style.backgroundSize = 'cover';
+                        container.style.backgroundPosition = 'center';
                         if (placeholder) placeholder.classList.add('hidden');
                     }
                 }
@@ -379,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // --- Load Exhibitors ---
-        fetch(`${API_BASE}/events/${eventId}/exhibitors`, {
+        fetch(`${API_BASE}/events/${targetEventId}/exhibitors`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Accept': 'application/json'
@@ -411,7 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // --- Load Registrations ---
-        fetch(`${API_BASE}/events/${eventId}/registrations`, {
+        fetch(`${API_BASE}/events/${targetEventId}/registrations`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Accept': 'application/json'
@@ -502,75 +512,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (totalCountEl) totalCountEl.textContent = registrations.length;
                     if (attendedCountEl) attendedCountEl.textContent = attendedCount;
                     if (pendingCountEl) pendingCountEl.textContent = pendingCount;
-
-                    const feeDisplay = document.getElementById('event-fee-display');
-                    let feeAmount = 0;
-                    if (feeDisplay && feeDisplay.textContent.includes('₹')) {
-                        feeAmount = parseFloat(feeDisplay.textContent.replace(/[^\d.-]/g, '')) || 0;
-                    }
-                    if (totalFeesEl) {
-                        const totalRevenue = feeAmount * paidCount;
-                        if (totalRevenue >= 1000) {
-                            totalFeesEl.textContent = `₹${(totalRevenue/1000).toFixed(1)}k`;
-                        } else {
-                            totalFeesEl.textContent = `₹${totalRevenue}`;
-                        }
-                    }
-
-                    // --- Export CSV Functionality ---
-                    const exportCsvBtn = document.getElementById('export-csv-btn');
-                    if (exportCsvBtn) {
-                        // Remove old listeners by replacing clone
-                        const newBtn = exportCsvBtn.cloneNode(true);
-                        exportCsvBtn.parentNode.replaceChild(newBtn, exportCsvBtn);
-                        
-                        newBtn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            if (registrations.length === 0) {
-                                alert('No registrations to export.');
-                                return;
-                            }
-
-                            const headers = ['Registration ID', 'Member ID', 'Registration Status', 'Payment Status', 'Attendance Status', 'QR Code Ref', 'Created At'];
-                            const csvRows = [];
-                            csvRows.push(headers.join(','));
-
-                            registrations.forEach(reg => {
-                                const row = [
-                                    reg.id,
-                                    reg.member_id,
-                                    reg.registration_status || '',
-                                    reg.payment_status || '',
-                                    reg.attendance_status || '',
-                                    reg.qr_code_ref || '',
-                                    reg.created_at || ''
-                                ];
-                                const escapedRow = row.map(cell => {
-                                    if (cell === null || cell === undefined) return '""';
-                                    const str = String(cell);
-                                    return `"${str.replace(/"/g, '""')}"`;
-                                });
-                                csvRows.push(escapedRow.join(','));
-                            });
-
-                            const csvContent = "data:text/csv;charset=utf-8," + csvRows.join('\\n');
-                            const encodedUri = encodeURI(csvContent);
-                            const link = document.createElement('a');
-                            link.setAttribute('href', encodedUri);
-                            link.setAttribute('download', `event_${eventId}_registrations.csv`);
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                        });
-                    }
                 }
             }
         })
         .catch(err => {
             console.error('[Event Details] Error loading registrations:', err);
         });
+    };
 
+    if (eventId) {
+        loadEventDetails(eventId);
     } else {
-        console.warn('[Event Details] No event ID provided in URL');
+        // Fallback: Fetch first event if no ID provided in URL
+        fetch(`${API_BASE}/events`, {
+            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(json => {
+            const list = json.events || json.data?.results || json.data || [];
+            if (Array.isArray(list) && list.length > 0) {
+                eventId = list[0].id;
+                loadEventDetails(eventId);
+            }
+        })
+        .catch(err => console.error('[Event Details] Error fetching default event:', err));
     }
 });
