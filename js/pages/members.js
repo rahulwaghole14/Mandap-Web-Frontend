@@ -116,6 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('open-add-modal').addEventListener('click', () => {
         document.getElementById('form-modal-title').textContent = 'Add Member';
         document.getElementById('member-form').reset();
+        loadAssociations();
         
         // Reset custom multi-select
         const typeCheckboxes = document.querySelectorAll('.business-type-checkbox');
@@ -146,6 +147,44 @@ document.addEventListener('DOMContentLoaded', () => {
     let allMembers = [];
     let allAssociations = [];
     const tableBody = document.getElementById('members-table-body');
+
+    const loadAssociations = async () => {
+        const assocSelect = document.getElementById('member-association');
+        if (!assocSelect) return;
+        
+        try {
+            const API_BASE = window.CONFIG.API_BASE_URL;
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_BASE}/associations`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+            });
+            const json = await res.json();
+            
+            let assocs = [];
+            if (Array.isArray(json.associations)) {
+                assocs = json.associations;
+            } else if (Array.isArray(json.data)) {
+                assocs = json.data;
+            } else if (json.data && Array.isArray(json.data.results)) {
+                assocs = json.data.results;
+            } else if (Array.isArray(json)) {
+                assocs = json;
+            }
+
+            allAssociations = assocs;
+            
+            if (assocs.length > 0) {
+                assocSelect.innerHTML = '<option value="">Select Association</option>' +
+                    assocs.map(a => {
+                        const id = a.id;
+                        const name = a.name || a.title || `Association ${id}`;
+                        return `<option value="${id}">${name}</option>`;
+                    }).join('');
+            }
+        } catch (err) {
+            console.error('[Members] Failed to load associations:', err);
+        }
+    };
 
     const loadMembers = async () => {
         try {
@@ -360,35 +399,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
-    const loadAssociations = async () => {
-        try {
-            const API_BASE = window.CONFIG.API_BASE_URL;
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${API_BASE}/associations`, {
-                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
-            });
-            const json = await res.json();
-            
-            if (json.success && json.data && Array.isArray(json.data.results)) {
-                allAssociations = json.data.results;
-            } else if (Array.isArray(json)) {
-                allAssociations = json;
-            }
-            
-            const assocSelect = document.getElementById('member-association');
-            if (assocSelect) {
-                const options = allAssociations.map(a => `<option value="${a.id}">${a.name || a.code || 'Association ' + a.id}</option>`).join('');
-                assocSelect.innerHTML = '<option value="">Select Association</option>' + options;
-            }
-        } catch (err) {
-            console.error('[Members] Failed to load associations:', err);
-        }
-    };
-
-    // Load initial data
-    loadMembers();
-    loadAssociations();
 
     // Form Submissions (Mock & Edit API Integration)
     let currentEditMemberId = null;
@@ -712,4 +722,8 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.removeChild(link);
         });
     }
+
+    // Initial Data Fetch
+    loadMembers();
+    loadAssociations();
 });
